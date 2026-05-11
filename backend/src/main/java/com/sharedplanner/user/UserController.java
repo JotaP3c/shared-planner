@@ -4,6 +4,7 @@ import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/users")
@@ -23,4 +24,14 @@ public class UserController {
     ) {
         return userService.create(request, authentication);
     }
+
+    @PutMapping("/{userId}")
+    public UserResponse update(
+            @PathVariable UUID userId,
+            @RequestBody @Valid UpdateUserRequest request,
+            Authentication authentication
+    ) {
+        return userService.update(userId, request, authentication);
+    }
+
 }

@@ -1,6 +1,5 @@
 package com.sharedplanner.finance;
 
-import com.sharedplanner.calendar.CalendarMemberRepository;
 import com.sharedplanner.event.EventRepository;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;

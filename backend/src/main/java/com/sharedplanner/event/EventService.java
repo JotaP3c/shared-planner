@@ -1,8 +1,12 @@
 package com.sharedplanner.event;
 
+import com.sharedplanner.audit.AuditAction;
+import com.sharedplanner.audit.AuditEntityType;
+import com.sharedplanner.audit.AuditService;
 import com.sharedplanner.calendar.CalendarMemberRepository;
 import com.sharedplanner.calendar.SharedCalendar;
 import com.sharedplanner.calendar.SharedCalendarRepository;
+import com.sharedplanner.config.AuthorizationService;
 import com.sharedplanner.user.User;
 import com.sharedplanner.user.UserRepository;
 import org.springframework.http.HttpStatus;
@@ -18,9 +22,6 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
-import com.sharedplanner.config.AuthorizationService;
-
-
 @Service
 public class EventService {
 
@@ -29,19 +30,22 @@ public class EventService {
     private final CalendarMemberRepository memberRepository;
     private final UserRepository userRepository;
     private final AuthorizationService authorizationService;
+    private final AuditService auditService;
 
     public EventService(
             EventRepository eventRepository,
             SharedCalendarRepository calendarRepository,
             CalendarMemberRepository memberRepository,
             UserRepository userRepository,
-            AuthorizationService authorizationService
+            AuthorizationService authorizationService,
+            AuditService auditService
     ) {
         this.eventRepository = eventRepository;
         this.calendarRepository = calendarRepository;
         this.memberRepository = memberRepository;
         this.userRepository = userRepository;
         this.authorizationService = authorizationService;
+        this.auditService = auditService;
     }
 
     @Transactional
@@ -78,10 +82,24 @@ public class EventService {
                 request.amount(),
                 request.startsAt(),
                 request.endsAt(),
-                approvalRequestedFrom
+                approvalRequestedFrom,
+                currentUser
         );
 
-        return EventResponse.from(eventRepository.save(event));
+        Event savedEvent = eventRepository.save(event);
+
+        auditService.log(
+                AuditEntityType.EVENT,
+                savedEvent.getId(),
+                savedEvent.getCalendar().getId(),
+                AuditAction.CREATED,
+                "Event created: " + savedEvent.getTitle(),
+                null,
+                eventSnapshot(savedEvent),
+                currentUser
+        );
+
+        return EventResponse.from(savedEvent);
     }
 
     @Transactional(readOnly = true)
@@ -159,6 +177,9 @@ public class EventService {
         Event event = event(eventId);
         authorizationService.ensureCanEditEvent(event, authentication);
 
+        User currentUser = currentUser(authentication);
+        String oldValue = eventSnapshot(event);
+
         User approvalRequestedFrom = approvalUser(request.eventType(), request.approvalRequestedFromEmail(), event.getCalendar().getId(), authentication.getName());
         EventStatus status = request.eventType() == EventType.SHARED
                 ? EventStatus.PENDING_APPROVAL
@@ -175,7 +196,19 @@ public class EventService {
                 request.amount(),
                 request.startsAt(),
                 request.endsAt(),
-                approvalRequestedFrom
+                approvalRequestedFrom,
+                currentUser
+        );
+
+        auditService.log(
+                AuditEntityType.EVENT,
+                event.getId(),
+                event.getCalendar().getId(),
+                AuditAction.UPDATED,
+                "Event updated: " + event.getTitle(),
+                oldValue,
+                eventSnapshot(event),
+                currentUser
         );
 
         return EventResponse.from(event);
@@ -186,6 +219,20 @@ public class EventService {
         Event event = event(eventId);
         authorizationService.ensureCanEditEvent(event, authentication);
 
+        User currentUser = currentUser(authentication);
+        String oldValue = eventSnapshot(event);
+
+        auditService.log(
+                AuditEntityType.EVENT,
+                event.getId(),
+                event.getCalendar().getId(),
+                AuditAction.DELETED,
+                "Event deleted: " + event.getTitle(),
+                oldValue,
+                null,
+                currentUser
+        );
+
         eventRepository.delete(event);
     }
 
@@ -194,7 +241,21 @@ public class EventService {
         Event event = event(eventId);
         ensureApprovalTarget(event, authentication.getName());
 
-        event.approve(currentUser(authentication));
+        User currentUser = currentUser(authentication);
+        String oldValue = eventSnapshot(event);
+
+        event.approve(currentUser);
+
+        auditService.log(
+                AuditEntityType.EVENT,
+                event.getId(),
+                event.getCalendar().getId(),
+                AuditAction.APPROVED,
+                "Event approved: " + event.getTitle(),
+                oldValue,
+                eventSnapshot(event),
+                currentUser
+        );
 
         return EventResponse.from(event);
     }
@@ -204,7 +265,21 @@ public class EventService {
         Event event = event(eventId);
         ensureApprovalTarget(event, authentication.getName());
 
-        event.reject();
+        User currentUser = currentUser(authentication);
+        String oldValue = eventSnapshot(event);
+
+        event.reject(currentUser);
+
+        auditService.log(
+                AuditEntityType.EVENT,
+                event.getId(),
+                event.getCalendar().getId(),
+                AuditAction.REJECTED,
+                "Event rejected: " + event.getTitle(),
+                oldValue,
+                eventSnapshot(event),
+                currentUser
+        );
 
         return EventResponse.from(event);
     }
@@ -214,6 +289,7 @@ public class EventService {
         Event event = event(eventId);
 
         authorizationService.ensureCanEditEvent(event, authentication);
+        User currentUser = currentUser(authentication);
 
         validatePayment(event, request);
 
@@ -227,11 +303,25 @@ public class EventService {
             paidAt = LocalDateTime.now();
         }
 
+        String oldValue = paymentSnapshot(event);
+
         event.registerPayment(
                 request.paymentStatus(),
                 request.paymentMethod(),
                 receivedAmount,
-                paidAt
+                paidAt,
+                currentUser
+        );
+
+        auditService.log(
+                AuditEntityType.EVENT,
+                event.getId(),
+                event.getCalendar().getId(),
+                AuditAction.PAYMENT_UPDATED,
+                "Event payment updated: " + event.getTitle(),
+                oldValue,
+                paymentSnapshot(event),
+                currentUser
         );
 
         return EventResponse.from(event);
@@ -250,12 +340,6 @@ public class EventService {
     private void ensureCalendarMember(UUID calendarId, String email) {
         memberRepository.findByCalendarIdAndUserEmailIgnoreCase(calendarId, email)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Calendar not found"));
-    }
-
-    private void ensureCreatedByCurrentUser(Event event, String email) {
-        if (!event.getCreatedBy().getEmail().equalsIgnoreCase(email)) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only event creator can change this event");
-        }
     }
 
     private void ensureApprovalTarget(Event event, String email) {
@@ -404,6 +488,27 @@ public class EventService {
         if (request.paymentStatus() == PaymentStatus.REFUNDED && receivedAmount.signum() > 0) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Refunded payments cannot have received amount");
         }
+    }
+
+    private String eventSnapshot(Event event) {
+        return "title=" + event.getTitle()
+                + "; eventType=" + event.getEventType()
+                + "; status=" + event.getStatus()
+                + "; clientName=" + event.getClientName()
+                + "; personName=" + event.getPersonName()
+                + "; amount=" + event.getAmount()
+                + "; startsAt=" + event.getStartsAt()
+                + "; endsAt=" + event.getEndsAt()
+                + "; paymentStatus=" + event.getPaymentStatus()
+                + "; paymentMethod=" + event.getPaymentMethod()
+                + "; receivedAmount=" + event.getReceivedAmount();
+    }
+
+    private String paymentSnapshot(Event event) {
+        return "paymentStatus=" + event.getPaymentStatus()
+                + "; paymentMethod=" + event.getPaymentMethod()
+                + "; receivedAmount=" + event.getReceivedAmount()
+                + "; paidAt=" + event.getPaidAt();
     }
 
     private record PeriodRange(LocalDateTime start, LocalDateTime endExclusive) {

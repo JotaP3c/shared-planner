@@ -84,6 +84,10 @@ public class Event {
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "updated_by_user_id")
+    private User updatedBy;
+
     protected Event() {
     }
 
@@ -110,6 +114,7 @@ public class Event {
     public LocalDateTime getEndsAt() { return endsAt; }
     public LocalDateTime getCreatedAt() { return createdAt; }
     public LocalDateTime getUpdatedAt() { return updatedAt; }
+    public User getUpdatedBy() { return updatedBy; }
     public PaymentStatus getPaymentStatus() { return paymentStatus; }
     public PaymentMethod getPaymentMethod() { return paymentMethod; }
     public BigDecimal getReceivedAmount() { return receivedAmount; }
@@ -127,7 +132,8 @@ public class Event {
             BigDecimal amount,
             LocalDateTime startsAt,
             LocalDateTime endsAt,
-            User approvalRequestedFrom
+            User approvalRequestedFrom,
+            User updatedBy
     ) {
         this.eventType = eventType;
         this.status = status;
@@ -147,29 +153,34 @@ public class Event {
         this.endsAt = endsAt;
         this.approvalRequestedFrom = approvalRequestedFrom;
         this.updatedAt = LocalDateTime.now();
+        this.updatedBy = updatedBy;
     }
 
     public void registerPayment(
             PaymentStatus paymentStatus,
             PaymentMethod paymentMethod,
             BigDecimal receivedAmount,
-            LocalDateTime paidAt
+            LocalDateTime paidAt,
+            User updatedBy
     ) {
         this.paymentStatus = paymentStatus;
         this.paymentMethod = paymentMethod;
         this.receivedAmount = receivedAmount;
         this.paidAt = paidAt;
         this.updatedAt = LocalDateTime.now();
+        this.updatedBy = updatedBy;
     }
 
     public void approve(User approvedBy) {
         this.status = EventStatus.APPROVED;
         this.approvedBy = approvedBy;
         this.updatedAt = LocalDateTime.now();
+        this.updatedBy = approvedBy;
     }
 
-    public void reject() {
+    public void reject(User updatedBy) {
         this.status = EventStatus.REJECTED;
+        this.updatedBy = updatedBy;
         this.updatedAt = LocalDateTime.now();
     }
 }

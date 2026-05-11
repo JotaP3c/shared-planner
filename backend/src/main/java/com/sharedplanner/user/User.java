@@ -1,14 +1,9 @@
 package com.sharedplanner.user;
 
+import jakarta.persistence.*;
+
 import java.time.LocalDateTime;
 import java.util.UUID;
-
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
 
 @Entity
 @Table(name = "users")
@@ -37,13 +32,21 @@ public class User {
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "created_by_user_id")
+    private User createdBy;
+
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "updated_by_user_id")
+    private User updatedBy;
 
     protected User() {
     }
 
-    public User(String fullName, String email, String passwordHash, UserRole role) {
+    public User(String fullName, String email, String passwordHash, UserRole role, User createdBy) {
         this.id = UUID.randomUUID();
         this.fullName = fullName;
         this.email = email.toLowerCase();
@@ -51,6 +54,7 @@ public class User {
         this.role = role;
         this.active = true;
         this.createdAt = LocalDateTime.now();
+        this.createdBy = createdBy;
     }
 
     public UUID getId() {
@@ -81,12 +85,29 @@ public class User {
         return createdAt;
     }
 
+    public User getCreatedBy() {
+        return createdBy;
+    }
+
     public LocalDateTime getUpdatedAt() {
         return updatedAt;
     }
 
-    public void changeRole(UserRole role) {
+    public User getUpdatedBy() {
+        return updatedBy;
+    }
+
+    public void changeRole(UserRole role, User updatedBy) {
         this.role = role;
+        this.updatedBy = updatedBy;
+        this.updatedAt = LocalDateTime.now();
+    }
+
+    public void updateProfile(String fullName, UserRole role, Boolean active, User updatedBy) {
+        this.fullName = fullName;
+        this.role = role;
+        this.active = active;
+        this.updatedBy = updatedBy;
         this.updatedAt = LocalDateTime.now();
     }
 }

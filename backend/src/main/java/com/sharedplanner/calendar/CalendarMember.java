@@ -26,20 +26,28 @@ public class CalendarMember {
     @Column(name = "member_role", nullable = false, length = 30)
     private CalendarMemberRole role;
 
-    public void changeRole(CalendarMemberRole role) {
-        this.role = role;
-    }
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "created_by_user_id")
+    private User createdBy;
 
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
 
+    @Column(name = "updated_at")
+    private LocalDateTime updatedAt;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "updated_by_user_id")
+    private User updatedBy;
+
     protected CalendarMember() {
     }
 
-    public CalendarMember(SharedCalendar calendar, User user, CalendarMemberRole role) {
+    public CalendarMember(SharedCalendar calendar, User user, CalendarMemberRole role, User createdBy) {
         this.calendar = calendar;
         this.user = user;
         this.role = role;
+        this.createdBy = createdBy;
         this.createdAt = LocalDateTime.now();
     }
 
@@ -57,5 +65,27 @@ public class CalendarMember {
 
     public CalendarMemberRole getRole() {
         return role;
+    }
+
+    public User getCreatedBy() {
+        return createdBy;
+    }
+
+    public LocalDateTime getCreatedAt() {
+        return createdAt;
+    }
+
+    public LocalDateTime getUpdatedAt() {
+        return updatedAt;
+    }
+
+    public User getUpdatedBy() {
+        return updatedBy;
+    }
+
+    public void changeRole(CalendarMemberRole role, User updatedBy) {
+        this.role = role;
+        this.updatedBy = updatedBy;
+        this.updatedAt = LocalDateTime.now();
     }
 }

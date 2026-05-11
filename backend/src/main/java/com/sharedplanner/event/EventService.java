@@ -11,6 +11,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.math.BigDecimal;
+import java.time.DayOfWeek;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
@@ -38,6 +41,13 @@ public class EventService {
     @Transactional
     public EventResponse create(CreateEventRequest request, Authentication authentication) {
         validatePeriod(request.startsAt(), request.endsAt());
+        validateEventFields(
+                request.eventType(),
+                request.clientName(),
+                request.personName(),
+                request.workDescription(),
+                request.amount()
+        );
 
         User currentUser = currentUser(authentication);
         SharedCalendar calendar = calendarRepository.findById(request.calendarId())
@@ -80,6 +90,48 @@ public class EventService {
     }
 
     @Transactional(readOnly = true)
+    public ClientRevenueSummaryResponse summarizeClientRevenue(
+            UUID calendarId,
+            RevenuePeriod period,
+            LocalDate referenceDate,
+            Authentication authentication
+    ) {
+        if (period == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Revenue period is required");
+        }
+
+        LocalDate date = referenceDate == null ? LocalDate.now() : referenceDate;
+        PeriodRange range = periodRange(period, date);
+
+        ensureCalendarMember(calendarId, authentication.getName());
+
+        ClientRevenueTotals totals = eventRepository.summarizeClientRevenue(
+                calendarId,
+                EventType.CLIENT,
+                EventStatus.CANCELLED,
+                range.start(),
+                range.endExclusive()
+        );
+
+        BigDecimal totalAmount = totals == null || totals.getTotalAmount() == null
+                ? BigDecimal.ZERO
+                : totals.getTotalAmount();
+        Long appointmentCount = totals == null || totals.getAppointmentCount() == null
+                ? 0L
+                : totals.getAppointmentCount();
+
+        return new ClientRevenueSummaryResponse(
+                calendarId,
+                period,
+                date,
+                range.start(),
+                range.endExclusive(),
+                totalAmount,
+                appointmentCount
+        );
+    }
+
+    @Transactional(readOnly = true)
     public EventResponse findById(UUID eventId, Authentication authentication) {
         Event event = event(eventId);
         ensureCalendarMember(event.getCalendar().getId(), authentication.getName());
@@ -90,6 +142,13 @@ public class EventService {
     @Transactional
     public EventResponse update(UUID eventId, UpdateEventRequest request, Authentication authentication) {
         validatePeriod(request.startsAt(), request.endsAt());
+        validateEventFields(
+                request.eventType(),
+                request.clientName(),
+                request.personName(),
+                request.workDescription(),
+                request.amount()
+        );
 
         Event event = event(eventId);
         ensureCalendarMember(event.getCalendar().getId(), authentication.getName());
@@ -142,6 +201,35 @@ public class EventService {
         ensureApprovalTarget(event, authentication.getName());
 
         event.reject();
+
+        return EventResponse.from(event);
+    }
+
+    @Transactional
+    public EventResponse updatePayment(UUID eventId, UpdatePaymentRequest request, Authentication authentication) {
+        Event event = event(eventId);
+
+        ensureCalendarMember(event.getCalendar().getId(), authentication.getName());
+        ensureCreatedByCurrentUser(event, authentication.getName());
+
+        validatePayment(event, request);
+
+        BigDecimal receivedAmount = request.receivedAmount() == null
+                ? BigDecimal.ZERO
+                : request.receivedAmount();
+
+        LocalDateTime paidAt = request.paidAt();
+        if ((request.paymentStatus() == PaymentStatus.PAID ||
+                request.paymentStatus() == PaymentStatus.PARTIALLY_PAID) && paidAt == null) {
+            paidAt = LocalDateTime.now();
+        }
+
+        event.registerPayment(
+                request.paymentStatus(),
+                request.paymentMethod(),
+                receivedAmount,
+                paidAt
+        );
 
         return EventResponse.from(event);
     }
@@ -201,5 +289,120 @@ public class EventService {
         if (startsAt == null || endsAt == null || !endsAt.isAfter(startsAt)) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Event end must be after start");
         }
+    }
+
+    private void validateEventFields(
+            EventType eventType,
+            String clientName,
+            String personName,
+            String workDescription,
+            BigDecimal amount
+    ) {
+        if (eventType == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Event type is required");
+        }
+
+        if (amount != null && amount.signum() < 0) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Amount must be zero or positive");
+        }
+
+        if (eventType == EventType.CLIENT) {
+            requireText(clientName, "Client events require clientName");
+            requireText(workDescription, "Client events require workDescription");
+
+            if (amount == null) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Client events require amount");
+            }
+        }
+
+        if (eventType == EventType.PERSONAL) {
+            requireText(personName, "Personal events require personName");
+        }
+    }
+
+    private void requireText(String value, String message) {
+        if (value == null || value.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, message);
+        }
+    }
+
+    private PeriodRange periodRange(RevenuePeriod period, LocalDate referenceDate) {
+        return switch (period) {
+            case DAILY -> new PeriodRange(referenceDate.atStartOfDay(), referenceDate.plusDays(1).atStartOfDay());
+            case WEEKLY -> weeklyRange(referenceDate);
+            case BIWEEKLY -> biweeklyRange(referenceDate);
+            case MONTHLY -> new PeriodRange(
+                    referenceDate.withDayOfMonth(1).atStartOfDay(),
+                    referenceDate.withDayOfMonth(1).plusMonths(1).atStartOfDay()
+            );
+        };
+    }
+
+    private PeriodRange weeklyRange(LocalDate referenceDate) {
+        LocalDate start = referenceDate;
+        while (start.getDayOfWeek() != DayOfWeek.MONDAY) {
+            start = start.minusDays(1);
+        }
+
+        return new PeriodRange(start.atStartOfDay(), start.plusWeeks(1).atStartOfDay());
+    }
+
+    private PeriodRange biweeklyRange(LocalDate referenceDate) {
+        LocalDate monthStart = referenceDate.withDayOfMonth(1);
+
+        if (referenceDate.getDayOfMonth() <= 15) {
+            return new PeriodRange(monthStart.atStartOfDay(), monthStart.withDayOfMonth(16).atStartOfDay());
+        }
+
+        LocalDate secondHalfStart = monthStart.withDayOfMonth(16);
+        return new PeriodRange(secondHalfStart.atStartOfDay(), monthStart.plusMonths(1).atStartOfDay());
+    }
+
+    private void validatePayment(Event event, UpdatePaymentRequest request) {
+        if (request.paymentStatus() == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Payment status is required");
+        }
+
+        if (event.getEventType() != EventType.CLIENT) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Only client events can have payments");
+        }
+
+        BigDecimal receivedAmount = request.receivedAmount() == null
+                ? BigDecimal.ZERO
+                : request.receivedAmount();
+
+        if (receivedAmount.compareTo(event.getAmount()) > 0) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Received amount cannot be greater than event amount");
+        }
+
+        if (request.paymentStatus() == PaymentStatus.PENDING && receivedAmount.signum() > 0) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Pending payments cannot have received amount");
+        }
+
+        if (request.paymentStatus() == PaymentStatus.PENDING && request.paidAt() != null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Pending payments cannot have paidAt");
+        }
+
+        if (request.paymentStatus() == PaymentStatus.PARTIALLY_PAID &&
+                (receivedAmount.signum() <= 0 || receivedAmount.compareTo(event.getAmount()) >= 0)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Partially paid events require received amount lower than event amount");
+        }
+
+        if ((request.paymentStatus() == PaymentStatus.PARTIALLY_PAID ||
+                request.paymentStatus() == PaymentStatus.PAID) && request.paymentMethod() == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Paid payments require paymentMethod");
+        }
+
+        if (request.paymentStatus() == PaymentStatus.PAID &&
+                receivedAmount.compareTo(event.getAmount()) != 0) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Paid events require received amount equal to event amount");
+        }
+
+        if (request.paymentStatus() == PaymentStatus.REFUNDED && receivedAmount.signum() > 0) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Refunded payments cannot have received amount");
+        }
+    }
+
+    private record PeriodRange(LocalDateTime start, LocalDateTime endExclusive) {
     }
 }

@@ -18,8 +18,13 @@ public record EventResponse(
         String description,
         String workDescription,
         BigDecimal amount,
+        PaymentStatus paymentStatus,
+        PaymentMethod paymentMethod,
+        BigDecimal receivedAmount,
+        LocalDateTime paidAt,
         LocalDateTime startsAt,
         LocalDateTime endsAt
+
 ) {
     static EventResponse from(Event event) {
         return new EventResponse(
@@ -36,6 +41,10 @@ public record EventResponse(
                 event.getDescription(),
                 event.getWorkDescription(),
                 event.getAmount(),
+                event.getPaymentStatus(),
+                event.getPaymentMethod(),
+                event.getReceivedAmount(),
+                event.getPaidAt(),
                 event.getStartsAt(),
                 event.getEndsAt()
         );

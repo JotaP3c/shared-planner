@@ -58,6 +58,20 @@ public class Event {
     @Column(name = "amount", precision = 12, scale = 2)
     private BigDecimal amount;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "payment_status", nullable = false, length = 30)
+    private PaymentStatus paymentStatus;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "payment_method", length = 30)
+    private PaymentMethod paymentMethod;
+
+    @Column(name = "received_amount", precision = 12, scale = 2)
+    private BigDecimal receivedAmount;
+
+    @Column(name = "paid_at")
+    private LocalDateTime paidAt;
+
     @Column(name = "starts_at", nullable = false)
     private LocalDateTime startsAt;
 
@@ -96,6 +110,11 @@ public class Event {
     public LocalDateTime getEndsAt() { return endsAt; }
     public LocalDateTime getCreatedAt() { return createdAt; }
     public LocalDateTime getUpdatedAt() { return updatedAt; }
+    public PaymentStatus getPaymentStatus() { return paymentStatus; }
+    public PaymentMethod getPaymentMethod() { return paymentMethod; }
+    public BigDecimal getReceivedAmount() { return receivedAmount; }
+    public LocalDateTime getPaidAt() { return paidAt; }
+
 
     public void fill(
             EventType eventType,
@@ -118,9 +137,28 @@ public class Event {
         this.description = description;
         this.workDescription = workDescription;
         this.amount = amount;
+
+        if (this.paymentStatus == null) {
+            this.paymentStatus = PaymentStatus.PENDING;
+            this.receivedAmount = BigDecimal.ZERO;
+        }
+
         this.startsAt = startsAt;
         this.endsAt = endsAt;
         this.approvalRequestedFrom = approvalRequestedFrom;
+        this.updatedAt = LocalDateTime.now();
+    }
+
+    public void registerPayment(
+            PaymentStatus paymentStatus,
+            PaymentMethod paymentMethod,
+            BigDecimal receivedAmount,
+            LocalDateTime paidAt
+    ) {
+        this.paymentStatus = paymentStatus;
+        this.paymentMethod = paymentMethod;
+        this.receivedAmount = receivedAmount;
+        this.paidAt = paidAt;
         this.updatedAt = LocalDateTime.now();
     }
 

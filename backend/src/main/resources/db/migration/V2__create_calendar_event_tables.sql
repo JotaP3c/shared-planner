@@ -1,8 +1,8 @@
 CREATE TABLE calendars (
-    id UUID NOT NULL DEFAULT gen_random_uuid(),
-    name VARCHAR(120) NOT NULL,
-    owner_user_id UUID NOT NULL,
-    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    id UNIQUEIDENTIFIER NOT NULL DEFAULT NEWID(),
+    name NVARCHAR(120) NOT NULL,
+    owner_user_id UNIQUEIDENTIFIER NOT NULL,
+    created_at DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME(),
 
     CONSTRAINT pk_calendars PRIMARY KEY (id),
     CONSTRAINT fk_calendars_owner_user
@@ -10,11 +10,11 @@ CREATE TABLE calendars (
 );
 
 CREATE TABLE calendar_members (
-    id UUID NOT NULL DEFAULT gen_random_uuid(),
-    calendar_id UUID NOT NULL,
-    user_id UUID NOT NULL,
-    member_role VARCHAR(30) NOT NULL DEFAULT 'MEMBER',
-    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    id UNIQUEIDENTIFIER NOT NULL DEFAULT NEWID(),
+    calendar_id UNIQUEIDENTIFIER NOT NULL,
+    user_id UNIQUEIDENTIFIER NOT NULL,
+    member_role NVARCHAR(30) NOT NULL DEFAULT 'MEMBER',
+    created_at DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME(),
 
     CONSTRAINT pk_calendar_members PRIMARY KEY (id),
     CONSTRAINT uk_calendar_members_calendar_user UNIQUE (calendar_id, user_id),
@@ -25,26 +25,26 @@ CREATE TABLE calendar_members (
 );
 
 CREATE TABLE events (
-    id UUID NOT NULL DEFAULT gen_random_uuid(),
-    calendar_id UUID NOT NULL,
-    created_by_user_id UUID NOT NULL,
-    approval_requested_from_user_id UUID NULL,
-    approved_by_user_id UUID NULL,
+    id UNIQUEIDENTIFIER NOT NULL DEFAULT NEWID(),
+    calendar_id UNIQUEIDENTIFIER NOT NULL,
+    created_by_user_id UNIQUEIDENTIFIER NOT NULL,
+    approval_requested_from_user_id UNIQUEIDENTIFIER NULL,
+    approved_by_user_id UNIQUEIDENTIFIER NULL,
 
-    event_type VARCHAR(30) NOT NULL,
-    status VARCHAR(30) NOT NULL,
+    event_type NVARCHAR(30) NOT NULL,
+    status NVARCHAR(30) NOT NULL,
 
-    title VARCHAR(180) NOT NULL,
-    client_name VARCHAR(120) NULL,
-    person_name VARCHAR(120) NULL,
-    description TEXT NULL,
-    work_description TEXT NULL,
-    amount NUMERIC(12, 2) NULL,
+    title NVARCHAR(180) NOT NULL,
+    client_name NVARCHAR(120) NULL,
+    person_name NVARCHAR(120) NULL,
+    description NVARCHAR(MAX) NULL,
+    work_description NVARCHAR(MAX) NULL,
+    amount DECIMAL(12, 2) NULL,
 
-    starts_at TIMESTAMP NOT NULL,
-    ends_at TIMESTAMP NOT NULL,
-    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP NULL,
+    starts_at DATETIME2 NOT NULL,
+    ends_at DATETIME2 NOT NULL,
+    created_at DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME(),
+    updated_at DATETIME2 NULL,
 
     CONSTRAINT pk_events PRIMARY KEY (id),
     CONSTRAINT fk_events_calendar

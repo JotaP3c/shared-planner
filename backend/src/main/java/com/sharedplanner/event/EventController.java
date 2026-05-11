@@ -6,6 +6,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
@@ -39,6 +40,16 @@ public class EventController {
         return eventService.list(calendarId, start, end, authentication);
     }
 
+    @GetMapping("/client-revenue")
+    public ClientRevenueSummaryResponse summarizeClientRevenue(
+            @RequestParam UUID calendarId,
+            @RequestParam RevenuePeriod period,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
+            Authentication authentication
+    ) {
+        return eventService.summarizeClientRevenue(calendarId, period, date, authentication);
+    }
+
     @GetMapping("/{eventId}")
     public EventResponse findById(
             @PathVariable UUID eventId,
@@ -54,6 +65,15 @@ public class EventController {
             Authentication authentication
     ) {
         return eventService.update(eventId, request, authentication);
+    }
+
+    @PutMapping("/{eventId}/payment")
+    public EventResponse updatePayment(
+            @PathVariable UUID eventId,
+            @RequestBody @Valid UpdatePaymentRequest request,
+            Authentication authentication
+    ) {
+        return eventService.updatePayment(eventId, request, authentication);
     }
 
     @DeleteMapping("/{eventId}")

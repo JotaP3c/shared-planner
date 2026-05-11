@@ -486,6 +486,58 @@
           ]
         },
         {
+          "name": "GET Client Revenue Summary",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/events/client-revenue?calendarId={{calendarId}}&period={{revenuePeriod}}&date={{revenueDate}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "events",
+                "client-revenue"
+              ],
+              "query": [
+                {
+                  "key": "calendarId",
+                  "value": "{{calendarId}}"
+                },
+                {
+                  "key": "period",
+                  "value": "{{revenuePeriod}}"
+                },
+                {
+                  "key": "date",
+                  "value": "{{revenueDate}}"
+                }
+              ]
+            },
+            "description": "Resumo financeiro inicial de eventos CLIENT. Com o seed, em 2026-05-08 existem 2 clientes e total agendado de 120.00."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 OK', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "const json = pm.response.json();",
+                  "pm.test('Response has financial summary fields', function () {",
+                  "    pm.expect(json).to.have.property('totalAmount');",
+                  "    pm.expect(json).to.have.property('appointmentCount');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
           "name": "GET Event By Id",
           "request": {
             "method": "GET",
@@ -556,6 +608,60 @@
                 "exec": [
                   "pm.test('Status 200 OK', function () {",
                   "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "PUT Update Event Payment",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"paymentStatus\": \"PAID\",\n  \"paymentMethod\": \"PIX\",\n  \"receivedAmount\": 70,\n  \"paidAt\": \"2026-05-08T16:05:00\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/events/{{pendingClientEventId}}/payment",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "events",
+                "{{pendingClientEventId}}",
+                "payment"
+              ]
+            },
+            "description": "Atualiza o pagamento de um evento CLIENT. Com o seed, pendingClientEventId aponta para Cliente Ana, valor 70.00."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 OK', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "const json = pm.response.json();",
+                  "pm.test('Payment was updated', function () {",
+                  "    pm.expect(json.paymentStatus).to.eql('PAID');",
+                  "    pm.expect(json.paymentMethod).to.eql('PIX');",
                   "});"
                 ]
               }
@@ -664,22 +770,57 @@
     },
     {
       "key": "calendarId",
-      "value": "",
+      "value": "33333333-3333-3333-3333-333333333333",
       "type": "string"
     },
     {
       "key": "eventId",
-      "value": "",
+      "value": "44444444-4444-4444-4444-444444444444",
       "type": "string"
     },
     {
       "key": "rangeStart",
-      "value": "2026-05-01T00:00:00",
+      "value": "2026-05-08T00:00:00",
       "type": "string"
     },
     {
       "key": "rangeEnd",
-      "value": "2026-05-31T23:59:59",
+      "value": "2026-05-11T23:59:59",
+      "type": "string"
+    },
+    {
+      "key": "paidClientEventId",
+      "value": "44444444-4444-4444-4444-444444444444",
+      "type": "string"
+    },
+    {
+      "key": "pendingClientEventId",
+      "value": "55555555-5555-5555-5555-555555555555",
+      "type": "string"
+    },
+    {
+      "key": "partialClientEventId",
+      "value": "66666666-6666-6666-6666-666666666666",
+      "type": "string"
+    },
+    {
+      "key": "personalEventId",
+      "value": "77777777-7777-7777-7777-777777777777",
+      "type": "string"
+    },
+    {
+      "key": "sharedEventId",
+      "value": "88888888-8888-8888-8888-888888888888",
+      "type": "string"
+    },
+    {
+      "key": "revenuePeriod",
+      "value": "DAILY",
+      "type": "string"
+    },
+    {
+      "key": "revenueDate",
+      "value": "2026-05-08",
       "type": "string"
     }
   ]

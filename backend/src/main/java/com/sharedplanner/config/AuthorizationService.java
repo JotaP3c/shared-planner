@@ -89,8 +89,16 @@ public class AuthorizationService {
             return;
         }
 
+        if (event.getEventType().name().equals("SHARED")
+                && member.getRole().canCreateEvents()
+                && event.getApprovalRequestedFrom() != null
+                && event.getApprovalRequestedFrom().getEmail().equalsIgnoreCase(authentication.getName())) {
+            return;
+        }
+
         throw new ResponseStatusException(HttpStatus.FORBIDDEN, "You cannot change this event");
     }
+
 
     public void ensureCanUseFinance(UUID calendarId, Authentication authentication) {
         User user = currentUser(authentication);

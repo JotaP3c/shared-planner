@@ -65,7 +65,13 @@ public class EventService {
 
         authorizationService.ensureCanCreateEvent(calendar.getId(), authentication);
 
-        User approvalRequestedFrom = approvalUser(request.eventType(), request.approvalRequestedFromEmail(), calendar.getId(), authentication.getName());
+        User approvalRequestedFrom = approvalUser(
+                request.eventType(),
+                request.approvalRequestedFromEmail(),
+                calendar.getId(),
+                authentication.getName()
+        );
+
         EventStatus status = request.eventType() == EventType.SHARED
                 ? EventStatus.PENDING_APPROVAL
                 : EventStatus.SCHEDULED;
@@ -140,6 +146,7 @@ public class EventService {
         BigDecimal totalAmount = totals == null || totals.getTotalAmount() == null
                 ? BigDecimal.ZERO
                 : totals.getTotalAmount();
+
         Long appointmentCount = totals == null || totals.getAppointmentCount() == null
                 ? 0L
                 : totals.getAppointmentCount();
@@ -180,7 +187,8 @@ public class EventService {
         User currentUser = currentUser(authentication);
         String oldValue = eventSnapshot(event);
 
-        User approvalRequestedFrom = approvalUser(request.eventType(), request.approvalRequestedFromEmail(), event.getCalendar().getId(), authentication.getName());
+        User approvalRequestedFrom = approvalUserForUpdate(event, request, authentication);
+
         EventStatus status = request.eventType() == EventType.SHARED
                 ? EventStatus.PENDING_APPROVAL
                 : EventStatus.SCHEDULED;
@@ -370,6 +378,34 @@ public class EventService {
 
         return userRepository.findByEmailIgnoreCaseAndActiveTrue(email)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Approval user not found"));
+    }
+
+    private User approvalUserForUpdate(Event event, UpdateEventRequest request, Authentication authentication) {
+        if (request.eventType() != EventType.SHARED) {
+            return null;
+        }
+
+        String currentUserEmail = authentication.getName();
+
+        if (request.approvalRequestedFromEmail() != null && !request.approvalRequestedFromEmail().isBlank()) {
+            return approvalUser(
+                    request.eventType(),
+                    request.approvalRequestedFromEmail(),
+                    event.getCalendar().getId(),
+                    currentUserEmail
+            );
+        }
+
+        if (!event.getCreatedBy().getEmail().equalsIgnoreCase(currentUserEmail)) {
+            return event.getCreatedBy();
+        }
+
+        if (event.getApprovalRequestedFrom() != null
+                && !event.getApprovalRequestedFrom().getEmail().equalsIgnoreCase(currentUserEmail)) {
+            return event.getApprovalRequestedFrom();
+        }
+
+        throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Shared events require approvalRequestedFromEmail");
     }
 
     private void validatePeriod(LocalDateTime startsAt, LocalDateTime endsAt) {

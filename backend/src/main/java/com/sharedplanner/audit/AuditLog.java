@@ -67,4 +67,44 @@ public class AuditLog {
         this.performedBy = performedBy;
         this.performedAt = LocalDateTime.now();
     }
+
+    public UUID getId() {
+        return id;
+    }
+
+    public AuditEntityType getEntityType() {
+        return entityType;
+    }
+
+    public UUID getEntityId() {
+        return entityId;
+    }
+
+    public UUID getCalendarId() {
+        return calendarId;
+    }
+
+    public AuditAction getAction() {
+        return action;
+    }
+
+    public String getSummary() {
+        return summary;
+    }
+
+    public String getOldValue() {
+        return oldValue;
+    }
+
+    public String getNewValue() {
+        return newValue;
+    }
+
+    public User getPerformedBy() {
+        return performedBy;
+    }
+
+    public LocalDateTime getPerformedAt() {
+        return performedAt;
+    }
 }

@@ -61,6 +61,22 @@ public class AuthorizationService {
         }
     }
 
+    public void ensureCanViewAuditLogs(UUID calendarId, Authentication authentication) {
+        if (isAdmin(authentication)) {
+            return;
+        }
+
+        if (calendarId == null) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only admins can view all audit logs");
+        }
+
+        CalendarMember member = requireMember(calendarId, authentication.getName());
+
+        if (!member.getRole().canManageMembers()) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only calendar admin can view audit logs");
+        }
+    }
+
     public void ensureCanCreateEvent(UUID calendarId, Authentication authentication) {
         if (isAdmin(authentication)) {
             return;

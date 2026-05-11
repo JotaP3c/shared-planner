@@ -18,6 +18,9 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
+import com.sharedplanner.config.AuthorizationService;
+
+
 @Service
 public class EventService {
 
@@ -25,17 +28,20 @@ public class EventService {
     private final SharedCalendarRepository calendarRepository;
     private final CalendarMemberRepository memberRepository;
     private final UserRepository userRepository;
+    private final AuthorizationService authorizationService;
 
     public EventService(
             EventRepository eventRepository,
             SharedCalendarRepository calendarRepository,
             CalendarMemberRepository memberRepository,
-            UserRepository userRepository
+            UserRepository userRepository,
+            AuthorizationService authorizationService
     ) {
         this.eventRepository = eventRepository;
         this.calendarRepository = calendarRepository;
         this.memberRepository = memberRepository;
         this.userRepository = userRepository;
+        this.authorizationService = authorizationService;
     }
 
     @Transactional
@@ -53,7 +59,7 @@ public class EventService {
         SharedCalendar calendar = calendarRepository.findById(request.calendarId())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Calendar not found"));
 
-        ensureCalendarMember(calendar.getId(), authentication.getName());
+        authorizationService.ensureCanCreateEvent(calendar.getId(), authentication);
 
         User approvalRequestedFrom = approvalUser(request.eventType(), request.approvalRequestedFromEmail(), calendar.getId(), authentication.getName());
         EventStatus status = request.eventType() == EventType.SHARED
@@ -81,7 +87,7 @@ public class EventService {
     @Transactional(readOnly = true)
     public List<EventResponse> list(UUID calendarId, LocalDateTime start, LocalDateTime end, Authentication authentication) {
         validatePeriod(start, end);
-        ensureCalendarMember(calendarId, authentication.getName());
+        authorizationService.ensureCalendarVisible(calendarId, authentication);
 
         return eventRepository.findByCalendarIdAndStartsAtLessThanAndEndsAtGreaterThanOrderByStartsAtAsc(calendarId, end, start)
                 .stream()
@@ -103,7 +109,7 @@ public class EventService {
         LocalDate date = referenceDate == null ? LocalDate.now() : referenceDate;
         PeriodRange range = periodRange(period, date);
 
-        ensureCalendarMember(calendarId, authentication.getName());
+        authorizationService.ensureCalendarVisible(calendarId, authentication);
 
         ClientRevenueTotals totals = eventRepository.summarizeClientRevenue(
                 calendarId,
@@ -134,7 +140,7 @@ public class EventService {
     @Transactional(readOnly = true)
     public EventResponse findById(UUID eventId, Authentication authentication) {
         Event event = event(eventId);
-        ensureCalendarMember(event.getCalendar().getId(), authentication.getName());
+        authorizationService.ensureCalendarVisible(event.getCalendar().getId(), authentication);
 
         return EventResponse.from(event);
     }
@@ -151,8 +157,7 @@ public class EventService {
         );
 
         Event event = event(eventId);
-        ensureCalendarMember(event.getCalendar().getId(), authentication.getName());
-        ensureCreatedByCurrentUser(event, authentication.getName());
+        authorizationService.ensureCanEditEvent(event, authentication);
 
         User approvalRequestedFrom = approvalUser(request.eventType(), request.approvalRequestedFromEmail(), event.getCalendar().getId(), authentication.getName());
         EventStatus status = request.eventType() == EventType.SHARED
@@ -179,8 +184,7 @@ public class EventService {
     @Transactional
     public void delete(UUID eventId, Authentication authentication) {
         Event event = event(eventId);
-        ensureCalendarMember(event.getCalendar().getId(), authentication.getName());
-        ensureCreatedByCurrentUser(event, authentication.getName());
+        authorizationService.ensureCanEditEvent(event, authentication);
 
         eventRepository.delete(event);
     }
@@ -209,8 +213,7 @@ public class EventService {
     public EventResponse updatePayment(UUID eventId, UpdatePaymentRequest request, Authentication authentication) {
         Event event = event(eventId);
 
-        ensureCalendarMember(event.getCalendar().getId(), authentication.getName());
-        ensureCreatedByCurrentUser(event, authentication.getName());
+        authorizationService.ensureCanEditEvent(event, authentication);
 
         validatePayment(event, request);
 

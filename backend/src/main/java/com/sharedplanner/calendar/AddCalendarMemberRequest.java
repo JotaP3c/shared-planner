@@ -6,6 +6,8 @@ import jakarta.validation.constraints.NotBlank;
 public record AddCalendarMemberRequest(
         @NotBlank
         @Email
-        String email
+        String email,
+
+        CalendarMemberRole role
 ) {
 }

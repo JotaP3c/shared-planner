@@ -7,7 +7,9 @@ DELETE FROM shared_planner_dev.dbo.calendar_members
 WHERE calendar_id = '33333333-3333-3333-3333-333333333333'
    OR user_id IN (
         '11111111-1111-1111-1111-111111111111',
-        '22222222-2222-2222-2222-222222222222'
+        '22222222-2222-2222-2222-222222222222',
+        '99999999-9999-9999-9999-999999999999',
+        'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'
    );
 
 DELETE FROM shared_planner_dev.dbo.calendars
@@ -16,11 +18,15 @@ WHERE id = '33333333-3333-3333-3333-333333333333';
 DELETE FROM shared_planner_dev.dbo.users
 WHERE id IN (
         '11111111-1111-1111-1111-111111111111',
-        '22222222-2222-2222-2222-222222222222'
+        '22222222-2222-2222-2222-222222222222',
+        '99999999-9999-9999-9999-999999999999',
+        'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'
    )
    OR email IN (
         'jpcbnnu@gmail.com',
-        'esposa@example.com'
+        'esposa@example.com',
+        'finance@example.com',
+        'editor@example.com'
    );
 
 INSERT INTO shared_planner_dev.dbo.users (
@@ -38,7 +44,7 @@ VALUES
         'Joao Correa',
         'jpcbnnu@gmail.com',
         '$2a$10$DMO6/G6HOHknCpL5fS5w/eg9eS6g.fAhFrtoVrbsutUX3XsjzlH9i',
-        'USER',
+        'ADMIN',
         1,
         SYSUTCDATETIME()
     ),
@@ -46,6 +52,24 @@ VALUES
         '22222222-2222-2222-2222-222222222222',
         'Esposa Teste',
         'esposa@example.com',
+        '$2a$10$DMO6/G6HOHknCpL5fS5w/eg9eS6g.fAhFrtoVrbsutUX3XsjzlH9i',
+        'USER',
+        1,
+        SYSUTCDATETIME()
+    ),
+    (
+        '99999999-9999-9999-9999-999999999999',
+        'Finance Teste',
+        'finance@example.com',
+        '$2a$10$DMO6/G6HOHknCpL5fS5w/eg9eS6g.fAhFrtoVrbsutUX3XsjzlH9i',
+        'FINANCE',
+        1,
+        SYSUTCDATETIME()
+    ),
+    (
+        'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+        'Editor Teste',
+        'editor@example.com',
         '$2a$10$DMO6/G6HOHknCpL5fS5w/eg9eS6g.fAhFrtoVrbsutUX3XsjzlH9i',
         'USER',
         1,
@@ -77,14 +101,28 @@ VALUES
         NEWID(),
         '33333333-3333-3333-3333-333333333333',
         '11111111-1111-1111-1111-111111111111',
-        'OWNER',
+        'ADMIN',
         SYSUTCDATETIME()
     ),
     (
         NEWID(),
         '33333333-3333-3333-3333-333333333333',
         '22222222-2222-2222-2222-222222222222',
-        'MEMBER',
+        'VIEWER',
+        SYSUTCDATETIME()
+    ),
+    (
+        NEWID(),
+        '33333333-3333-3333-3333-333333333333',
+        '99999999-9999-9999-9999-999999999999',
+        'FINANCE',
+        SYSUTCDATETIME()
+    ),
+    (
+        NEWID(),
+        '33333333-3333-3333-3333-333333333333',
+        'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+        'EDITOR',
         SYSUTCDATETIME()
     );
 
@@ -236,4 +274,8 @@ SELECT
     '66666666-6666-6666-6666-666666666666' AS client_partial_event_id,
     '77777777-7777-7777-7777-777777777777' AS personal_event_id,
     '88888888-8888-8888-8888-888888888888' AS shared_event_id,
+    'jpcbnnu@gmail.com' AS admin_email,
+    'esposa@example.com' AS viewer_email,
+    'finance@example.com' AS finance_email,
+    'editor@example.com' AS editor_email,
     'admin' AS default_password;

@@ -145,6 +145,64 @@
       ]
     },
     {
+      "name": "Users",
+      "item": [
+        {
+          "name": "POST Create User",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fullName\": \"Postman User\",\n  \"email\": \"postman.user+{{$timestamp}}@example.com\",\n  \"password\": \"{{newUserPassword}}\",\n  \"role\": \"{{newUserRole}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/users",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "users"
+              ]
+            },
+            "description": "Cria usuario global. Requer usuario autenticado com UserRole ADMIN."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201 Created', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "pm.test('User response has expected fields', function () {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json).to.have.property('id');",
+                  "    pm.expect(json).to.have.property('email');",
+                  "    pm.expect(json.role).to.eql(pm.collectionVariables.get('newUserRole'));",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
       "name": "Calendars",
       "item": [
         {
@@ -245,7 +303,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"email\": \"{{memberEmail}}\"\n}",
+              "raw": "{\n  \"email\": \"{{memberEmail}}\",\n  \"role\": \"{{memberRole}}\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -264,7 +322,7 @@
                 "members"
               ]
             },
-            "description": "O email informado precisa existir na tabela users e o usuario logado precisa ser OWNER do calendario."
+            "description": "O email informado precisa existir na tabela users. Requer usuario global ADMIN ou membro ADMIN do calendario. Use role ADMIN, FINANCE, EDITOR ou VIEWER."
           },
           "event": [
             {
@@ -740,6 +798,79 @@
           }
         }
       ]
+    },
+    {
+      "name": "Finance",
+      "item": [
+        {
+          "name": "GET Finance Summary",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/finance/summary?calendarId={{calendarId}}&startDate={{financeStartDate}}&endDate={{financeEndDate}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "finance",
+                "summary"
+              ],
+              "query": [
+                {
+                  "key": "calendarId",
+                  "value": "{{calendarId}}"
+                },
+                {
+                  "key": "startDate",
+                  "value": "{{financeStartDate}}"
+                },
+                {
+                  "key": "endDate",
+                  "value": "{{financeEndDate}}"
+                }
+              ]
+            },
+            "description": "Resumo financeiro dos eventos CLIENT no periodo informado. Requer usuario global ADMIN, usuario global FINANCE membro do calendario, ou membro FINANCE/ADMIN do calendario."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 OK', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Finance summary response has expected fields', function () {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json).to.have.property('calendarId');",
+                  "    pm.expect(json).to.have.property('expectedAmount');",
+                  "    pm.expect(json).to.have.property('receivedAmount');",
+                  "    pm.expect(json).to.have.property('pendingAmount');",
+                  "    pm.expect(json).to.have.property('appointmentCount');",
+                  "});",
+                  "",
+                  "if (pm.collectionVariables.get('assertSeedFinanceTotals') === 'true') {",
+                  "    pm.test('Seed finance totals ignore non-client events', function () {",
+                  "        const json = pm.response.json();",
+                  "        pm.expect(Number(json.expectedAmount)).to.eql(240);",
+                  "        pm.expect(Number(json.receivedAmount)).to.eql(110);",
+                  "        pm.expect(Number(json.pendingAmount)).to.eql(130);",
+                  "        pm.expect(Number(json.appointmentCount)).to.eql(3);",
+                  "        pm.expect(Number(json.paidCount)).to.eql(1);",
+                  "        pm.expect(Number(json.pendingCount)).to.eql(1);",
+                  "        pm.expect(Number(json.partiallyPaidCount)).to.eql(1);",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ]
+        }
+      ]
     }
   ],
   "variable": [
@@ -754,6 +885,26 @@
       "type": "string"
     },
     {
+      "key": "adminEmail",
+      "value": "jpcbnnu@gmail.com",
+      "type": "string"
+    },
+    {
+      "key": "viewerEmail",
+      "value": "esposa@example.com",
+      "type": "string"
+    },
+    {
+      "key": "financeEmail",
+      "value": "finance@example.com",
+      "type": "string"
+    },
+    {
+      "key": "editorEmail",
+      "value": "editor@example.com",
+      "type": "string"
+    },
+    {
       "key": "password",
       "value": "admin",
       "type": "string"
@@ -761,6 +912,21 @@
     {
       "key": "memberEmail",
       "value": "esposa@example.com",
+      "type": "string"
+    },
+    {
+      "key": "memberRole",
+      "value": "VIEWER",
+      "type": "string"
+    },
+    {
+      "key": "newUserPassword",
+      "value": "admin123",
+      "type": "string"
+    },
+    {
+      "key": "newUserRole",
+      "value": "USER",
       "type": "string"
     },
     {
@@ -821,6 +987,21 @@
     {
       "key": "revenueDate",
       "value": "2026-05-08",
+      "type": "string"
+    },
+    {
+      "key": "financeStartDate",
+      "value": "2026-05-08",
+      "type": "string"
+    },
+    {
+      "key": "financeEndDate",
+      "value": "2026-05-09",
+      "type": "string"
+    },
+    {
+      "key": "assertSeedFinanceTotals",
+      "value": "true",
       "type": "string"
     }
   ]

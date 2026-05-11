@@ -12,5 +12,7 @@ public interface CalendarMemberRepository extends JpaRepository<CalendarMember, 
 
     boolean existsByCalendarIdAndUserId(UUID calendarId, UUID userId);
 
+    Optional<CalendarMember> findByCalendarIdAndUserId(UUID calendarId, UUID userId);
+
     Optional<CalendarMember> findByCalendarIdAndUserEmailIgnoreCase(UUID calendarId, String email);
 }

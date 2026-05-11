@@ -5,6 +5,8 @@ import java.util.UUID;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 
@@ -25,8 +27,9 @@ public class User {
     @Column(name = "password_hash", nullable = false, length = 255)
     private String passwordHash;
 
+    @Enumerated(EnumType.STRING)
     @Column(name = "role", nullable = false, length = 30)
-    private String role;
+    private UserRole role;
 
     @Column(name = "active", nullable = false)
     private Boolean active;
@@ -38,6 +41,16 @@ public class User {
     private LocalDateTime updatedAt;
 
     protected User() {
+    }
+
+    public User(String fullName, String email, String passwordHash, UserRole role) {
+        this.id = UUID.randomUUID();
+        this.fullName = fullName;
+        this.email = email.toLowerCase();
+        this.passwordHash = passwordHash;
+        this.role = role;
+        this.active = true;
+        this.createdAt = LocalDateTime.now();
     }
 
     public UUID getId() {
@@ -56,7 +69,7 @@ public class User {
         return passwordHash;
     }
 
-    public String getRole() {
+    public UserRole getRole() {
         return role;
     }
 
@@ -70,5 +83,10 @@ public class User {
 
     public LocalDateTime getUpdatedAt() {
         return updatedAt;
+    }
+
+    public void changeRole(UserRole role) {
+        this.role = role;
+        this.updatedAt = LocalDateTime.now();
     }
 }

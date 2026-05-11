@@ -26,6 +26,10 @@ public class CalendarMember {
     @Column(name = "member_role", nullable = false, length = 30)
     private CalendarMemberRole role;
 
+    public void changeRole(CalendarMemberRole role) {
+        this.role = role;
+    }
+
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
 

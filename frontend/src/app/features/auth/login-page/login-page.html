@@ -1,1 +1,145 @@
-<p>login-page works!</p>
+<section class="login-page">
+  <div class="login-shell">
+    <section class="product-side">
+      <header class="brand">
+        <div class="brand-icon">
+          <span></span>
+        </div>
+        <strong>SharedPlanner</strong>
+      </header>
+
+      <div class="hero-copy">
+        <h1>
+          Agenda compartilhada,<br />
+          <span>gestão financeira integrada.</span>
+        </h1>
+
+        <p>
+          Organize compromissos, acompanhe receitas e despesas
+          e tenha controle total da sua rotina financeira.
+        </p>
+      </div>
+
+      <div class="benefits">
+        <article>
+          <div class="benefit-icon calendar"></div>
+          <div>
+            <strong>Agenda compartilhada</strong>
+            <p>Gerencie compromissos em equipe e mantenha todos alinhados.</p>
+          </div>
+        </article>
+
+        <article>
+          <div class="benefit-icon chart"></div>
+          <div>
+            <strong>Financeiro integrado</strong>
+            <p>Acompanhe receitas, pagamentos e pendências em tempo real.</p>
+          </div>
+        </article>
+
+        <article>
+          <div class="benefit-icon users"></div>
+          <div>
+            <strong>Colaboração em equipe</strong>
+            <p>Trabalhe com permissões, aprovações e histórico das ações.</p>
+          </div>
+        </article>
+      </div>
+
+      <div class="security-note">
+        <div class="shield"></div>
+        <p>
+          <strong>Seus dados estão protegidos</strong>
+          Acesso seguro com autenticação por token.
+        </p>
+      </div>
+
+      <div class="illustration" aria-hidden="true">
+        <div class="planner">
+          <div class="rings">
+            <span></span>
+            <span></span>
+          </div>
+          <div class="planner-head"></div>
+          <div class="planner-grid">
+            <span></span><span></span><span></span>
+            <span></span><span class="selected"></span><span></span>
+            <span></span><span></span><span></span>
+          </div>
+          <div class="check-mark">✓</div>
+        </div>
+
+        <div class="finance-card">
+          <span>Resumo financeiro</span>
+          <strong>R$ 24.680,00</strong>
+          <em>R$ 8.350,00</em>
+          <b>R$ 16.330,00</b>
+          <div class="donut"></div>
+        </div>
+
+        <div class="coins">
+          <span></span>
+          <span></span>
+        </div>
+      </div>
+    </section>
+
+    <section class="form-side">
+      <form class="login-card" [formGroup]="form" (ngSubmit)="submit()">
+        <div class="form-header">
+          <h2>Bem-vindo de volta!</h2>
+          <p>Acesse sua conta para continuar</p>
+        </div>
+
+        <label>
+          <span>E-mail</span>
+          <div class="input-field">
+            <i class="mail-icon"></i>
+            <input type="email" formControlName="email" placeholder="seu@email.com" autocomplete="email" />
+          </div>
+        </label>
+
+        <label>
+          <span>Senha</span>
+          <div class="input-field">
+            <i class="lock-icon"></i>
+            <input type="password" formControlName="password" placeholder="••••••••••" autocomplete="current-password" />
+          </div>
+        </label>
+
+        <div class="form-options">
+          <label class="remember">
+            <input type="checkbox" formControlName="rememberMe" />
+            <span>Lembrar de mim</span>
+          </label>
+
+          <a href="#">Esqueci minha senha</a>
+        </div>
+
+        @if (errorMessage) {
+          <p class="error">{{ errorMessage }}</p>
+        }
+
+        <button type="submit" [disabled]="isSubmitting">
+          {{ isSubmitting ? 'Entrando...' : 'Entrar' }}
+        </button>
+
+        <div class="divider">
+          <span></span>
+          <p>ou continue com</p>
+          <span></span>
+        </div>
+
+        <button class="google-button" type="button">
+          <strong>G</strong>
+          Entrar com Google
+        </button>
+
+        <p class="signup">
+          Não tem uma conta?
+          <a href="#">Criar conta</a>
+        </p>
+      </form>
+    </section>
+  </div>
+</section>

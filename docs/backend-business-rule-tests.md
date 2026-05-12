@@ -55,7 +55,11 @@ Rule validated: only global `ADMIN` can create users.
 6. Run `POST Create Calendar`.
    Expected: `403 Forbidden`.
 
-Rule validated: common `USER` cannot create calendars.
+7. Login as `finance@example.com`.
+8. Run `POST Create Calendar`.
+   Expected: `403 Forbidden`.
+
+Rule validated: only global `ADMIN` can create calendars.
 
 ## Calendar Members
 
@@ -209,7 +213,11 @@ Regra validada: somente `ADMIN` global pode criar usuarios.
 6. Execute `POST Create Calendar`.
    Esperado: `403 Forbidden`.
 
-Regra validada: `USER` comum nao pode criar calendarios.
+7. Faca login como `finance@example.com`.
+8. Execute `POST Create Calendar`.
+   Esperado: `403 Forbidden`.
+
+Regra validada: somente `ADMIN` global pode criar calendarios.
 
 ## Membros do Calendario
 

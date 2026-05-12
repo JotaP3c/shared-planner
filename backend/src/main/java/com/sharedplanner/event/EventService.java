@@ -133,7 +133,7 @@ public class EventService {
         LocalDate date = referenceDate == null ? LocalDate.now() : referenceDate;
         PeriodRange range = periodRange(period, date);
 
-        authorizationService.ensureCalendarVisible(calendarId, authentication);
+        authorizationService.ensureCanUseFinance(calendarId, authentication);
 
         ClientRevenueTotals totals = eventRepository.summarizeClientRevenue(
                 calendarId,

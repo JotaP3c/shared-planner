@@ -1,0 +1,33 @@
+<div class="app-shell">
+  <aside class="sidebar">
+    <div class="brand">
+      <span class="brand-mark">SP</span>
+      <span>Shared Planner</span>
+    </div>
+
+    <nav>
+      <a routerLink="/calendar" routerLinkActive="active">Calendário</a>
+      <a routerLink="/pending" routerLinkActive="active">Pendências</a>
+      <a routerLink="/finance" routerLinkActive="active">Financeiro</a>
+      <a routerLink="/members" routerLinkActive="active">Membros</a>
+      <a routerLink="/admin/users" routerLinkActive="active">Usuários</a>
+      <a routerLink="/audit" routerLinkActive="active">Auditoria</a>
+      <a routerLink="/settings" routerLinkActive="active">Configurações</a>
+    </nav>
+  </aside>
+
+  <section class="workspace">
+    <header class="topbar">
+      <input type="search" placeholder="Buscar por cliente, evento ou pessoa" />
+
+      <div class="topbar-actions">
+        <button type="button">Notificações</button>
+        <div class="avatar">J</div>
+      </div>
+    </header>
+
+    <main class="content">
+      <router-outlet />
+    </main>
+  </section>
+</div>

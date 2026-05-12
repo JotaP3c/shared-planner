@@ -44,7 +44,7 @@ public class AuthorizationService {
     public void ensureCanCreateCalendar(Authentication authentication) {
         User user = currentUser(authentication);
 
-        if (user.getRole() != UserRole.ADMIN && user.getRole() != UserRole.FINANCE) {
+        if (user.getRole() != UserRole.ADMIN) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "You cannot create calendars");
         }
     }

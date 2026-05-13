@@ -1,8 +1,8 @@
 import { isPlatformBrowser } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
-import { inject, Injectable, PLATFORM_ID } from '@angular/core';
+import { inject, Injectable, PLATFORM_ID, signal } from '@angular/core';
 import { Router } from '@angular/router';
-import { tap } from 'rxjs';
+import { catchError, of, tap } from 'rxjs';
 
 export interface LoginRequest {
   email: string;
@@ -22,17 +22,33 @@ export class AuthService {
   private readonly tokenKey = 'sharedPlanner.token';
   private readonly apiUrl = '/api';
 
+  readonly currentUserEmail = signal<string | null>(null);
+
   login(request: LoginRequest) {
     return this.http.post<LoginResponse>(`${this.apiUrl}/auth/login`, request).pipe(
       tap(response => this.setToken(response.accessToken)),
     );
   }
 
-  logout(): void {
-    if (this.isBrowser()) {
-      localStorage.removeItem(this.tokenKey);
+  loadCurrentUser() {
+    if (!this.isAuthenticated()) {
+      this.currentUserEmail.set(null);
+      return of(null);
     }
 
+    return this.http
+      .get(`${this.apiUrl}/auth/me`, { responseType: 'text' })
+      .pipe(
+        tap(email => this.currentUserEmail.set(email)),
+        catchError(() => {
+          this.clearSession();
+          return of(null);
+        }),
+      );
+  }
+
+  logout(): void {
+    this.clearSession();
     this.router.navigate(['/login']);
   }
 
@@ -51,6 +67,14 @@ export class AuthService {
   private setToken(token: string): void {
     if (this.isBrowser()) {
       localStorage.setItem(this.tokenKey, token);
+    }
+  }
+
+  private clearSession(): void {
+    this.currentUserEmail.set(null);
+
+    if (this.isBrowser()) {
+      localStorage.removeItem(this.tokenKey);
     }
   }
 

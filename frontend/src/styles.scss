@@ -1,1 +1,13 @@
 /* You can add global styles to this file, and also import other style files */
+
+.login-page .planner,
+.login-page .rings,
+.login-page .planner-head,
+.login-page .planner-grid,
+.login-page .check-mark,
+.login-page .finance-card,
+.login-page .donut,
+.login-page .coins {
+  display: none !important;
+  visibility: hidden !important;
+}

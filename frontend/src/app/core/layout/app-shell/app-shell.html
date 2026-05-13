@@ -1,28 +1,87 @@
 <div class="app-shell">
   <aside class="sidebar">
-    <div class="brand">
-      <span class="brand-mark">SP</span>
-      <span>Shared Planner</span>
-    </div>
+    <header class="brand">
+      <div class="brand-mark">
+        <span></span>
+      </div>
 
-    <nav>
-      <a routerLink="/calendar" routerLinkActive="active">Calendário</a>
-      <a routerLink="/pending" routerLinkActive="active">Pendências</a>
-      <a routerLink="/finance" routerLinkActive="active">Financeiro</a>
-      <a routerLink="/members" routerLinkActive="active">Membros</a>
-      <a routerLink="/admin/users" routerLinkActive="active">Usuários</a>
-      <a routerLink="/audit" routerLinkActive="active">Auditoria</a>
-      <a routerLink="/settings" routerLinkActive="active">Configurações</a>
+      <div>
+        <strong>SharedPlanner</strong>
+        <small>Agenda compartilhada</small>
+      </div>
+    </header>
+
+    <nav class="navigation" aria-label="Módulos">
+      <span class="nav-title">Módulos</span>
+
+      <a routerLink="/calendar" routerLinkActive="active">
+        <span class="nav-icon calendar"></span>
+        Calendário
+      </a>
+
+      <a routerLink="/pending" routerLinkActive="active">
+        <span class="nav-icon pending"></span>
+        Pendências
+      </a>
+
+      <a routerLink="/finance" routerLinkActive="active">
+        <span class="nav-icon finance"></span>
+        Financeiro
+      </a>
+
+      <a routerLink="/members" routerLinkActive="active">
+        <span class="nav-icon members"></span>
+        Membros
+      </a>
+
+      <a routerLink="/admin/users" routerLinkActive="active">
+        <span class="nav-icon admin"></span>
+        Usuários
+      </a>
+
+      <a routerLink="/audit" routerLinkActive="active">
+        <span class="nav-icon audit"></span>
+        Auditoria
+      </a>
+
+      <a routerLink="/settings" routerLinkActive="active">
+        <span class="nav-icon settings"></span>
+        Configurações
+      </a>
     </nav>
+
+    <section class="team-card">
+      <div class="team-icon"></div>
+      <strong>Trabalho em equipe</strong>
+      <p>Convide sua equipe e colabore em tempo real.</p>
+      <button type="button">Convidar usuário</button>
+    </section>
   </aside>
 
   <section class="workspace">
     <header class="topbar">
-      <input type="search" placeholder="Buscar por cliente, evento ou pessoa" />
+      <div class="search-box">
+        <span></span>
+        <input type="search" placeholder="Filtrar por termo (Ex.: médico XYZ)" />
+      </div>
 
       <div class="topbar-actions">
-        <button type="button">Notificações</button>
-        <div class="avatar">J</div>
+        <button class="notification-button" type="button" aria-label="Notificações">
+          <span></span>
+          <b>3</b>
+        </button>
+
+        <div class="profile">
+          <div class="avatar">{{ userInitials() }}</div>
+          <div>
+            <strong>{{ userEmail() || 'Usuário autenticado' }}</strong>
+            <small>Conta ativa</small>
+          </div>
+        </div>
+
+        <button class="logout-button" type="button" (click)="logout()">
+          Sair
+        </button>
       </div>
     </header>
 

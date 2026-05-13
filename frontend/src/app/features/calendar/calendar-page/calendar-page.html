@@ -1,1 +1,479 @@
-<p>calendar-page works!</p>
+<section class="calendar-page">
+  @if (errorMessage()) {
+    <p class="error-message">{{ errorMessage() }}</p>
+  }
+
+  <section class="calendar-grid">
+    <article class="calendar-card">
+      <section class="filters-card">
+        <div class="active-filters">
+          <strong>Filtros ativos:</strong>
+
+          <span class="filter-chip">
+            Data: {{ periodChip() }}
+            <button class="chip-remove" type="button" aria-label="Remover filtro de data" (click)="resetPeriodFilter($event)">x</button>
+          </span>
+
+          <div class="filter-chip-wrapper">
+            <span class="filter-chip interactive-chip" [class.open]="openFilterMenu() === 'calendars'">
+              <button
+                class="chip-main"
+                type="button"
+                aria-haspopup="menu"
+                [attr.aria-expanded]="openFilterMenu() === 'calendars'"
+                (click)="toggleFilterMenu('calendars')"
+              >
+                Calendários: {{ calendarChip() }}
+              </button>
+
+              <button
+                class="chip-remove"
+                type="button"
+                aria-label="Limpar filtro de calendários"
+                (click)="clearCalendarFilter($event)"
+              >
+                x
+              </button>
+            </span>
+
+            @if (openFilterMenu() === 'calendars') {
+              <div class="filter-popover" role="menu">
+                <header>
+                  <strong>Calendários</strong>
+
+                  <button type="button" (click)="selectAllCalendars()">
+                    Selecionar todos
+                  </button>
+                </header>
+
+                <div class="filter-options">
+                  @for (calendar of calendars(); track calendar.id) {
+                    <label class="filter-option">
+                      <input
+                        type="checkbox"
+                        [checked]="selectedCalendarIds().includes(calendar.id)"
+                        (change)="toggleCalendar(calendar.id)"
+                      />
+                      <span>{{ calendar.name }}</span>
+                    </label>
+                  } @empty {
+                    <p class="filter-empty">Nenhum calendário disponível.</p>
+                  }
+                </div>
+              </div>
+            }
+          </div>
+
+          <div class="filter-chip-wrapper">
+            <span class="filter-chip interactive-chip" [class.open]="openFilterMenu() === 'events'">
+              <button
+                class="chip-main"
+                type="button"
+                aria-haspopup="menu"
+                [attr.aria-expanded]="openFilterMenu() === 'events'"
+                (click)="toggleFilterMenu('events')"
+              >
+                Eventos: {{ eventsChip() }}
+              </button>
+
+              <button
+                class="chip-remove"
+                type="button"
+                aria-label="Limpar filtro de eventos"
+                (click)="clearEventTypeFilter($event)"
+              >
+                x
+              </button>
+            </span>
+
+            @if (openFilterMenu() === 'events') {
+              <div class="filter-popover event-type-popover" role="menu">
+                <header>
+                  <strong>Tipos de evento</strong>
+
+                  <button type="button" (click)="selectAllEventTypes()">
+                    Selecionar todos
+                  </button>
+                </header>
+
+                <div class="filter-options">
+                  @for (option of eventTypeOptions; track option.value) {
+                    <label class="filter-option">
+                      <input
+                        type="checkbox"
+                        [checked]="selectedEventTypes().includes(option.value)"
+                        (change)="toggleEventType(option.value)"
+                      />
+                      <span>{{ option.label }}</span>
+                    </label>
+                  }
+                </div>
+              </div>
+            }
+          </div>
+        </div>
+
+        <button class="clear-button" type="button" (click)="clearFilters()">
+          <span class="clear-icon" aria-hidden="true"></span>
+          Limpar filtros
+        </button>
+      </section>
+
+      <header class="calendar-header">
+        <div>
+          <span class="section-icon"></span>
+          <h1>Calendário principal</h1>
+        </div>
+
+        <button class="primary-button" type="button" (click)="openNewEventModal()">
+          + Novo evento
+        </button>
+      </header>
+
+      <div class="calendar-subheader">
+        <label>
+          Grade de visualização:
+          <select (change)="changeView($any($event.target).value)">
+            <option value="timeGridWeek">Semana</option>
+            <option value="dayGridMonth">Mês</option>
+            <option value="timeGridDay">Dia</option>
+          </select>
+        </label>
+
+        @if (isLoading()) {
+          <span class="loading">Carregando eventos...</span>
+        }
+      </div>
+
+      <div class="calendar-frame">
+        <full-calendar #calendar [options]="calendarOptions"></full-calendar>
+      </div>
+
+      <footer class="event-legend">
+        <span class="client"></span> Cliente
+        <span class="personal"></span> Pessoal
+        <span class="shared"></span> Compartilhado
+      </footer>
+    </article>
+
+    <aside class="pending-panel">
+      <header>
+        <div>
+          <h2>Pendências</h2>
+          <small>{{ pendingEvents().length }} item(ns)</small>
+        </div>
+
+        <button type="button" (click)="markAllAsRead()">
+          Todos como lidos
+        </button>
+      </header>
+
+      <div class="pending-list">
+        @for (event of pendingEvents(); track event.id) {
+          <article class="pending-item">
+            <div class="pending-avatar">
+              {{ event.createdByEmail.slice(0, 2).toUpperCase() }}
+            </div>
+
+            <div>
+              <strong>{{ event.createdByEmail }}</strong>
+              <p>{{ event.title }}</p>
+              <small>{{ event.startsAt }}</small>
+            </div>
+
+            @if (!notificationsRead()) {
+              <span class="unread-dot"></span>
+            }
+          </article>
+        } @empty {
+          <p class="empty-state">
+            Nenhuma pendência encontrada para o período atual.
+          </p>
+        }
+      </div>
+
+      <button class="secondary-button" type="button">
+        Ver todas as pendências
+      </button>
+    </aside>
+  </section>
+  @if (isEventModalOpen()) {
+  <section class="modal-backdrop" (click)="closeEventModal()">
+    <article
+      class="event-modal"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="event-modal-title"
+      (click)="$event.stopPropagation()"
+    >
+      <header class="modal-header">
+        <div>
+          <small>{{ isEditMode() ? 'Editar agendamento' : 'Novo agendamento' }}</small>
+          <h2 id="event-modal-title">
+            {{ isEditMode() ? 'Editar evento' : 'Criar evento' }}
+          </h2>
+        </div>
+
+        <button type="button" aria-label="Fechar" (click)="closeEventModal()">
+          x
+        </button>
+      </header>
+
+      <form [formGroup]="eventForm" (ngSubmit)="submitEventForm()">
+        <label>
+          Calendário
+          <select formControlName="calendarId">
+            @for (calendar of calendars(); track calendar.id) {
+              <option [value]="calendar.id">{{ calendar.name }}</option>
+            }
+          </select>
+        </label>
+
+        <div class="event-type-selector">
+          <span>Tipo do evento</span>
+
+          <div>
+            @for (option of eventTypeOptions; track option.value) {
+              <button
+                type="button"
+                [class.active]="formEventType() === option.value"
+                (click)="onEventTypeChange(option.value)"
+              >
+                {{ option.label }}
+              </button>
+            }
+          </div>
+        </div>
+
+        <label>
+          Nome do evento
+          <input
+            type="text"
+            formControlName="title"
+            placeholder="Ex.: Consulta, reunião, procedimento"
+          />
+        </label>
+
+        @if (formEventType() === 'CLIENT') {
+          <div class="two-columns">
+            <label>
+              Cliente
+              <input
+                type="text"
+                formControlName="clientName"
+                placeholder="Nome do cliente"
+              />
+            </label>
+
+            <label>
+              Valor
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                formControlName="amount"
+                placeholder="0,00"
+              />
+            </label>
+          </div>
+
+          <label>
+            Descrição do serviço
+            <textarea
+              rows="3"
+              formControlName="workDescription"
+              placeholder="Descreva o serviço que será realizado"
+            ></textarea>
+          </label>
+        }
+
+        @if (formEventType() === 'PERSONAL') {
+          <label>
+            Pessoa
+            <input
+              type="text"
+              formControlName="personName"
+              placeholder="Nome da pessoa ou compromisso"
+            />
+          </label>
+        }
+
+        @if (formEventType() === 'SHARED') {
+          <label>
+            Responsável pela aprovação
+            <input
+              type="email"
+              formControlName="approvalRequestedFromEmail"
+              placeholder="usuario@email.com"
+            />
+          </label>
+        }
+
+        <label>
+          Descrição
+          <textarea
+            rows="3"
+            formControlName="description"
+            placeholder="Observações gerais do evento"
+          ></textarea>
+        </label>
+
+        <div class="three-columns">
+          <label>
+            Data
+            <input type="date" formControlName="date" />
+          </label>
+
+          <label>
+            Início
+            <input type="time" formControlName="startTime" />
+          </label>
+
+          <label>
+            Fim
+            <input type="time" formControlName="endTime" />
+          </label>
+        </div>
+
+        @if (eventFormError()) {
+          <p class="modal-error">{{ eventFormError() }}</p>
+        }
+
+        <footer class="modal-actions">
+          <button type="button" class="ghost-button" (click)="closeEventModal()">
+            Cancelar
+          </button>
+
+          <button type="submit" class="save-button" [disabled]="isSavingEvent()">
+            @if (isSavingEvent()) {
+              Salvando...
+            } @else {
+              {{ isEditMode() ? 'Salvar alterações' : 'Salvar evento' }}
+            }
+          </button>
+        </footer>
+      </form>
+    </article>
+  </section>
+}
+  @if (selectedEvent(); as event) {
+    <section class="modal-backdrop" (click)="closeEventDetails()">
+      <article
+        class="event-detail-panel"
+        role="dialog"
+        aria-modal="true"
+        (click)="$event.stopPropagation()"
+      >
+        <header class="event-detail-header">
+          <div>
+            <div class="event-badge-row">
+              <span
+                class="event-type-pill"
+                [class.type-client]="event.eventType === 'CLIENT'"
+                [class.type-personal]="event.eventType === 'PERSONAL'"
+                [class.type-shared]="event.eventType === 'SHARED'"
+              >
+                {{ eventTypeLabel(event.eventType) }}
+              </span>
+
+              <span
+                class="status-pill"
+                [class.status-pending]="event.status === 'PENDING_APPROVAL'"
+                [class.status-approved]="event.status === 'APPROVED'"
+                [class.status-rejected]="event.status === 'REJECTED'"
+                [class.status-cancelled]="event.status === 'CANCELLED'"
+              >
+                {{ eventStatusLabel(event.status) }}
+              </span>
+            </div>
+
+            <h2>{{ event.title }}</h2>
+            <p>{{ calendarName(event.calendarId) }}</p>
+          </div>
+
+          <button class="detail-close" type="button" aria-label="Fechar" (click)="closeEventDetails()">
+            x
+          </button>
+        </header>
+
+        <dl class="event-detail-grid">
+          <div>
+            <dt>Inicio</dt>
+            <dd>{{ formatDateTime(event.startsAt) }}</dd>
+          </div>
+
+          <div>
+            <dt>Fim</dt>
+            <dd>{{ formatDateTime(event.endsAt) }}</dd>
+          </div>
+
+          <div>
+            <dt>Criado por</dt>
+            <dd>{{ event.createdByEmail }}</dd>
+          </div>
+
+          @if (event.clientName) {
+            <div>
+              <dt>Cliente</dt>
+              <dd>{{ event.clientName }}</dd>
+            </div>
+          }
+
+          @if (event.personName) {
+            <div>
+              <dt>Pessoa</dt>
+              <dd>{{ event.personName }}</dd>
+            </div>
+          }
+
+          @if (event.amount !== null) {
+            <div>
+              <dt>Valor</dt>
+              <dd>{{ formatMoney(event.amount) }}</dd>
+            </div>
+          }
+
+          @if (event.approvalRequestedFromEmail) {
+            <div>
+              <dt>Aprovacao pendente</dt>
+              <dd>{{ event.approvalRequestedFromEmail }}</dd>
+            </div>
+          }
+
+          @if (event.description) {
+            <div class="detail-wide">
+              <dt>Descricao</dt>
+              <dd>{{ event.description }}</dd>
+            </div>
+          }
+
+          @if (event.workDescription) {
+            <div class="detail-wide">
+              <dt>Servico</dt>
+              <dd>{{ event.workDescription }}</dd>
+            </div>
+          }
+        </dl>
+
+        @if (eventDetailError()) {
+          <p class="detail-error">{{ eventDetailError() }}</p>
+        }
+
+        <footer class="event-detail-actions">
+          <button class="ghost-button" type="button" (click)="openEditEventModal(event)">
+            Editar evento
+          </button>
+
+          <button
+            class="danger-button"
+            type="button"
+            [disabled]="isDeletingEvent()"
+            (click)="deleteSelectedEvent()"
+          >
+            {{ isDeletingEvent() ? 'Cancelando...' : 'Cancelar/desmarcar' }}
+          </button>
+        </footer>
+      </article>
+    </section>
+  }
+</section>

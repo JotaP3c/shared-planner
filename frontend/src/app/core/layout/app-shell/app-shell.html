@@ -19,30 +19,34 @@
         Calendário
       </a>
 
-      <a routerLink="/pending" routerLinkActive="active">
-        <span class="nav-icon pending"></span>
-        Pendências
-      </a>
+      <section class="nav-group">
+        <button type="button">
+          <span class="nav-icon admin"></span>
+          Administrativo
+          <small></small>
+        </button>
 
-      <a routerLink="/finance" routerLinkActive="active">
-        <span class="nav-icon finance"></span>
-        Financeiro
-      </a>
+        <div class="nav-subitems">
+          <a routerLink="/pending" routerLinkActive="active">Pendências</a>
+          <a routerLink="/members" routerLinkActive="active">Membros</a>
+          <a routerLink="/admin/users" routerLinkActive="active">Usuários</a>
+          <a routerLink="/audit" routerLinkActive="active">Auditoria</a>
+        </div>
+      </section>
 
-      <a routerLink="/members" routerLinkActive="active">
-        <span class="nav-icon members"></span>
-        Membros
-      </a>
+      <section class="nav-group">
+        <button type="button">
+          <span class="nav-icon finance"></span>
+          Financeiro
+          <small></small>
+        </button>
 
-      <a routerLink="/admin/users" routerLinkActive="active">
-        <span class="nav-icon admin"></span>
-        Usuários
-      </a>
-
-      <a routerLink="/audit" routerLinkActive="active">
-        <span class="nav-icon audit"></span>
-        Auditoria
-      </a>
+        <div class="nav-subitems">
+          <a routerLink="/finance" routerLinkActive="active">Receitas</a>
+          <a routerLink="/finance" routerLinkActive="active">Despesas</a>
+          <a routerLink="/finance" routerLinkActive="active">Relatórios</a>
+        </div>
+      </section>
 
       <a routerLink="/settings" routerLinkActive="active">
         <span class="nav-icon settings"></span>
@@ -60,9 +64,15 @@
 
   <section class="workspace">
     <header class="topbar">
-      <div class="search-box">
-        <span></span>
-        <input type="search" placeholder="Filtrar por termo (Ex.: médico XYZ)" />
+      <div class="topbar-main">
+        <div class="search-box">
+          <span></span>
+          <input type="search" placeholder="Filtrar por termo (Ex.: médico XYZ)" />
+        </div>
+
+        <p>
+          Selecione os calendários que deseja visualizar ou marque apenas os eventos importantes.
+        </p>
       </div>
 
       <div class="topbar-actions">

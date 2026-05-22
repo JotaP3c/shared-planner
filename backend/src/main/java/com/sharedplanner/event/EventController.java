@@ -50,6 +50,11 @@ public class EventController {
         return eventService.summarizeClientRevenue(calendarId, period, date, authentication);
     }
 
+    @GetMapping("/pending-approvals")
+    public List<EventResponse> listPendingApprovals(Authentication authentication) {
+        return eventService.listPendingApprovals(authentication);
+    }
+
     @GetMapping("/{eventId}")
     public EventResponse findById(
             @PathVariable UUID eventId,

@@ -17,6 +17,13 @@ public interface EventRepository extends JpaRepository<Event, UUID> {
             LocalDateTime start
     );
 
+    List<Event> findByStatusOrderByStartsAtAsc(EventStatus status);
+
+    List<Event> findByStatusAndApprovalRequestedFromEmailIgnoreCaseOrderByStartsAtAsc(
+            EventStatus status,
+            String email
+    );
+
     @Query("""
             select sum(e.amount) as totalAmount, count(e) as appointmentCount
             from Event e

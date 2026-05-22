@@ -100,6 +100,74 @@ public class CalendarService {
                 );
     }
 
+    @Transactional(readOnly = true)
+    public List<CalendarMemberResponse> listMembers(UUID calendarId, Authentication authentication) {
+        authorizationService.ensureCalendarVisible(calendarId, authentication);
+        return memberRepository.findByCalendarIdOrderByCreatedAtAsc(calendarId)
+                .stream()
+                .map(CalendarMemberResponse::from)
+                .toList();
+    }
+
+    @Transactional
+    public CalendarMemberResponse updateMember(UUID calendarId, UUID memberId,
+            UpdateCalendarMemberRequest request, Authentication authentication) {
+        authorizationService.ensureCanManageCalendar(calendarId, authentication);
+
+        User currentUser = currentUser(authentication);
+
+        CalendarMember member = memberRepository.findById(memberId)
+                .filter(m -> m.getCalendar().getId().equals(calendarId))
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Member not found"));
+
+        String oldValue = memberSnapshot(member);
+        member.changeRole(request.role(), currentUser);
+
+        auditService.log(
+                AuditEntityType.CALENDAR_MEMBER,
+                member.getId(),
+                calendarId,
+                AuditAction.MEMBER_ROLE_UPDATED,
+                "Calendar member role updated: " + member.getUser().getEmail(),
+                oldValue,
+                memberSnapshot(member),
+                currentUser
+        );
+
+        return CalendarMemberResponse.from(member);
+    }
+
+    @Transactional
+    public void removeMember(UUID calendarId, UUID memberId, Authentication authentication) {
+        authorizationService.ensureCanManageCalendar(calendarId, authentication);
+
+        User currentUser = currentUser(authentication);
+
+        CalendarMember member = memberRepository.findById(memberId)
+                .filter(m -> m.getCalendar().getId().equals(calendarId))
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Member not found"));
+
+        SharedCalendar calendar = calendarRepository.findById(calendarId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Calendar not found"));
+
+        if (calendar.getOwner().getId().equals(member.getUser().getId())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Cannot remove the calendar owner");
+        }
+
+        auditService.log(
+                AuditEntityType.CALENDAR_MEMBER,
+                member.getId(),
+                calendarId,
+                AuditAction.DELETED,
+                "Calendar member removed: " + member.getUser().getEmail(),
+                memberSnapshot(member),
+                null,
+                currentUser
+        );
+
+        memberRepository.delete(member);
+    }
+
     private void updateMemberRole(CalendarMember member, CalendarMemberRole role, User currentUser) {
         String oldValue = memberSnapshot(member);
 

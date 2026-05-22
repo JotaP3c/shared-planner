@@ -41,4 +41,32 @@ public class CalendarController {
     ) {
         calendarService.addMember(calendarId, request, authentication);
     }
+
+    @GetMapping("/{calendarId}/members")
+    public List<CalendarMemberResponse> listMembers(
+            @PathVariable UUID calendarId,
+            Authentication authentication
+    ) {
+        return calendarService.listMembers(calendarId, authentication);
+    }
+
+    @PutMapping("/{calendarId}/members/{memberId}")
+    public CalendarMemberResponse updateMember(
+            @PathVariable UUID calendarId,
+            @PathVariable UUID memberId,
+            @RequestBody @Valid UpdateCalendarMemberRequest request,
+            Authentication authentication
+    ) {
+        return calendarService.updateMember(calendarId, memberId, request, authentication);
+    }
+
+    @DeleteMapping("/{calendarId}/members/{memberId}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void removeMember(
+            @PathVariable UUID calendarId,
+            @PathVariable UUID memberId,
+            Authentication authentication
+    ) {
+        calendarService.removeMember(calendarId, memberId, authentication);
+    }
 }

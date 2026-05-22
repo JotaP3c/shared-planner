@@ -29,7 +29,9 @@
         <div class="nav-subitems">
           <a routerLink="/pending" routerLinkActive="active">Pendências</a>
           <a routerLink="/members" routerLinkActive="active">Membros</a>
-          <a routerLink="/admin/users" routerLinkActive="active">Usuários</a>
+          @if (isAdmin()) {
+            <a routerLink="/admin/users" routerLinkActive="active">Usuários</a>
+          }
           <a routerLink="/audit" routerLinkActive="active">Auditoria</a>
         </div>
       </section>
@@ -84,8 +86,8 @@
         <div class="profile">
           <div class="avatar">{{ userInitials() }}</div>
           <div>
-            <strong>{{ userEmail() || 'Usuário autenticado' }}</strong>
-            <small>Conta ativa</small>
+            <strong>{{ currentUser()?.fullName || 'Usuário autenticado' }}</strong>
+            <small>{{ currentUser()?.role || 'Conta ativa' }}</small>
           </div>
         </div>
 

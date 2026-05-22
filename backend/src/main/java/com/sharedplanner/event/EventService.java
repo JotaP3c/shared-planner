@@ -9,6 +9,7 @@ import com.sharedplanner.calendar.SharedCalendarRepository;
 import com.sharedplanner.config.AuthorizationService;
 import com.sharedplanner.user.User;
 import com.sharedplanner.user.UserRepository;
+import com.sharedplanner.user.UserRole;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
@@ -333,6 +334,23 @@ public class EventService {
         );
 
         return EventResponse.from(event);
+    }
+
+    @Transactional(readOnly = true)
+    public List<EventResponse> listPendingApprovals(Authentication authentication) {
+        User currentUser = currentUser(authentication);
+
+        List<Event> events;
+        if (currentUser.getRole() == UserRole.ADMIN) {
+            events = eventRepository.findByStatusOrderByStartsAtAsc(EventStatus.PENDING_APPROVAL);
+        } else {
+            events = eventRepository
+                    .findByStatusAndApprovalRequestedFromEmailIgnoreCaseOrderByStartsAtAsc(
+                            EventStatus.PENDING_APPROVAL, currentUser.getEmail()
+                    );
+        }
+
+        return events.stream().map(EventResponse::from).toList();
     }
 
     private Event event(UUID eventId) {

@@ -11,17 +11,18 @@ import { AuthService } from '../../auth/auth.service';
 export class AppShell implements OnInit {
   private readonly authService = inject(AuthService);
 
-  readonly userEmail = this.authService.currentUserEmail;
+  readonly currentUser = this.authService.currentUser;
 
   readonly userInitials = computed(() => {
-    const email = this.userEmail();
-
-    if (!email) {
-      return 'SP';
-    }
-
-    return email.slice(0, 2).toUpperCase();
+    const user = this.currentUser();
+    if (!user) return 'SP';
+    const parts = user.fullName.trim().split(' ');
+    return parts.length >= 2
+      ? (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
+      : parts[0].slice(0, 2).toUpperCase();
   });
+
+  readonly isAdmin = computed(() => this.currentUser()?.role === 'ADMIN');
 
   ngOnInit(): void {
     this.authService.loadCurrentUser().subscribe();

@@ -11,6 +11,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -31,6 +32,15 @@ public class UserService {
         this.passwordEncoder = passwordEncoder;
         this.authorizationService = authorizationService;
         this.auditService = auditService;
+    }
+
+    @Transactional(readOnly = true)
+    public List<UserResponse> list(Authentication authentication) {
+        authorizationService.ensureSystemAdmin(authentication);
+        return userRepository.findAllByOrderByFullNameAsc()
+                .stream()
+                .map(UserResponse::from)
+                .toList();
     }
 
     @Transactional

@@ -10,6 +10,7 @@ import { catchError, finalize, forkJoin, map, of } from 'rxjs';
 
 import { CalendarService } from '../../../core/api/calendar.service';
 import { EventService } from '../../../core/api/event.service';
+import { SearchService } from '../../../core/api/search.service';
 import {
   CalendarResponse,
   CreateEventRequest,
@@ -30,6 +31,7 @@ export class CalendarPage implements OnInit {
 
   private readonly calendarService = inject(CalendarService);
   private readonly eventService = inject(EventService);
+  private readonly searchService = inject(SearchService);
   private readonly formBuilder = inject(NonNullableFormBuilder);
 
   readonly isEventModalOpen = signal(false);
@@ -60,7 +62,7 @@ export class CalendarPage implements OnInit {
   readonly calendars = signal<CalendarResponse[]>([]);
   readonly selectedCalendarIds = signal<string[]>([]);
   readonly events = signal<EventResponse[]>([]);
-  readonly searchTerm = signal('');
+
   readonly selectedEventTypes = signal<EventType[]>(['CLIENT', 'PERSONAL', 'SHARED']);
   readonly visibleStart = signal<Date | null>(null);
   readonly visibleEnd = signal<Date | null>(null);
@@ -75,8 +77,40 @@ export class CalendarPage implements OnInit {
     { value: 'SHARED', label: 'Compartilhado' },
   ];
 
+  private readonly CALENDAR_COLORS: Array<{ bg: string; text: string; border: string }> = [
+    { bg: '#dbeafe', text: '#1d4ed8', border: '#3b82f6' },
+    { bg: '#dcfce7', text: '#166534', border: '#22c55e' },
+    { bg: '#ede9fe', text: '#6d28d9', border: '#8b5cf6' },
+    { bg: '#fef3c7', text: '#92400e', border: '#f59e0b' },
+    { bg: '#fee2e2', text: '#991b1b', border: '#ef4444' },
+    { bg: '#e0f2fe', text: '#075985', border: '#0ea5e9' },
+  ];
+
+  private readonly AVATAR_COLORS: Array<{ bg: string; text: string }> = [
+    { bg: '#dbeafe', text: '#1d4ed8' },
+    { bg: '#dcfce7', text: '#166534' },
+    { bg: '#ede9fe', text: '#6d28d9' },
+    { bg: '#fef3c7', text: '#92400e' },
+    { bg: '#fee2e2', text: '#991b1b' },
+    { bg: '#e0f2fe', text: '#075985' },
+  ];
+
+  readonly calendarColorMap = computed(() => {
+    const map = new Map<string, { bg: string; text: string; border: string }>();
+    this.calendars().forEach((cal, i) => {
+      map.set(cal.id, this.CALENDAR_COLORS[i % this.CALENDAR_COLORS.length]);
+    });
+    return map;
+  });
+
+  readonly visibleCalendarLegend = computed(() => {
+    const selectedIds = new Set(this.selectedCalendarIds());
+
+    return this.calendars().filter(calendar => selectedIds.has(calendar.id));
+  });
+
   readonly filteredEvents = computed(() => {
-    const term = this.searchTerm().trim().toLowerCase();
+    const term = this.searchService.term().trim().toLowerCase();
     const selectedTypes = this.selectedEventTypes();
 
     return this.events().filter(event => {
@@ -155,16 +189,23 @@ export class CalendarPage implements OnInit {
     locale: ptBrLocale,
     headerToolbar: false,
     allDaySlot: false,
-    height: '100%',
+    height: 'auto',
     slotMinTime: '08:00:00',
-    slotMaxTime: '19:00:00',
+    slotMaxTime: '24:00:00',
     slotDuration: '01:00:00',
+    eventDisplay: 'block',
     nowIndicator: true,
     editable: false,
     selectable: true,
     selectMirror: true,
     expandRows: true,
     dayHeaderFormat: { weekday: 'short', day: '2-digit', month: '2-digit' },
+    views: {
+      dayGridMonth: {
+        dayHeaderFormat: { weekday: 'short' },
+        eventDisplay: 'block',
+      },
+    },
     slotLabelFormat: { hour: '2-digit', minute: '2-digit', hour12: false },
     datesSet: (arg) => this.onDatesSet(arg),
     dateClick: (arg) => this.openNewEventModal(arg.date),
@@ -185,10 +226,6 @@ export class CalendarPage implements OnInit {
 
   ngOnInit(): void {
     this.loadCalendars();
-  }
-
-  onSearch(value: string): void {
-    this.searchTerm.set(value);
   }
 
   toggleFilterMenu(filterMenu: 'calendars' | 'events'): void {
@@ -249,7 +286,7 @@ export class CalendarPage implements OnInit {
   }
 
   clearFilters(): void {
-    this.searchTerm.set('');
+    this.searchService.clear();
     this.selectedCalendarIds.set(this.calendars().map(calendar => calendar.id));
     this.selectAllEventTypes();
     this.closeFilterMenu();
@@ -259,6 +296,18 @@ export class CalendarPage implements OnInit {
 
   changeView(viewName: string): void {
     this.calendarComponent?.getApi().changeView(viewName);
+  }
+
+  prevPeriod(): void {
+    this.calendarComponent?.getApi().prev();
+  }
+
+  nextPeriod(): void {
+    this.calendarComponent?.getApi().next();
+  }
+
+  goToToday(): void {
+    this.calendarComponent?.getApi().today();
   }
 
   markAllAsRead(): void {
@@ -653,17 +702,25 @@ export class CalendarPage implements OnInit {
   }
 
   private toCalendarEvents(events: EventResponse[]): EventInput[] {
-    return events.map(event => ({
-      id: event.id,
-      title: this.eventTitle(event),
-      start: event.startsAt,
-      end: event.endsAt,
-      classNames: [
-        `sp-event-${event.eventType.toLowerCase()}`,
-        event.status === 'PENDING_APPROVAL' ? 'sp-event-pending' : '',
-      ],
-      extendedProps: event,
-    }));
+    return events.map(event => {
+      const colors = this.calendarColor(event.calendarId);
+      return {
+        id: event.id,
+        title: this.eventTitle(event),
+        start: event.startsAt,
+        end: event.endsAt,
+        backgroundColor: colors.bg,
+        textColor: colors.text,
+        borderColor: colors.border,
+        display: 'block',
+        classNames: [
+          'sp-event-block',
+          this.calendarColorClass(event.calendarId),
+          event.status === 'PENDING_APPROVAL' ? 'sp-event-pending' : '',
+        ],
+        extendedProps: event,
+      };
+    });
   }
 
   private eventTitle(event: EventResponse): string {
@@ -697,5 +754,39 @@ export class CalendarPage implements OnInit {
 
   private formatDate(date: Date): string {
     return date.toLocaleDateString('pt-BR');
+  }
+
+  emailInitials(email: string): string {
+    const local = email.split('@')[0];
+    const parts = local.split('.');
+    return parts.length >= 2
+      ? (parts[0][0] + parts[1][0]).toUpperCase()
+      : local.slice(0, 2).toUpperCase();
+  }
+
+  calendarColor(calendarId: string): { bg: string; text: string; border: string } {
+    return this.calendarColorMap().get(calendarId) ?? this.CALENDAR_COLORS[0];
+  }
+
+  private calendarColorClass(calendarId: string): string {
+    const index = this.calendars().findIndex(calendar => calendar.id === calendarId);
+    const colorIndex = index >= 0 ? index % this.CALENDAR_COLORS.length : 0;
+
+    return `sp-calendar-${colorIndex}`;
+  }
+
+  eventTypeColor(type: EventType): string {
+    const colors: Record<EventType, string> = {
+      CLIENT: '#3b82f6',
+      PERSONAL: '#22c55e',
+      SHARED: '#8b5cf6',
+    };
+    return colors[type];
+  }
+
+  avatarColor(email: string): { bg: string; text: string } {
+    let hash = 0;
+    for (let i = 0; i < email.length; i++) hash += email.charCodeAt(i);
+    return this.AVATAR_COLORS[hash % this.AVATAR_COLORS.length];
   }
 }

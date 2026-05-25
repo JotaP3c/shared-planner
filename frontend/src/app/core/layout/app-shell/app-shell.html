@@ -9,6 +9,10 @@
         <strong>SharedPlanner</strong>
         <small>Agenda compartilhada</small>
       </div>
+
+      <button class="brand-menu" type="button" aria-label="Alternar menu">
+        <span></span>
+      </button>
     </header>
 
     <nav class="navigation" aria-label="Módulos">
@@ -20,34 +24,38 @@
       </a>
 
       <section class="nav-group">
-        <button type="button">
+        <button type="button" [class.open]="openNavGroup() === 'admin'" (click)="toggleNavGroup('admin')">
           <span class="nav-icon admin"></span>
           Administrativo
           <small></small>
         </button>
 
-        <div class="nav-subitems">
-          <a routerLink="/pending" routerLinkActive="active">Pendências</a>
-          <a routerLink="/members" routerLinkActive="active">Membros</a>
-          @if (isAdmin()) {
-            <a routerLink="/admin/users" routerLinkActive="active">Usuários</a>
-          }
-          <a routerLink="/audit" routerLinkActive="active">Auditoria</a>
-        </div>
+        @if (openNavGroup() === 'admin') {
+          <div class="nav-subitems">
+            <a routerLink="/pending" routerLinkActive="active">Pendências</a>
+            <a routerLink="/members" routerLinkActive="active">Membros</a>
+            @if (isAdmin()) {
+              <a routerLink="/admin/users" routerLinkActive="active">Usuários</a>
+            }
+            <a routerLink="/audit" routerLinkActive="active">Auditoria</a>
+          </div>
+        }
       </section>
 
       <section class="nav-group">
-        <button type="button">
+        <button type="button" [class.open]="openNavGroup() === 'finance'" (click)="toggleNavGroup('finance')">
           <span class="nav-icon finance"></span>
           Financeiro
           <small></small>
         </button>
 
-        <div class="nav-subitems">
-          <a routerLink="/finance" routerLinkActive="active">Receitas</a>
-          <a routerLink="/finance" routerLinkActive="active">Despesas</a>
-          <a routerLink="/finance" routerLinkActive="active">Relatórios</a>
-        </div>
+        @if (openNavGroup() === 'finance') {
+          <div class="nav-subitems">
+            <a routerLink="/finance" routerLinkActive="active">Receitas</a>
+            <a routerLink="/finance" routerLinkActive="active">Despesas</a>
+            <a routerLink="/finance" routerLinkActive="active">Relatórios</a>
+          </div>
+        }
       </section>
 
       <a routerLink="/settings" routerLinkActive="active">
@@ -69,7 +77,15 @@
       <div class="topbar-main">
         <div class="search-box">
           <span></span>
-          <input type="search" placeholder="Filtrar por termo (Ex.: médico XYZ)" />
+          <input
+            type="search"
+            placeholder="Filtrar por termo (Ex.: médico XYZ)"
+            [value]="searchTerm()"
+            (input)="onSearch($any($event.target).value)"
+          />
+          <button type="button" class="search-action" aria-label="Ajustar filtros">
+            <span></span>
+          </button>
         </div>
 
         <p>
@@ -83,17 +99,54 @@
           <b>3</b>
         </button>
 
-        <div class="profile">
-          <div class="avatar">{{ userInitials() }}</div>
-          <div>
-            <strong>{{ currentUser()?.fullName || 'Usuário autenticado' }}</strong>
-            <small>{{ currentUser()?.role || 'Conta ativa' }}</small>
-          </div>
-        </div>
+        <div class="profile-wrapper">
+          <button
+            class="profile-trigger"
+            type="button"
+            [class.open]="showProfileMenu()"
+            (click)="toggleProfileMenu()"
+            aria-label="Menu do usuário"
+          >
+            <div class="avatar">{{ userInitials() }}</div>
+            <div class="profile-info">
+              <strong>{{ currentUser()?.fullName || 'Usuário' }}</strong>
+              <small>{{ currentUser()?.role || '' }}</small>
+            </div>
+            <small class="profile-caret"></small>
+          </button>
 
-        <button class="logout-button" type="button" (click)="logout()">
-          Sair
-        </button>
+          @if (showProfileMenu()) {
+            <div class="profile-backdrop" (click)="closeProfileMenu()"></div>
+            <div class="profile-menu">
+              <div class="profile-menu-header">
+                <div class="avatar">{{ userInitials() }}</div>
+                <div>
+                  <strong>{{ currentUser()?.fullName || 'Usuário' }}</strong>
+                  <small>{{ currentUser()?.role || '' }}</small>
+                </div>
+              </div>
+
+              <div class="profile-menu-divider"></div>
+
+              <button type="button" class="profile-menu-item">
+                <span class="profile-menu-icon theme-icon"></span>
+                Tema claro / escuro
+              </button>
+
+              <a routerLink="/settings" class="profile-menu-item" (click)="closeProfileMenu()">
+                <span class="profile-menu-icon settings-icon"></span>
+                Configurações
+              </a>
+
+              <div class="profile-menu-divider"></div>
+
+              <button type="button" class="profile-menu-item danger" (click)="logout()">
+                <span class="profile-menu-icon logout-icon"></span>
+                Sair
+              </button>
+            </div>
+          }
+        </div>
       </div>
     </header>
 

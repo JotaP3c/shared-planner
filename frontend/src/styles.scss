@@ -60,6 +60,325 @@
   margin: 2px 0 12px;
 }
 
+.calendar-page .calendar-frame {
+  overflow: hidden;
+}
+
+.calendar-page .event-legend {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 26px;
+  min-height: 34px;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid #edf2fb;
+  color: #526a98;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.calendar-page .legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.calendar-page .legend-dot {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+}
+
+.calendar-page .legend-empty {
+  color: #7b8caf;
+  font-weight: 700;
+}
+
+.calendar-page .sp-event-block.sp-calendar-0 {
+  --sp-event-bg: #dbeafe;
+  --sp-event-text: #1d4ed8;
+  --sp-event-border: #3b82f6;
+}
+
+.calendar-page .sp-event-block.sp-calendar-1 {
+  --sp-event-bg: #dcfce7;
+  --sp-event-text: #166534;
+  --sp-event-border: #22c55e;
+}
+
+.calendar-page .sp-event-block.sp-calendar-2 {
+  --sp-event-bg: #ede9fe;
+  --sp-event-text: #6d28d9;
+  --sp-event-border: #8b5cf6;
+}
+
+.calendar-page .sp-event-block.sp-calendar-3 {
+  --sp-event-bg: #fef3c7;
+  --sp-event-text: #92400e;
+  --sp-event-border: #f59e0b;
+}
+
+.calendar-page .sp-event-block.sp-calendar-4 {
+  --sp-event-bg: #fee2e2;
+  --sp-event-text: #991b1b;
+  --sp-event-border: #ef4444;
+}
+
+.calendar-page .sp-event-block.sp-calendar-5 {
+  --sp-event-bg: #e0f2fe;
+  --sp-event-text: #075985;
+  --sp-event-border: #0ea5e9;
+}
+
+.calendar-page .fc .fc-event.sp-event-block,
+.calendar-page .fc .fc-daygrid-event.sp-event-block,
+.calendar-page .fc .fc-timegrid-event.sp-event-block {
+  min-height: 22px;
+  margin: 1px 4px;
+  border: 0 !important;
+  border-left: 3px solid var(--sp-event-border) !important;
+  border-radius: 6px !important;
+  background: var(--sp-event-bg) !important;
+  color: var(--sp-event-text) !important;
+  box-shadow: none !important;
+}
+
+.calendar-page .fc .fc-daygrid-dot-event.sp-event-block {
+  align-items: center;
+  padding: 3px 6px !important;
+}
+
+.calendar-page .fc .sp-event-block .fc-event-main,
+.calendar-page .fc .sp-event-block .fc-event-time,
+.calendar-page .fc .sp-event-block .fc-event-title {
+  color: inherit !important;
+}
+
+.calendar-page .fc .sp-event-block .fc-daygrid-event-dot {
+  border-color: var(--sp-event-border) !important;
+}
+
+.calendar-page .fc .sp-event-pending {
+  outline: 1px dashed #f59e0b;
+}
+
+.app-shell .brand-menu {
+  display: none;
+  place-items: center;
+  margin-left: auto;
+  width: 34px;
+  height: 34px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.05);
+  color: rgba(255, 255, 255, 0.76);
+  cursor: pointer;
+}
+
+.app-shell .brand-menu span,
+.app-shell .brand-menu span::before,
+.app-shell .brand-menu span::after {
+  display: block;
+  width: 14px;
+  height: 2px;
+  border-radius: 999px;
+  background: currentColor;
+}
+
+.app-shell .brand-menu span {
+  position: relative;
+  margin: 0 auto;
+}
+
+.app-shell .brand-menu span::before,
+.app-shell .brand-menu span::after {
+  content: '';
+  position: absolute;
+  left: 0;
+}
+
+.app-shell .brand-menu span::before {
+  top: -5px;
+}
+
+.app-shell .brand-menu span::after {
+  top: 5px;
+}
+
+.app-shell .team-icon {
+  width: 150px;
+  height: 72px;
+  margin: 0 auto 8px;
+}
+
+.app-shell .team-icon::before {
+  content: '';
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  bottom: 6px;
+  height: 28px;
+  border-radius: 16px 16px 8px 8px;
+  background:
+    radial-gradient(circle at 24px 9px, #ffffff 0 8px, transparent 9px),
+    radial-gradient(circle at 74px 7px, #ffffff 0 9px, transparent 10px),
+    radial-gradient(circle at 124px 9px, #ffffff 0 8px, transparent 9px),
+    linear-gradient(135deg, rgba(59, 130, 246, 0.95), rgba(36, 87, 230, 0.75));
+  opacity: 0.98;
+}
+
+.app-shell .team-icon::after {
+  content: '';
+  position: absolute;
+  left: 44px;
+  right: 44px;
+  bottom: 0;
+  height: 18px;
+  border-radius: 12px 12px 4px 4px;
+  background: rgba(255, 255, 255, 0.22);
+}
+
+.app-shell .search-action {
+  position: relative;
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: #526a98;
+  cursor: pointer;
+}
+
+.app-shell .search-action:hover {
+  background: #edf4ff;
+  color: #2457e6;
+}
+
+.app-shell .search-action span,
+.app-shell .search-action span::before,
+.app-shell .search-action span::after {
+  content: '';
+  position: absolute;
+  left: 6px;
+  right: 6px;
+  height: 2px;
+  border-radius: 999px;
+  background: currentColor;
+}
+
+.app-shell .search-action span {
+  top: 9px;
+}
+
+.app-shell .search-action span::before {
+  top: 6px;
+  left: 0;
+  right: 0;
+}
+
+.app-shell .search-action span::after {
+  top: 12px;
+  left: 0;
+  right: 0;
+}
+
+.app-shell .search-action::before,
+.app-shell .search-action::after {
+  content: '';
+  position: absolute;
+  z-index: 1;
+  width: 5px;
+  height: 5px;
+  border: 2px solid currentColor;
+  border-radius: 50%;
+  background: #ffffff;
+}
+
+.app-shell .search-action::before {
+  top: 6px;
+  right: 8px;
+}
+
+.app-shell .search-action::after {
+  bottom: 6px;
+  left: 8px;
+}
+
+.app-shell .profile-menu-icon {
+  flex: 0 0 auto;
+  width: 16px;
+  height: 16px;
+  opacity: 0.65;
+}
+
+.app-shell .theme-icon {
+  position: relative;
+  border: 2px solid currentColor;
+  border-radius: 50%;
+}
+
+.app-shell .theme-icon::after {
+  content: '';
+  position: absolute;
+  inset: 1px 1px 1px 50%;
+  border-radius: 0 50% 50% 0;
+  background: currentColor;
+}
+
+.app-shell .settings-icon {
+  position: relative;
+  border: 2px solid currentColor;
+  border-radius: 50%;
+}
+
+.app-shell .settings-icon::after {
+  content: '';
+  position: absolute;
+  inset: 4px;
+  border: 2px solid currentColor;
+  border-radius: 50%;
+}
+
+.app-shell .logout-icon {
+  position: relative;
+}
+
+.app-shell .logout-icon::before {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 0;
+  width: 10px;
+  height: 10px;
+  border: 2px solid currentColor;
+  border-right: 0;
+  border-radius: 50% 0 0 50%;
+}
+
+.app-shell .logout-icon::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 6px;
+  width: 10px;
+  height: 2px;
+  background: currentColor;
+  transform: translateY(-50%);
+}
+
+@media (max-width: 1366px) {
+  .app-shell .brand-menu {
+    display: grid;
+  }
+}
+
 .event-detail-panel {
   width: min(560px, calc(100vw - 32px));
   max-height: calc(100dvh - 48px);

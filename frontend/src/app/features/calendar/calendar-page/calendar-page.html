@@ -3,15 +3,16 @@
     <p class="error-message">{{ errorMessage() }}</p>
   }
 
-  <section class="calendar-grid">
-    <article class="calendar-card">
-      <section class="filters-card">
+  <div class="calendar-content">
+    <section class="calendar-grid">
+      <article class="calendar-card">
+        <section class="filters-card">
         <div class="active-filters">
           <strong>Filtros ativos:</strong>
 
           <span class="filter-chip">
             Data: {{ periodChip() }}
-            <button class="chip-remove" type="button" aria-label="Remover filtro de data" (click)="resetPeriodFilter($event)">x</button>
+            <button class="chip-remove" type="button" aria-label="Remover filtro de data" (click)="resetPeriodFilter($event)">×</button>
           </span>
 
           <div class="filter-chip-wrapper">
@@ -32,12 +33,12 @@
                 aria-label="Limpar filtro de calendários"
                 (click)="clearCalendarFilter($event)"
               >
-                x
+                ×
               </button>
             </span>
 
             @if (openFilterMenu() === 'calendars') {
-              <div class="filter-popover" role="menu">
+              <div class="filter-popover calendar-popover" role="menu">
                 <header>
                   <strong>Calendários</strong>
 
@@ -54,6 +55,7 @@
                         [checked]="selectedCalendarIds().includes(calendar.id)"
                         (change)="toggleCalendar(calendar.id)"
                       />
+                      <span class="cal-dot" [style.background]="calendarColor(calendar.id).border"></span>
                       <span>{{ calendar.name }}</span>
                     </label>
                   } @empty {
@@ -82,7 +84,7 @@
                 aria-label="Limpar filtro de eventos"
                 (click)="clearEventTypeFilter($event)"
               >
-                x
+                ×
               </button>
             </span>
 
@@ -104,6 +106,7 @@
                         [checked]="selectedEventTypes().includes(option.value)"
                         (change)="toggleEventType(option.value)"
                       />
+                      <span class="cal-dot" [style.background]="eventTypeColor(option.value)"></span>
                       <span>{{ option.label }}</span>
                     </label>
                   }
@@ -117,18 +120,20 @@
           <span class="clear-icon" aria-hidden="true"></span>
           Limpar filtros
         </button>
-      </section>
+        </section>
 
-      <header class="calendar-header">
-        <div>
-          <span class="section-icon"></span>
-          <h1>Calendário principal</h1>
-        </div>
+        <header class="calendar-header">
+          <div>
+            <span class="section-icon" aria-hidden="true">
+              <span></span>
+            </span>
+            <h1>Calendário principal</h1>
+          </div>
 
         <button class="primary-button" type="button" (click)="openNewEventModal()">
           + Novo evento
         </button>
-      </header>
+        </header>
 
       <div class="calendar-subheader">
         <label>
@@ -140,23 +145,35 @@
           </select>
         </label>
 
+        <div class="period-nav">
+          <button type="button" class="period-btn" (click)="prevPeriod()">&#8249;</button>
+          <button type="button" class="period-btn today-btn" (click)="goToToday()">Hoje</button>
+          <button type="button" class="period-btn" (click)="nextPeriod()">&#8250;</button>
+        </div>
+
         @if (isLoading()) {
           <span class="loading">Carregando eventos...</span>
         }
       </div>
 
-      <div class="calendar-frame">
-        <full-calendar #calendar [options]="calendarOptions"></full-calendar>
-      </div>
+        <div class="calendar-frame">
+          <full-calendar #calendar [options]="calendarOptions"></full-calendar>
+        </div>
 
-      <footer class="event-legend">
-        <span class="client"></span> Cliente
-        <span class="personal"></span> Pessoal
-        <span class="shared"></span> Compartilhado
-      </footer>
-    </article>
+        <footer class="event-legend" aria-label="Calendários visíveis">
+          @for (calendar of visibleCalendarLegend(); track calendar.id) {
+            <span class="legend-item">
+              <span class="legend-dot" [style.background]="calendarColor(calendar.id).border"></span>
+              {{ calendar.name }}
+            </span>
+          } @empty {
+            <span class="legend-empty">Nenhum calendário selecionado</span>
+          }
+        </footer>
 
-    <aside class="pending-panel">
+      </article>
+
+      <aside class="pending-panel">
       <header>
         <div>
           <h2>Pendências</h2>
@@ -171,14 +188,16 @@
       <div class="pending-list">
         @for (event of pendingEvents(); track event.id) {
           <article class="pending-item">
-            <div class="pending-avatar">
-              {{ event.createdByEmail.slice(0, 2).toUpperCase() }}
+            <div class="pending-avatar"
+                 [style.background]="avatarColor(event.createdByEmail).bg"
+                 [style.color]="avatarColor(event.createdByEmail).text">
+              {{ emailInitials(event.createdByEmail) }}
             </div>
 
-            <div>
+            <div class="pending-body">
               <strong>{{ event.createdByEmail }}</strong>
               <p>{{ event.title }}</p>
-              <small>{{ event.startsAt }}</small>
+              <small>{{ formatDateTime(event.startsAt) }}</small>
             </div>
 
             @if (!notificationsRead()) {
@@ -195,8 +214,10 @@
       <button class="secondary-button" type="button">
         Ver todas as pendências
       </button>
-    </aside>
-  </section>
+      </aside>
+    </section>
+  </div>
+
   @if (isEventModalOpen()) {
   <section class="modal-backdrop" (click)="closeEventModal()">
     <article
@@ -215,7 +236,7 @@
         </div>
 
         <button type="button" aria-label="Fechar" (click)="closeEventModal()">
-          x
+          ×
         </button>
       </header>
 
@@ -392,7 +413,7 @@
           </div>
 
           <button class="detail-close" type="button" aria-label="Fechar" (click)="closeEventDetails()">
-            x
+            ×
           </button>
         </header>
 

@@ -4,12 +4,20 @@
 }
 
 .calendar-page {
-  display: grid;
-  grid-template-rows: auto minmax(0, 1fr);
+  display: flex;
+  flex-direction: column;
   gap: 16px;
   min-height: 0;
   height: 100%;
   color: #0b1f57;
+}
+
+.calendar-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-height: 0;
 }
 
 .filters-card,
@@ -52,12 +60,13 @@
   align-items: center;
   gap: 6px;
   min-height: 28px;
-  padding: 0 5px 0 10px;
-  border-radius: 6px;
+  padding: 0 6px 0 12px;
+  border: 1px solid #c5d9f8;
+  border-radius: 20px;
   background: #edf4ff;
   color: #2457e6;
   font-size: 11px;
-  font-weight: 800;
+  font-weight: 700;
 }
 
 .interactive-chip {
@@ -94,11 +103,13 @@
 .chip-remove {
   display: inline-grid;
   place-items: center;
-  width: 20px;
-  height: 20px;
-  border-radius: 6px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
   color: #2457e6;
   background: transparent;
+  font-size: 14px;
+  line-height: 1;
 }
 
 .chip-remove:hover {
@@ -111,15 +122,19 @@
   left: 0;
   z-index: 20;
   width: min(340px, calc(100vw - 48px));
-  padding: 12px;
+  padding: 14px 16px 16px;
   border: 1px solid #dbe7fb;
   border-radius: 10px;
   background: #ffffff;
   box-shadow: 0 18px 44px rgba(15, 50, 100, 0.16);
 }
 
+.calendar-popover {
+  width: min(390px, calc(100vw - 48px));
+}
+
 .event-type-popover {
-  width: 240px;
+  width: 310px;
 }
 
 .filter-popover header {
@@ -133,23 +148,23 @@
 
 .filter-popover header strong {
   color: #0b1f57;
-  font-size: 12px;
+  font-size: 14px;
 }
 
 .filter-popover header button {
   border: 0;
   color: #2457e6;
   background: transparent;
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 900;
   cursor: pointer;
 }
 
 .filter-options {
   display: grid;
-  gap: 4px;
+  gap: 8px;
   max-height: 240px;
-  margin-top: 8px;
+  margin-top: 12px;
   overflow: auto;
 }
 
@@ -157,10 +172,10 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  min-height: 34px;
-  padding: 6px 4px;
+  min-height: 38px;
+  padding: 6px 0;
   color: #0b1f57;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 800;
   cursor: pointer;
 }
@@ -227,6 +242,7 @@
 }
 
 .calendar-grid {
+  flex: 1;
   display: grid;
   grid-template-columns: minmax(0, 1fr) 300px;
   gap: 20px;
@@ -258,7 +274,8 @@
 }
 
 .calendar-header h1 {
-  font-size: 22px;
+  font-size: 25px;
+  letter-spacing: -0.01em;
 }
 
 .calendar-header > div {
@@ -268,11 +285,46 @@
 }
 
 .section-icon {
-  width: 22px;
-  height: 22px;
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border: 1px solid #c5d9f8;
+  border-radius: 8px;
+  background: #edf4ff;
+}
+
+.section-icon > span {
+  position: relative;
+  width: 20px;
+  height: 20px;
   border: 2px solid #2457e6;
-  border-top-width: 7px;
+  border-top-width: 6px;
   border-radius: 5px;
+  background:
+    linear-gradient(#2457e6 0 0) 4px 9px / 3px 3px no-repeat,
+    linear-gradient(#2457e6 0 0) 9px 9px / 3px 3px no-repeat,
+    linear-gradient(#2457e6 0 0) 14px 9px / 3px 3px no-repeat,
+    #ffffff;
+}
+
+.section-icon > span::before,
+.section-icon > span::after {
+  content: '';
+  position: absolute;
+  top: -8px;
+  width: 3px;
+  height: 6px;
+  border-radius: 999px;
+  background: #ffffff;
+}
+
+.section-icon > span::before {
+  left: 4px;
+}
+
+.section-icon > span::after {
+  right: 4px;
 }
 
 .primary-button {
@@ -290,11 +342,28 @@
   font-size: 13px;
 }
 
+.calendar-subheader label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .calendar-subheader select {
-  border: 0;
+  height: 36px;
+  min-width: 92px;
+  padding: 0 34px 0 14px;
+  border: 1px solid #d6e0f0;
+  border-radius: 8px;
   color: #2457e6;
   font-weight: 800;
-  background: transparent;
+  background: #ffffff;
+  outline: 0;
+  cursor: pointer;
+}
+
+.calendar-subheader select:focus {
+  border-color: #2457e6;
+  box-shadow: 0 0 0 3px rgba(36, 87, 230, 0.12);
 }
 
 .loading {
@@ -302,45 +371,55 @@
   font-weight: 800;
 }
 
+.period-nav {
+  display: flex;
+  gap: 4px;
+}
+
+.period-btn {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border: 1px solid #dfe8f6;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #2457e6;
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.period-btn:hover {
+  background: #edf4ff;
+  border-color: #c5d9f8;
+}
+
+.today-btn {
+  width: auto;
+  padding: 0 14px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
 .calendar-frame {
-  flex: 1;
+  flex: 0 0 auto;
   min-height: 0;
 }
 
-.event-legend {
-  display: flex;
-  justify-content: center;
-  gap: 18px;
-  margin-top: 16px;
-  color: #60749e;
-  font-size: 12px;
-  font-weight: 800;
-}
-
-.event-legend span {
+.cal-dot {
+  flex-shrink: 0;
   width: 12px;
   height: 12px;
-  border-radius: 4px;
-}
-
-.event-legend .client {
-  background: #bfdbfe;
-}
-
-.event-legend .personal {
-  background: #bbf7d0;
-}
-
-.event-legend .shared {
-  background: #ddd6fe;
+  border-radius: 50%;
 }
 
 .pending-panel {
   display: grid;
-  grid-template-rows: auto minmax(0, auto) auto;
-  align-self: start;
+  grid-template-rows: auto 1fr auto;
   padding: 20px;
-  max-height: 100%;
+  overflow: hidden;
 }
 
 .pending-panel h2 {
@@ -359,6 +438,8 @@
 .pending-list {
   display: grid;
   margin-top: 18px;
+  overflow: auto;
+  align-content: start;
 }
 
 .pending-item {
@@ -382,15 +463,25 @@
   font-weight: 900;
 }
 
+.pending-body {
+  min-width: 0;
+}
+
 .pending-item strong {
   display: block;
   font-size: 13px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .pending-item p {
   margin: 4px 0;
   color: #60749e;
   font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .unread-dot {
@@ -429,7 +520,7 @@
 }
 
 :host ::ng-deep .fc {
-  height: 100%;
+  height: auto;
   color: #0b1f57;
   font-family: Inter, "Segoe UI", Arial, sans-serif;
 }
@@ -450,12 +541,21 @@
   background: #f8fbff;
 }
 
+:host ::ng-deep .fc-col-header-cell-cushion {
+  text-transform: uppercase;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: #60749e;
+}
+
 :host ::ng-deep .fc-timegrid-slot {
-  height: 42px;
+  min-height: 32px;
 }
 
 :host ::ng-deep .fc-event {
-  border: 0;
+  border-style: solid;
+  border-width: 0 0 0 3px;
   border-radius: 6px;
   padding: 4px 6px;
   font-size: 11px;
@@ -469,23 +569,6 @@
   color: inherit;
 }
 
-:host ::ng-deep .sp-event-client {
-  background: #dbeafe;
-  color: #1d4ed8;
-  border-left: 3px solid #3b82f6;
-}
-
-:host ::ng-deep .sp-event-personal {
-  background: #dcfce7;
-  color: #166534;
-  border-left: 3px solid #22c55e;
-}
-
-:host ::ng-deep .sp-event-shared {
-  background: #ede9fe;
-  color: #6d28d9;
-  border-left: 3px solid #8b5cf6;
-}
 
 :host ::ng-deep .sp-event-pending {
   outline: 1px dashed #f59e0b;

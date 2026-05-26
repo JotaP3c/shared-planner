@@ -11,6 +11,7 @@ import { catchError, finalize, forkJoin, map, of } from 'rxjs';
 import { CalendarService } from '../../../core/api/calendar.service';
 import { EventService } from '../../../core/api/event.service';
 import { SearchService } from '../../../core/api/search.service';
+import { AuthService } from '../../../core/auth/auth.service';
 import {
   CalendarResponse,
   CreateEventRequest,
@@ -32,6 +33,7 @@ export class CalendarPage implements OnInit {
   private readonly calendarService = inject(CalendarService);
   private readonly eventService = inject(EventService);
   private readonly searchService = inject(SearchService);
+  private readonly authService = inject(AuthService);
   private readonly formBuilder = inject(NonNullableFormBuilder);
 
   readonly isEventModalOpen = signal(false);
@@ -43,6 +45,7 @@ export class CalendarPage implements OnInit {
   readonly eventBeingEdited = signal<EventResponse | null>(null);
   readonly isEditMode = signal(false);
   readonly isDeletingEvent = signal(false);
+  readonly isUpdatingApproval = signal(false);
 
   readonly eventForm = this.formBuilder.group({
     calendarId: ['', Validators.required],
@@ -62,6 +65,7 @@ export class CalendarPage implements OnInit {
   readonly calendars = signal<CalendarResponse[]>([]);
   readonly selectedCalendarIds = signal<string[]>([]);
   readonly events = signal<EventResponse[]>([]);
+  readonly currentUser = this.authService.currentUser;
 
   readonly selectedEventTypes = signal<EventType[]>(['CLIENT', 'PERSONAL', 'SHARED']);
   readonly visibleStart = signal<Date | null>(null);
@@ -136,6 +140,16 @@ export class CalendarPage implements OnInit {
     this.filteredEvents().filter(event => event.status === 'PENDING_APPROVAL'),
   );
 
+  readonly canRespondToSelectedEvent = computed(() => {
+    const event = this.selectedEvent();
+    const currentUser = this.currentUser();
+
+    return !!event
+      && event.status === 'PENDING_APPROVAL'
+      && !!event.approvalRequestedFromEmail
+      && event.approvalRequestedFromEmail.toLowerCase() === currentUser?.email.toLowerCase();
+  });
+
   readonly periodChip = computed(() => {
     const start = this.visibleStart();
     const end = this.visibleEnd();
@@ -185,7 +199,7 @@ export class CalendarPage implements OnInit {
 
   calendarOptions: CalendarOptions = {
     plugins: [dayGridPlugin, timeGridPlugin, interactionPlugin],
-    initialView: 'timeGridWeek',
+    initialView: 'dayGridMonth',
     locale: ptBrLocale,
     headerToolbar: false,
     allDaySlot: false,
@@ -204,6 +218,7 @@ export class CalendarPage implements OnInit {
       dayGridMonth: {
         dayHeaderFormat: { weekday: 'short' },
         eventDisplay: 'block',
+        dayMaxEvents: 3,
       },
     },
     slotLabelFormat: { hour: '2-digit', minute: '2-digit', hour12: false },
@@ -320,7 +335,7 @@ export class CalendarPage implements OnInit {
   }
 
   closeEventDetails(): void {
-    if (this.isDeletingEvent()) {
+    if (this.isDeletingEvent() || this.isUpdatingApproval()) {
       return;
     }
 
@@ -534,6 +549,26 @@ export class CalendarPage implements OnInit {
       });
   }
 
+  approveSelectedEvent(): void {
+    this.respondToSelectedEvent('approve');
+  }
+
+  rejectSelectedEvent(): void {
+    const event = this.selectedEvent();
+
+    if (!event) {
+      return;
+    }
+
+    const confirmed = window.confirm(`Deseja reprovar o evento "${event.title}"?`);
+
+    if (!confirmed) {
+      return;
+    }
+
+    this.respondToSelectedEvent('reject');
+  }
+
   calendarName(calendarId: string): string {
     return this.calendars().find(calendar => calendar.id === calendarId)?.name ?? 'Calendario';
   }
@@ -692,6 +727,41 @@ export class CalendarPage implements OnInit {
       .subscribe({
         next: events => this.events.set(events),
         error: () => this.errorMessage.set('Nao foi possivel carregar os eventos.'),
+      });
+  }
+
+  private respondToSelectedEvent(action: 'approve' | 'reject'): void {
+    const event = this.selectedEvent();
+
+    if (!event || !this.canRespondToSelectedEvent()) {
+      return;
+    }
+
+    this.eventDetailError.set('');
+    this.isUpdatingApproval.set(true);
+
+    const request = action === 'approve'
+      ? this.eventService.approve(event.id)
+      : this.eventService.reject(event.id);
+
+    request
+      .pipe(finalize(() => this.isUpdatingApproval.set(false)))
+      .subscribe({
+        next: updatedEvent => {
+          this.events.update(events =>
+            events.map(currentEvent =>
+              currentEvent.id === updatedEvent.id ? updatedEvent : currentEvent,
+            ),
+          );
+          this.selectedEvent.set(updatedEvent);
+        },
+        error: error => {
+          const fallback = action === 'approve'
+            ? 'Nao foi possivel aprovar este evento.'
+            : 'Nao foi possivel reprovar este evento.';
+
+          this.eventDetailError.set(this.extractErrorMessage(error, fallback));
+        },
       });
   }
 

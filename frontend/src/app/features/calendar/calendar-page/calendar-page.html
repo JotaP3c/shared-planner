@@ -139,8 +139,8 @@
         <label>
           Grade de visualização:
           <select (change)="changeView($any($event.target).value)">
-            <option value="timeGridWeek">Semana</option>
             <option value="dayGridMonth">Mês</option>
+            <option value="timeGridWeek">Semana</option>
             <option value="timeGridDay">Dia</option>
           </select>
         </label>
@@ -187,7 +187,13 @@
 
       <div class="pending-list">
         @for (event of pendingEvents(); track event.id) {
-          <article class="pending-item">
+          <article
+            class="pending-item"
+            role="button"
+            tabindex="0"
+            (click)="openEventDetails(event)"
+            (keydown.enter)="openEventDetails(event)"
+          >
             <div class="pending-avatar"
                  [style.background]="avatarColor(event.createdByEmail).bg"
                  [style.color]="avatarColor(event.createdByEmail).text">
@@ -481,14 +487,39 @@
         }
 
         <footer class="event-detail-actions">
-          <button class="ghost-button" type="button" (click)="openEditEventModal(event)">
+          @if (canRespondToSelectedEvent()) {
+            <button
+              class="save-button"
+              type="button"
+              [disabled]="isUpdatingApproval()"
+              (click)="approveSelectedEvent()"
+            >
+              {{ isUpdatingApproval() ? 'Enviando...' : 'Aprovar' }}
+            </button>
+
+            <button
+              class="danger-button"
+              type="button"
+              [disabled]="isUpdatingApproval()"
+              (click)="rejectSelectedEvent()"
+            >
+              {{ isUpdatingApproval() ? 'Enviando...' : 'Reprovar' }}
+            </button>
+          }
+
+          <button
+            class="ghost-button"
+            type="button"
+            [disabled]="isUpdatingApproval()"
+            (click)="openEditEventModal(event)"
+          >
             Editar evento
           </button>
 
           <button
             class="danger-button"
             type="button"
-            [disabled]="isDeletingEvent()"
+            [disabled]="isDeletingEvent() || isUpdatingApproval()"
             (click)="deleteSelectedEvent()"
           >
             {{ isDeletingEvent() ? 'Cancelando...' : 'Cancelar/desmarcar' }}

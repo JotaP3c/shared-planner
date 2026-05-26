@@ -64,6 +64,40 @@
   overflow: hidden;
 }
 
+.calendar-page .fc .fc-scrollgrid {
+  border: 0;
+}
+
+.calendar-page .fc .fc-daygrid-day-frame {
+  min-height: 92px;
+}
+
+.calendar-page .fc .fc-daygrid-day-number {
+  padding: 8px 10px 4px 0;
+  color: #0b1f57;
+  font-size: 14px;
+  font-weight: 900;
+}
+
+.calendar-page .fc .fc-day-other .fc-daygrid-day-number {
+  color: #a7b5d1;
+}
+
+.calendar-page .fc .fc-day-today {
+  background: #fff7d6 !important;
+}
+
+.calendar-page .fc .fc-day-today .fc-daygrid-day-number {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  margin-left: auto;
+  border-radius: 50%;
+  background: #2563eb;
+  color: #ffffff;
+}
+
 .calendar-page .event-legend {
   display: flex;
   flex-wrap: wrap;
@@ -137,11 +171,11 @@
 .calendar-page .fc .fc-event.sp-event-block,
 .calendar-page .fc .fc-daygrid-event.sp-event-block,
 .calendar-page .fc .fc-timegrid-event.sp-event-block {
-  min-height: 22px;
+  min-height: 21px;
   margin: 1px 4px;
   border: 0 !important;
   border-left: 3px solid var(--sp-event-border) !important;
-  border-radius: 6px !important;
+  border-radius: 5px !important;
   background: var(--sp-event-bg) !important;
   color: var(--sp-event-text) !important;
   box-shadow: none !important;
@@ -150,6 +184,10 @@
 .calendar-page .fc .fc-daygrid-dot-event.sp-event-block {
   align-items: center;
   padding: 3px 6px !important;
+}
+
+.calendar-page .fc .fc-daygrid-event-harness {
+  margin-top: 2px;
 }
 
 .calendar-page .fc .sp-event-block .fc-event-main,

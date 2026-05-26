@@ -6,7 +6,7 @@
 .calendar-page {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 18px;
   min-height: 0;
   height: 100%;
   color: #0b1f57;
@@ -26,7 +26,7 @@
   border: 1px solid #dfe8f6;
   border-radius: 10px;
   background: #ffffff;
-  box-shadow: 0 14px 38px rgba(15, 50, 100, 0.06);
+  box-shadow: 0 16px 42px rgba(15, 50, 100, 0.055);
 }
 
 .filters-card {
@@ -62,7 +62,7 @@
   min-height: 28px;
   padding: 0 6px 0 12px;
   border: 1px solid #c5d9f8;
-  border-radius: 20px;
+  border-radius: 8px;
   background: #edf4ff;
   color: #2457e6;
   font-size: 11px;
@@ -244,18 +244,18 @@
 .calendar-grid {
   flex: 1;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 300px;
-  gap: 20px;
+  grid-template-columns: minmax(0, 1fr) 356px;
+  gap: 22px;
   min-height: 0;
 }
 
 .calendar-card {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 14px;
   min-width: 0;
   min-height: 0;
-  padding: 20px 22px 16px;
+  padding: 22px 24px 18px;
 }
 
 .calendar-header,
@@ -274,8 +274,8 @@
 }
 
 .calendar-header h1 {
-  font-size: 25px;
-  letter-spacing: -0.01em;
+  font-size: 24px;
+  letter-spacing: 0;
 }
 
 .calendar-header > div {
@@ -328,7 +328,8 @@
 }
 
 .primary-button {
-  height: 40px;
+  height: 42px;
+  min-width: 152px;
   padding: 0 20px;
   border-radius: 8px;
   background: linear-gradient(135deg, #3b82f6, #2457e6);
@@ -337,7 +338,7 @@
 }
 
 .calendar-subheader {
-  margin: 14px 0 10px;
+  margin: 4px 0 8px;
   color: #60749e;
   font-size: 13px;
 }
@@ -349,8 +350,8 @@
 }
 
 .calendar-subheader select {
-  height: 36px;
-  min-width: 92px;
+  height: 38px;
+  min-width: 86px;
   padding: 0 34px 0 14px;
   border: 1px solid #d6e0f0;
   border-radius: 8px;
@@ -379,8 +380,8 @@
 .period-btn {
   display: grid;
   place-items: center;
-  width: 30px;
-  height: 30px;
+  width: 34px;
+  height: 34px;
   border: 1px solid #dfe8f6;
   border-radius: 8px;
   background: #ffffff;
@@ -406,6 +407,9 @@
 .calendar-frame {
   flex: 0 0 auto;
   min-height: 0;
+  border: 1px solid #dfe8f6;
+  border-radius: 6px;
+  overflow: hidden;
 }
 
 .cal-dot {
@@ -418,12 +422,12 @@
 .pending-panel {
   display: grid;
   grid-template-rows: auto 1fr auto;
-  padding: 20px;
+  padding: 24px;
   overflow: hidden;
 }
 
 .pending-panel h2 {
-  font-size: 18px;
+  font-size: 19px;
 }
 
 .pending-panel small {
@@ -437,7 +441,7 @@
 
 .pending-list {
   display: grid;
-  margin-top: 18px;
+  margin-top: 20px;
   overflow: auto;
   align-content: start;
 }
@@ -445,17 +449,25 @@
 .pending-item {
   position: relative;
   display: grid;
-  grid-template-columns: 42px 1fr 10px;
-  gap: 12px;
-  padding: 15px 0;
+  grid-template-columns: 48px 1fr 10px;
+  gap: 14px;
+  padding: 18px 0;
   border-bottom: 1px solid #e8eef8;
+  border-radius: 8px;
+  cursor: pointer;
+  outline: 0;
+}
+
+.pending-item:hover,
+.pending-item:focus-visible {
+  background: #f7faff;
 }
 
 .pending-avatar {
   display: grid;
   place-items: center;
-  width: 42px;
-  height: 42px;
+  width: 46px;
+  height: 46px;
   border-radius: 50%;
   background: #dbeafe;
   color: #2457e6;
@@ -476,7 +488,7 @@
 }
 
 .pending-item p {
-  margin: 4px 0;
+  margin: 5px 0;
   color: #60749e;
   font-size: 12px;
   overflow: hidden;
@@ -501,7 +513,7 @@
 
 .secondary-button {
   width: 100%;
-  height: 42px;
+  height: 46px;
   margin-top: 16px;
   border: 1px solid #c8d9f8;
   border-radius: 8px;
@@ -526,7 +538,7 @@
 }
 
 :host ::ng-deep .fc-view-harness {
-  min-height: 520px;
+  min-height: 590px;
 }
 
 :host ::ng-deep .fc-scrollgrid,
@@ -536,7 +548,7 @@
 }
 
 :host ::ng-deep .fc-col-header-cell {
-  height: 42px;
+  height: 40px;
   vertical-align: middle;
   background: #f8fbff;
 }
@@ -544,9 +556,9 @@
 :host ::ng-deep .fc-col-header-cell-cushion {
   text-transform: uppercase;
   font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  color: #60749e;
+  font-weight: 900;
+  letter-spacing: 0;
+  color: #0b1f57;
 }
 
 :host ::ng-deep .fc-timegrid-slot {
@@ -557,7 +569,7 @@
   border-style: solid;
   border-width: 0 0 0 3px;
   border-radius: 6px;
-  padding: 4px 6px;
+  padding: 3px 7px;
   font-size: 11px;
   font-weight: 800;
   box-shadow: none;
@@ -580,17 +592,17 @@
   }
 
   :host ::ng-deep .fc-view-harness {
-    min-height: 520px;
+    min-height: 560px;
   }
 }
 
 @media (min-width: 1440px) {
   .calendar-grid {
-    grid-template-columns: minmax(0, 1fr) 320px;
+    grid-template-columns: minmax(0, 1fr) 364px;
   }
 
   :host ::ng-deep .fc-view-harness {
-    min-height: 560px;
+    min-height: 600px;
   }
 }
 

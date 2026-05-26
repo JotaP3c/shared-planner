@@ -78,22 +78,27 @@ VALUES
 
 -- ============================================================
 -- Calendar members
--- Both users are ADMIN on every calendar they participate in
+-- Personal calendars:
+--   owner = ADMIN
+--   other user = VIEWER
+-- Shared calendar:
+--   owner = ADMIN
+--   invited user = EDITOR
 -- ============================================================
 
 INSERT INTO dbo.calendar_members (id, calendar_id, user_id, member_role, created_at)
 VALUES
     -- Agenda - Malu
     (NEWID(), 'dddddddd-dddd-dddd-dddd-dddddddddddd', 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', 'ADMIN',  SYSUTCDATETIME()),
-    (NEWID(), 'dddddddd-dddd-dddd-dddd-dddddddddddd', 'cccccccc-cccc-cccc-cccc-cccccccccccc', 'ADMIN',  SYSUTCDATETIME()),
+    (NEWID(), 'dddddddd-dddd-dddd-dddd-dddddddddddd', 'cccccccc-cccc-cccc-cccc-cccccccccccc', 'VIEWER', SYSUTCDATETIME()),
 
     -- Agenda - Jotape
     (NEWID(), 'eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee', 'cccccccc-cccc-cccc-cccc-cccccccccccc', 'ADMIN',  SYSUTCDATETIME()),
-    (NEWID(), 'eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee', 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', 'ADMIN',  SYSUTCDATETIME()),
+    (NEWID(), 'eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee', 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', 'VIEWER', SYSUTCDATETIME()),
 
     -- Agenda João/Malu
     (NEWID(), 'ffffffff-ffff-ffff-ffff-ffffffffffff', 'cccccccc-cccc-cccc-cccc-cccccccccccc', 'ADMIN',  SYSUTCDATETIME()),
-    (NEWID(), 'ffffffff-ffff-ffff-ffff-ffffffffffff', 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', 'ADMIN',  SYSUTCDATETIME());
+    (NEWID(), 'ffffffff-ffff-ffff-ffff-ffffffffffff', 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', 'EDITOR', SYSUTCDATETIME());
 
 -- ============================================================
 -- Summary

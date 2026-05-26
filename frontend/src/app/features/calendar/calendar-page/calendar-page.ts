@@ -20,6 +20,7 @@ import {
   UpdateEventRequest,
 } from '../../../core/models/shared-planner.models';
 
+type CalendarViewName = 'dayGridMonth' | 'timeGridWeek' | 'timeGridDay';
 
 @Component({
   selector: 'app-calendar-page',
@@ -74,6 +75,8 @@ export class CalendarPage implements OnInit {
   readonly errorMessage = signal('');
   readonly notificationsRead = signal(false);
   readonly openFilterMenu = signal<'calendars' | 'events' | null>(null);
+  readonly currentCalendarView = signal<CalendarViewName>('dayGridMonth');
+  readonly isPendingPanelCollapsed = signal(false);
 
   readonly eventTypeOptions: Array<{ value: EventType; label: string }> = [
     { value: 'CLIENT', label: 'Cliente' },
@@ -112,6 +115,12 @@ export class CalendarPage implements OnInit {
 
     return this.calendars().filter(calendar => selectedIds.has(calendar.id));
   });
+
+  readonly creatableCalendars = computed(() =>
+    this.calendars().filter(calendar => calendar.canCreateEvents),
+  );
+
+  readonly canCreateEvents = computed(() => this.creatableCalendars().length > 0);
 
   readonly filteredEvents = computed(() => {
     const term = this.searchService.term().trim().toLowerCase();
@@ -204,15 +213,21 @@ export class CalendarPage implements OnInit {
     headerToolbar: false,
     allDaySlot: false,
     height: 'auto',
-    slotMinTime: '08:00:00',
+    slotMinTime: '00:00:00',
     slotMaxTime: '24:00:00',
     slotDuration: '01:00:00',
+    scrollTime: '07:00:00',
+    scrollTimeReset: false,
     eventDisplay: 'block',
+    eventMinHeight: 58,
+    eventShortHeight: 46,
+    slotEventOverlap: false,
+    eventOverlap: false,
     nowIndicator: true,
     editable: false,
     selectable: true,
     selectMirror: true,
-    expandRows: true,
+    expandRows: false,
     dayHeaderFormat: { weekday: 'short', day: '2-digit', month: '2-digit' },
     views: {
       dayGridMonth: {
@@ -226,6 +241,7 @@ export class CalendarPage implements OnInit {
     dateClick: (arg) => this.openNewEventModal(arg.date),
     select: (arg) => this.openNewEventModal(arg.start, arg.end),
     eventClick: (arg) => this.openEventDetails(arg.event.extendedProps as EventResponse),
+    eventContent: (arg) => this.renderCalendarEvent(arg.event.extendedProps as EventResponse, arg.view.type),
     events: [],
   };
 
@@ -310,7 +326,12 @@ export class CalendarPage implements OnInit {
   }
 
   changeView(viewName: string): void {
-    this.calendarComponent?.getApi().changeView(viewName);
+    const nextView = this.toCalendarViewName(viewName);
+    this.currentCalendarView.set(nextView);
+
+    const calendarApi = this.calendarComponent?.getApi();
+    calendarApi?.setOption('height', nextView === 'dayGridMonth' ? 'auto' : '100%');
+    calendarApi?.changeView(nextView);
   }
 
   prevPeriod(): void {
@@ -327,6 +348,10 @@ export class CalendarPage implements OnInit {
 
   markAllAsRead(): void {
     this.notificationsRead.set(true);
+  }
+
+  togglePendingPanel(): void {
+    this.isPendingPanelCollapsed.set(!this.isPendingPanelCollapsed());
   }
 
   openEventDetails(event: EventResponse): void {
@@ -346,7 +371,12 @@ export class CalendarPage implements OnInit {
   openNewEventModal(start?: Date, end?: Date): void {
     const startsAt = start ?? new Date();
     const endsAt = end ?? this.addMinutes(startsAt, 60);
-    const calendarId = this.selectedCalendarIds()[0] ?? this.calendars()[0]?.id ?? '';
+    const calendarId = this.defaultEventCalendarId();
+
+    if (!calendarId) {
+      this.errorMessage.set('Voce nao tem permissao para criar eventos nos calendarios selecionados.');
+      return;
+    }
 
     this.formEventType.set('CLIENT');
     this.eventFormError.set('');
@@ -439,6 +469,11 @@ export class CalendarPage implements OnInit {
 
     if (!calendarId) {
       this.eventFormError.set('Selecione o calendário do evento.');
+      return;
+    }
+
+    if (!this.canCreateInCalendar(calendarId)) {
+      this.eventFormError.set('Voce nao tem permissao para criar eventos neste calendario.');
       return;
     }
 
@@ -607,6 +642,49 @@ export class CalendarPage implements OnInit {
     });
   }
 
+  canEditEvent(event: EventResponse): boolean {
+    const currentUser = this.currentUser();
+
+    if (!currentUser) {
+      return false;
+    }
+
+    if (currentUser.role === 'ADMIN') {
+      return true;
+    }
+
+    const calendar = this.calendars().find(currentCalendar => currentCalendar.id === event.calendarId);
+
+    if (!calendar?.memberRole) {
+      return false;
+    }
+
+    if (calendar.memberRole === 'ADMIN') {
+      return true;
+    }
+
+    if (calendar.memberRole === 'EDITOR'
+        && event.createdByEmail.toLowerCase() === currentUser.email.toLowerCase()) {
+      return true;
+    }
+
+    return event.eventType === 'SHARED'
+      && calendar.canCreateEvents
+      && event.approvalRequestedFromEmail?.toLowerCase() === currentUser.email.toLowerCase();
+  }
+
+  private defaultEventCalendarId(): string {
+    const selectedIds = new Set(this.selectedCalendarIds());
+
+    return this.creatableCalendars().find(calendar => selectedIds.has(calendar.id))?.id
+      ?? this.creatableCalendars()[0]?.id
+      ?? '';
+  }
+
+  private canCreateInCalendar(calendarId: string): boolean {
+    return this.calendars().some(calendar => calendar.id === calendarId && calendar.canCreateEvents);
+  }
+
   private buildLocalDateTime(date: string, time: string): Date {
     return new Date(`${date}T${time}:00`);
   }
@@ -766,9 +844,18 @@ export class CalendarPage implements OnInit {
   }
 
   private onDatesSet(arg: DatesSetArg): void {
+    this.currentCalendarView.set(this.toCalendarViewName(arg.view.type));
     this.visibleStart.set(arg.start);
     this.visibleEnd.set(arg.end);
     this.loadEvents();
+  }
+
+  private toCalendarViewName(viewName: string): CalendarViewName {
+    if (viewName === 'timeGridWeek' || viewName === 'timeGridDay') {
+      return viewName;
+    }
+
+    return 'dayGridMonth';
   }
 
   private toCalendarEvents(events: EventResponse[]): EventInput[] {
@@ -805,6 +892,37 @@ export class CalendarPage implements OnInit {
     return event.title || 'Compartilhado';
   }
 
+  private renderCalendarEvent(event: EventResponse, viewType: string): { html: string } {
+    const startsAt = new Date(event.startsAt);
+    const endsAt = new Date(event.endsAt);
+    const time = `${this.formatEventTime(startsAt)} - ${this.formatEventTime(endsAt)}`;
+    const title = this.escapeHtml(this.eventTitle(event));
+
+    if (viewType === 'dayGridMonth') {
+      return {
+        html: `
+          <div class="sp-event-inner sp-event-inner-compact">
+            <span class="sp-event-dot"></span>
+            <span class="sp-event-compact-text">${this.formatEventTime(startsAt)} ${title}</span>
+          </div>
+        `,
+      };
+    }
+
+    return {
+      html: `
+        <div class="sp-event-inner">
+          <div class="sp-event-time">${time}</div>
+          <div class="sp-event-title">
+            <span class="sp-event-dot"></span>
+            <span>${title}</span>
+          </div>
+          <span class="sp-event-menu" aria-hidden="true">...</span>
+        </div>
+      `,
+    };
+  }
+
   private toLocalDateTime(date: Date): string {
     const pad = (value: number) => String(value).padStart(2, '0');
 
@@ -824,6 +942,23 @@ export class CalendarPage implements OnInit {
 
   private formatDate(date: Date): string {
     return date.toLocaleDateString('pt-BR');
+  }
+
+  private formatEventTime(date: Date): string {
+    return date.toLocaleTimeString('pt-BR', {
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+    });
+  }
+
+  private escapeHtml(value: string): string {
+    return value
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
   }
 
   emailInitials(email: string): string {

@@ -1,127 +1,16 @@
-<section class="calendar-page">
+<section
+  class="calendar-page"
+  [class.view-month]="currentCalendarView() === 'dayGridMonth'"
+  [class.view-week]="currentCalendarView() === 'timeGridWeek'"
+  [class.view-day]="currentCalendarView() === 'timeGridDay'"
+>
   @if (errorMessage()) {
     <p class="error-message">{{ errorMessage() }}</p>
   }
 
   <div class="calendar-content">
-    <section class="calendar-grid">
+    <section class="calendar-grid" [class.pending-collapsed]="isPendingPanelCollapsed()">
       <article class="calendar-card">
-        <section class="filters-card">
-        <div class="active-filters">
-          <strong>Filtros ativos:</strong>
-
-          <span class="filter-chip">
-            Data: {{ periodChip() }}
-            <button class="chip-remove" type="button" aria-label="Remover filtro de data" (click)="resetPeriodFilter($event)">×</button>
-          </span>
-
-          <div class="filter-chip-wrapper">
-            <span class="filter-chip interactive-chip" [class.open]="openFilterMenu() === 'calendars'">
-              <button
-                class="chip-main"
-                type="button"
-                aria-haspopup="menu"
-                [attr.aria-expanded]="openFilterMenu() === 'calendars'"
-                (click)="toggleFilterMenu('calendars')"
-              >
-                Calendários: {{ calendarChip() }}
-              </button>
-
-              <button
-                class="chip-remove"
-                type="button"
-                aria-label="Limpar filtro de calendários"
-                (click)="clearCalendarFilter($event)"
-              >
-                ×
-              </button>
-            </span>
-
-            @if (openFilterMenu() === 'calendars') {
-              <div class="filter-popover calendar-popover" role="menu">
-                <header>
-                  <strong>Calendários</strong>
-
-                  <button type="button" (click)="selectAllCalendars()">
-                    Selecionar todos
-                  </button>
-                </header>
-
-                <div class="filter-options">
-                  @for (calendar of calendars(); track calendar.id) {
-                    <label class="filter-option">
-                      <input
-                        type="checkbox"
-                        [checked]="selectedCalendarIds().includes(calendar.id)"
-                        (change)="toggleCalendar(calendar.id)"
-                      />
-                      <span class="cal-dot" [style.background]="calendarColor(calendar.id).border"></span>
-                      <span>{{ calendar.name }}</span>
-                    </label>
-                  } @empty {
-                    <p class="filter-empty">Nenhum calendário disponível.</p>
-                  }
-                </div>
-              </div>
-            }
-          </div>
-
-          <div class="filter-chip-wrapper">
-            <span class="filter-chip interactive-chip" [class.open]="openFilterMenu() === 'events'">
-              <button
-                class="chip-main"
-                type="button"
-                aria-haspopup="menu"
-                [attr.aria-expanded]="openFilterMenu() === 'events'"
-                (click)="toggleFilterMenu('events')"
-              >
-                Eventos: {{ eventsChip() }}
-              </button>
-
-              <button
-                class="chip-remove"
-                type="button"
-                aria-label="Limpar filtro de eventos"
-                (click)="clearEventTypeFilter($event)"
-              >
-                ×
-              </button>
-            </span>
-
-            @if (openFilterMenu() === 'events') {
-              <div class="filter-popover event-type-popover" role="menu">
-                <header>
-                  <strong>Tipos de evento</strong>
-
-                  <button type="button" (click)="selectAllEventTypes()">
-                    Selecionar todos
-                  </button>
-                </header>
-
-                <div class="filter-options">
-                  @for (option of eventTypeOptions; track option.value) {
-                    <label class="filter-option">
-                      <input
-                        type="checkbox"
-                        [checked]="selectedEventTypes().includes(option.value)"
-                        (change)="toggleEventType(option.value)"
-                      />
-                      <span class="cal-dot" [style.background]="eventTypeColor(option.value)"></span>
-                      <span>{{ option.label }}</span>
-                    </label>
-                  }
-                </div>
-              </div>
-            }
-          </div>
-        </div>
-
-        <button class="clear-button" type="button" (click)="clearFilters()">
-          <span class="clear-icon" aria-hidden="true"></span>
-          Limpar filtros
-        </button>
-        </section>
-
         <header class="calendar-header">
           <div>
             <span class="section-icon" aria-hidden="true">
@@ -130,20 +19,135 @@
             <h1>Calendário principal</h1>
           </div>
 
-        <button class="primary-button" type="button" (click)="openNewEventModal()">
+        <button
+          class="primary-button"
+          type="button"
+          [disabled]="!canCreateEvents()"
+          [title]="canCreateEvents() ? 'Criar novo evento' : 'Você não tem permissão para criar eventos nos calendários visíveis'"
+          (click)="openNewEventModal()"
+        >
           + Novo evento
         </button>
         </header>
 
       <div class="calendar-subheader">
-        <label>
-          Grade de visualização:
-          <select (change)="changeView($any($event.target).value)">
-            <option value="dayGridMonth">Mês</option>
-            <option value="timeGridWeek">Semana</option>
-            <option value="timeGridDay">Dia</option>
-          </select>
-        </label>
+        <div class="subheader-left">
+          <label>
+            Grade de visualização:
+            <select (change)="changeView($any($event.target).value)">
+              <option value="dayGridMonth">Mês</option>
+              <option value="timeGridWeek">Semana</option>
+              <option value="timeGridDay">Dia</option>
+            </select>
+          </label>
+
+          <div class="inline-filters">
+            <div class="filter-chip-wrapper">
+              <span class="filter-chip interactive-chip" [class.open]="openFilterMenu() === 'calendars'">
+                <button
+                  class="chip-main"
+                  type="button"
+                  aria-haspopup="menu"
+                  [attr.aria-expanded]="openFilterMenu() === 'calendars'"
+                  (click)="toggleFilterMenu('calendars')"
+                >
+                  Calendários: {{ calendarChip() }}
+                </button>
+
+                <button
+                  class="chip-remove"
+                  type="button"
+                  aria-label="Limpar filtro de calendários"
+                  (click)="clearCalendarFilter($event)"
+                >
+                  ×
+                </button>
+              </span>
+
+              @if (openFilterMenu() === 'calendars') {
+                <div class="filter-popover calendar-popover" role="menu">
+                  <header>
+                    <strong>Calendários</strong>
+
+                    <button type="button" (click)="selectAllCalendars()">
+                      Selecionar todos
+                    </button>
+                  </header>
+
+                  <div class="filter-options">
+                    @for (calendar of calendars(); track calendar.id) {
+                      <label class="filter-option">
+                        <input
+                          type="checkbox"
+                          [checked]="selectedCalendarIds().includes(calendar.id)"
+                          (change)="toggleCalendar(calendar.id)"
+                        />
+                        <span class="cal-dot" [style.background]="calendarColor(calendar.id).border"></span>
+                        <span>{{ calendar.name }}</span>
+                      </label>
+                    } @empty {
+                      <p class="filter-empty">Nenhum calendário disponível.</p>
+                    }
+                  </div>
+                </div>
+              }
+            </div>
+
+            <div class="filter-chip-wrapper">
+              <span class="filter-chip interactive-chip" [class.open]="openFilterMenu() === 'events'">
+                <button
+                  class="chip-main"
+                  type="button"
+                  aria-haspopup="menu"
+                  [attr.aria-expanded]="openFilterMenu() === 'events'"
+                  (click)="toggleFilterMenu('events')"
+                >
+                  Eventos: {{ eventsChip() }}
+                </button>
+
+                <button
+                  class="chip-remove"
+                  type="button"
+                  aria-label="Limpar filtro de eventos"
+                  (click)="clearEventTypeFilter($event)"
+                >
+                  ×
+                </button>
+              </span>
+
+              @if (openFilterMenu() === 'events') {
+                <div class="filter-popover event-type-popover" role="menu">
+                  <header>
+                    <strong>Tipos de evento</strong>
+
+                    <button type="button" (click)="selectAllEventTypes()">
+                      Selecionar todos
+                    </button>
+                  </header>
+
+                  <div class="filter-options">
+                    @for (option of eventTypeOptions; track option.value) {
+                      <label class="filter-option">
+                        <input
+                          type="checkbox"
+                          [checked]="selectedEventTypes().includes(option.value)"
+                          (change)="toggleEventType(option.value)"
+                        />
+                        <span class="cal-dot" [style.background]="eventTypeColor(option.value)"></span>
+                        <span>{{ option.label }}</span>
+                      </label>
+                    }
+                  </div>
+                </div>
+              }
+            </div>
+
+            <button class="clear-button" type="button" (click)="clearFilters()">
+              <span class="clear-icon" aria-hidden="true"></span>
+              Limpar filtros
+            </button>
+          </div>
+        </div>
 
         <div class="period-nav">
           <button type="button" class="period-btn" (click)="prevPeriod()">&#8249;</button>
@@ -173,6 +177,19 @@
 
       </article>
 
+      @if (isPendingPanelCollapsed()) {
+        <button
+          class="pending-rail"
+          type="button"
+          aria-label="Mostrar pendências"
+          title="Mostrar pendências"
+          (click)="togglePendingPanel()"
+        >
+          <span></span>
+          <strong>Pendências</strong>
+          <small>{{ pendingEvents().length }}</small>
+        </button>
+      } @else {
       <aside class="pending-panel">
       <header>
         <div>
@@ -180,9 +197,21 @@
           <small>{{ pendingEvents().length }} item(ns)</small>
         </div>
 
-        <button type="button" (click)="markAllAsRead()">
-          Todos como lidos
-        </button>
+        <div class="pending-actions">
+          <button type="button" (click)="markAllAsRead()">
+            Todos como lidos
+          </button>
+
+          <button
+            class="pending-collapse-button"
+            type="button"
+            aria-label="Recolher pendências"
+            title="Recolher pendências"
+            (click)="togglePendingPanel()"
+          >
+            <span></span>
+          </button>
+        </div>
       </header>
 
       <div class="pending-list">
@@ -221,6 +250,7 @@
         Ver todas as pendências
       </button>
       </aside>
+      }
     </section>
   </div>
 
@@ -250,7 +280,7 @@
         <label>
           Calendário
           <select formControlName="calendarId">
-            @for (calendar of calendars(); track calendar.id) {
+            @for (calendar of creatableCalendars(); track calendar.id) {
               <option [value]="calendar.id">{{ calendar.name }}</option>
             }
           </select>
@@ -507,23 +537,25 @@
             </button>
           }
 
-          <button
-            class="ghost-button"
-            type="button"
-            [disabled]="isUpdatingApproval()"
-            (click)="openEditEventModal(event)"
-          >
-            Editar evento
-          </button>
+          @if (canEditEvent(event)) {
+            <button
+              class="ghost-button"
+              type="button"
+              [disabled]="isUpdatingApproval()"
+              (click)="openEditEventModal(event)"
+            >
+              Editar evento
+            </button>
 
-          <button
-            class="danger-button"
-            type="button"
-            [disabled]="isDeletingEvent() || isUpdatingApproval()"
-            (click)="deleteSelectedEvent()"
-          >
-            {{ isDeletingEvent() ? 'Cancelando...' : 'Cancelar/desmarcar' }}
-          </button>
+            <button
+              class="danger-button"
+              type="button"
+              [disabled]="isDeletingEvent() || isUpdatingApproval()"
+              (click)="deleteSelectedEvent()"
+            >
+              {{ isDeletingEvent() ? 'Cancelando...' : 'Cancelar/desmarcar' }}
+            </button>
+          }
         </footer>
       </article>
     </section>

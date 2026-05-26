@@ -59,7 +59,7 @@ public class CalendarService {
                 currentUser
         );
 
-        return CalendarResponse.from(calendar);
+        return CalendarResponse.from(calendar, CalendarMemberRole.ADMIN);
     }
 
     @Transactional(readOnly = true)
@@ -69,13 +69,13 @@ public class CalendarService {
         if (currentUser.getRole() == UserRole.ADMIN) {
             return calendarRepository.findAll()
                     .stream()
-                    .map(CalendarResponse::from)
+                    .map(CalendarResponse::fromSystemAdmin)
                     .toList();
         }
 
         return memberRepository.findByUserEmailIgnoreCase(currentUser.getEmail())
                 .stream()
-                .map(member -> CalendarResponse.from(member.getCalendar()))
+                .map(member -> CalendarResponse.from(member.getCalendar(), member.getRole()))
                 .toList();
     }
 

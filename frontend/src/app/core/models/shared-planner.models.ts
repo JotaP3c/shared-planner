@@ -48,6 +48,8 @@ export interface CalendarResponse {
   id: string;
   name: string;
   ownerEmail: string;
+  memberRole: CalendarMemberRole | null;
+  canCreateEvents: boolean;
 }
 
 export interface CreateCalendarRequest {

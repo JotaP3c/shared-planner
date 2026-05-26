@@ -16,6 +16,7 @@
   height: 100dvh;
   min-height: 720px;
   overflow: hidden;
+  background: #f6f9ff;
 }
 
 .sidebar {
@@ -189,7 +190,6 @@
 
 .nav-icon,
 .team-icon,
-.notification-button span,
 .search-box span {
   position: relative;
   flex: 0 0 auto;
@@ -203,7 +203,33 @@
 }
 
 .nav-icon.calendar {
-  border-top-width: 6px;
+  border-top-width: 5px;
+  background:
+    linear-gradient(currentColor 0 0) 4px 8px / 3px 3px no-repeat,
+    linear-gradient(currentColor 0 0) 9px 8px / 3px 3px no-repeat,
+    linear-gradient(currentColor 0 0) 14px 8px / 3px 3px no-repeat,
+    linear-gradient(currentColor 0 0) 4px 13px / 3px 3px no-repeat,
+    linear-gradient(currentColor 0 0) 9px 13px / 3px 3px no-repeat,
+    linear-gradient(currentColor 0 0) 14px 13px / 3px 3px no-repeat;
+}
+
+.nav-icon.calendar::before,
+.nav-icon.calendar::after {
+  content: '';
+  position: absolute;
+  top: -8px;
+  width: 3px;
+  height: 6px;
+  border-radius: 999px;
+  background: currentColor;
+}
+
+.nav-icon.calendar::before {
+  left: 4px;
+}
+
+.nav-icon.calendar::after {
+  right: 4px;
 }
 
 .nav-icon.admin {
@@ -244,7 +270,7 @@
 
 .nav-icon.finance::before {
   content: '$';
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 900;
   line-height: 1;
 }
@@ -252,6 +278,17 @@
 .nav-icon.settings {
   border: 2px solid currentColor;
   border-radius: 50%;
+}
+
+.nav-icon.settings::before {
+  content: '';
+  position: absolute;
+  inset: -5px;
+  background:
+    linear-gradient(currentColor 0 0) 50% 0 / 2px 4px no-repeat,
+    linear-gradient(currentColor 0 0) 50% 100% / 2px 4px no-repeat,
+    linear-gradient(currentColor 0 0) 0 50% / 4px 2px no-repeat,
+    linear-gradient(currentColor 0 0) 100% 50% / 4px 2px no-repeat;
 }
 
 .nav-icon.settings::after {
@@ -264,65 +301,27 @@
 
 .team-card {
   margin-top: auto;
-  padding: 18px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 10px;
-  background: rgba(255, 255, 255, 0.06);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
-}
-
-.team-card strong {
-  display: block;
-  margin-top: 12px;
-  font-size: 14px;
-  color: #ffffff;
-}
-
-.team-card p {
-  margin: 8px 0 16px;
-  color: rgba(255, 255, 255, 0.6);
-  font-size: 13px;
-  line-height: 1.45;
-}
-
-.team-card button {
-  width: 100%;
-  height: 42px;
-  border: none;
-  border-radius: 6px;
-  background: linear-gradient(135deg, #3b82f6, #2457e6);
-  color: #ffffff;
-  font-weight: 800;
 }
 
 .workspace {
   display: grid;
-  grid-template-rows: 118px minmax(0, 1fr);
+  grid-template-rows: 88px minmax(0, 1fr);
   min-width: 0;
   min-height: 0;
 }
 
 .topbar {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
   gap: 28px;
-  padding: 22px 32px 0;
+  padding: 0 32px;
   border-bottom: 1px solid #dde6f5;
   background: #ffffff;
 }
 
 .topbar-main {
-  display: grid;
-  gap: 12px;
   width: min(980px, 100%);
-}
-
-.topbar-main p {
-  margin: 0;
-  color: #60749e;
-  font-size: 12px;
-  font-weight: 600;
 }
 
 .search-box {
@@ -339,8 +338,21 @@
 }
 
 .search-box span {
+  position: relative;
   border: 2px solid #8aa0c8;
   border-radius: 50%;
+}
+
+.search-box span::after {
+  content: '';
+  position: absolute;
+  right: -5px;
+  bottom: -4px;
+  width: 8px;
+  height: 2px;
+  border-radius: 999px;
+  background: #8aa0c8;
+  transform: rotate(45deg);
 }
 
 .search-box input {
@@ -352,6 +364,10 @@
   background: transparent;
 }
 
+.search-box input::placeholder {
+  color: #7d8fb3;
+}
+
 .topbar-actions,
 .profile {
   display: flex;
@@ -359,41 +375,10 @@
   gap: 18px;
 }
 
-.notification-button,
 .logout-button {
   border: 0;
   background: transparent;
   cursor: pointer;
-}
-
-.notification-button {
-  position: relative;
-  display: grid;
-  place-items: center;
-  width: 42px;
-  height: 42px;
-  border: 0;
-  border-radius: 50%;
-  background: transparent;
-}
-
-.notification-button span {
-  border: 2px solid #5f719f;
-  border-radius: 10px 10px 6px 6px;
-}
-
-.notification-button b {
-  position: absolute;
-  top: 0;
-  right: 4px;
-  display: grid;
-  place-items: center;
-  width: 17px;
-  height: 17px;
-  border-radius: 50%;
-  background: #ef4444;
-  color: #ffffff;
-  font-size: 10px;
 }
 
 .avatar {
@@ -558,10 +543,6 @@
 }
 
 @media (max-width: 900px) {
-  .topbar-main p {
-    display: none;
-  }
-
   .workspace {
     grid-template-rows: 64px minmax(0, 1fr);
   }

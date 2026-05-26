@@ -9,28 +9,22 @@
         <strong>SharedPlanner</strong>
         <small>Agenda compartilhada</small>
       </div>
-
-      <button class="brand-menu" type="button" aria-label="Alternar menu">
-        <span></span>
-      </button>
     </header>
 
     <nav class="navigation" aria-label="Módulos">
-      <span class="nav-title">Módulos</span>
-
       <a routerLink="/calendar" routerLinkActive="active">
         <span class="nav-icon calendar"></span>
         Calendário
       </a>
 
       <section class="nav-group">
-        <button type="button" [class.open]="openNavGroup() === 'admin'" (click)="toggleNavGroup('admin')">
+        <button type="button" [class.open]="isNavGroupOpen('admin')" (click)="toggleNavGroup('admin')">
           <span class="nav-icon admin"></span>
           Administrativo
           <small></small>
         </button>
 
-        @if (openNavGroup() === 'admin') {
+        @if (isNavGroupOpen('admin')) {
           <div class="nav-subitems">
             <a routerLink="/pending" routerLinkActive="active">Pendências</a>
             <a routerLink="/members" routerLinkActive="active">Membros</a>
@@ -43,13 +37,13 @@
       </section>
 
       <section class="nav-group">
-        <button type="button" [class.open]="openNavGroup() === 'finance'" (click)="toggleNavGroup('finance')">
+        <button type="button" [class.open]="isNavGroupOpen('finance')" (click)="toggleNavGroup('finance')">
           <span class="nav-icon finance"></span>
           Financeiro
           <small></small>
         </button>
 
-        @if (openNavGroup() === 'finance') {
+        @if (isNavGroupOpen('finance')) {
           <div class="nav-subitems">
             <a routerLink="/finance" routerLinkActive="active">Receitas</a>
             <a routerLink="/finance" routerLinkActive="active">Despesas</a>
@@ -65,10 +59,18 @@
     </nav>
 
     <section class="team-card">
-      <div class="team-icon"></div>
+      <div class="team-illustration" aria-hidden="true">
+        <span class="person person-left"></span>
+        <span class="person person-center"></span>
+        <span class="person person-right"></span>
+        <span class="meeting-table"></span>
+      </div>
       <strong>Trabalho em equipe</strong>
       <p>Convide sua equipe e colabore em tempo real.</p>
-      <button type="button">Convidar usuário</button>
+      <button type="button">
+        <span class="invite-icon" aria-hidden="true"></span>
+        Convidar usuário
+      </button>
     </section>
   </aside>
 
@@ -79,26 +81,14 @@
           <span></span>
           <input
             type="search"
-            placeholder="Filtrar por termo (Ex.: médico XYZ)"
+            placeholder="Buscar eventos, clientes ou descrições"
             [value]="searchTerm()"
             (input)="onSearch($any($event.target).value)"
           />
-          <button type="button" class="search-action" aria-label="Ajustar filtros">
-            <span></span>
-          </button>
         </div>
-
-        <p>
-          Selecione os calendários que deseja visualizar ou marque apenas os eventos importantes.
-        </p>
       </div>
 
       <div class="topbar-actions">
-        <button class="notification-button" type="button" aria-label="Notificações">
-          <span></span>
-          <b>3</b>
-        </button>
-
         <div class="profile-wrapper">
           <button
             class="profile-trigger"

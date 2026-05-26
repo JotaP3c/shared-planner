@@ -19,7 +19,13 @@ export class AppShell implements OnInit {
   readonly userInitials = computed(() => {
     const user = this.currentUser();
     if (!user) return 'SP';
-    const parts = user.fullName.trim().split(' ');
+    const displayName = user.fullName?.trim() || user.email?.split('@')[0] || 'Shared Planner';
+    const parts = displayName.split(' ').filter(Boolean);
+
+    if (!parts.length) {
+      return 'SP';
+    }
+
     return parts.length >= 2
       ? (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
       : parts[0].slice(0, 2).toUpperCase();
@@ -27,11 +33,23 @@ export class AppShell implements OnInit {
 
   readonly isAdmin = computed(() => this.currentUser()?.role === 'ADMIN');
 
-  readonly openNavGroup = signal<string | null>('admin');
+  readonly openNavGroups = signal<Set<string>>(new Set(['admin']));
   readonly showProfileMenu = signal(false);
 
   toggleNavGroup(group: string): void {
-    this.openNavGroup.set(this.openNavGroup() === group ? null : group);
+    const groups = new Set(this.openNavGroups());
+
+    if (groups.has(group)) {
+      groups.delete(group);
+    } else {
+      groups.add(group);
+    }
+
+    this.openNavGroups.set(groups);
+  }
+
+  isNavGroupOpen(group: string): boolean {
+    return this.openNavGroups().has(group);
   }
 
   toggleProfileMenu(): void {

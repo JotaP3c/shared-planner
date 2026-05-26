@@ -37,8 +37,8 @@ export class AuthService {
       return of(null);
     }
 
-    return this.http.get<UserResponse>(`${this.apiUrl}/auth/me`).pipe(
-      tap(user => this.currentUser.set(user)),
+    return this.http.get<unknown>(`${this.apiUrl}/auth/me`).pipe(
+      tap(response => this.currentUser.set(this.normalizeUser(response))),
       catchError(() => {
         this.clearSession();
         return of(null);
@@ -75,5 +75,39 @@ export class AuthService {
 
   private isBrowser(): boolean {
     return isPlatformBrowser(this.platformId);
+  }
+
+  private normalizeUser(response: unknown): UserResponse | null {
+    if (!response) {
+      return null;
+    }
+
+    if (typeof response === 'string') {
+      return {
+        id: '',
+        fullName: response.split('@')[0] || 'User',
+        email: response,
+        role: 'USER',
+        active: true,
+        createdAt: '',
+        updatedAt: '',
+      };
+    }
+
+    const user = response as Partial<UserResponse>;
+
+    if (!user.email) {
+      return null;
+    }
+
+    return {
+      id: user.id ?? '',
+      fullName: user.fullName?.trim() || user.email.split('@')[0] || 'User',
+      email: user.email,
+      role: user.role ?? 'USER',
+      active: user.active ?? true,
+      createdAt: user.createdAt ?? '',
+      updatedAt: user.updatedAt ?? '',
+    };
   }
 }

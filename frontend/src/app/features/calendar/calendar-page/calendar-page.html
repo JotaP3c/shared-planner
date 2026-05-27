@@ -187,7 +187,7 @@
         >
           <span></span>
           <strong>Pendências</strong>
-          <small>{{ pendingEvents().length }}</small>
+          <small>{{ unreadPendingCount() }}</small>
         </button>
       } @else {
       <aside class="pending-panel">
@@ -198,7 +198,7 @@
         </div>
 
         <div class="pending-actions">
-          <button type="button" (click)="markAllAsRead()">
+          <button type="button" [disabled]="unreadPendingCount() === 0" (click)="markAllAsRead()">
             Todos como lidos
           </button>
 
@@ -235,7 +235,7 @@
               <small>{{ formatDateTime(event.startsAt) }}</small>
             </div>
 
-            @if (!notificationsRead()) {
+            @if (!isPendingRead(event.id)) {
               <span class="unread-dot"></span>
             }
           </article>

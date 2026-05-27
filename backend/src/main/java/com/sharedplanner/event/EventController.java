@@ -40,6 +40,15 @@ public class EventController {
         return eventService.list(calendarId, start, end, authentication);
     }
 
+    @GetMapping("/search")
+    public List<EventSearchResponse> search(
+            @RequestParam String term,
+            @RequestParam(defaultValue = "20") Integer limit,
+            Authentication authentication
+    ) {
+        return eventService.search(term, limit, authentication);
+    }
+
     @GetMapping("/client-revenue")
     public ClientRevenueSummaryResponse summarizeClientRevenue(
             @RequestParam UUID calendarId,

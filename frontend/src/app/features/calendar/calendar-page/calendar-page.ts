@@ -1,5 +1,7 @@
-import { Component, OnInit, ViewChild, computed, effect, inject, signal } from '@angular/core';
+import { AfterViewInit, Component, DestroyRef, OnInit, ViewChild, computed, effect, inject, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { ActivatedRoute } from '@angular/router';
 import { FullCalendarComponent, FullCalendarModule } from '@fullcalendar/angular';
 import { CalendarOptions, DatesSetArg, EventInput } from '@fullcalendar/core';
 import ptBrLocale from '@fullcalendar/core/locales/pt-br';
@@ -28,7 +30,7 @@ type CalendarViewName = 'dayGridMonth' | 'timeGridWeek' | 'timeGridDay';
   templateUrl: './calendar-page.html',
   styleUrl: './calendar-page.scss',
 })
-export class CalendarPage implements OnInit {
+export class CalendarPage implements OnInit, AfterViewInit {
   @ViewChild('calendar') calendarComponent?: FullCalendarComponent;
 
   private readonly calendarService = inject(CalendarService);
@@ -36,6 +38,9 @@ export class CalendarPage implements OnInit {
   private readonly searchService = inject(SearchService);
   private readonly authService = inject(AuthService);
   private readonly formBuilder = inject(NonNullableFormBuilder);
+  private readonly route = inject(ActivatedRoute);
+  private readonly destroyRef = inject(DestroyRef);
+  private pendingSearchTarget: { eventId: string; calendarId: string; date: string } | null = null;
 
   readonly isEventModalOpen = signal(false);
   readonly isSavingEvent = signal(false);
@@ -66,6 +71,7 @@ export class CalendarPage implements OnInit {
   readonly calendars = signal<CalendarResponse[]>([]);
   readonly selectedCalendarIds = signal<string[]>([]);
   readonly events = signal<EventResponse[]>([]);
+  readonly pendingApprovals = signal<EventResponse[]>([]);
   readonly currentUser = this.authService.currentUser;
 
   readonly selectedEventTypes = signal<EventType[]>(['CLIENT', 'PERSONAL', 'SHARED']);
@@ -73,7 +79,7 @@ export class CalendarPage implements OnInit {
   readonly visibleEnd = signal<Date | null>(null);
   readonly isLoading = signal(false);
   readonly errorMessage = signal('');
-  readonly notificationsRead = signal(false);
+  readonly readPendingIds = signal<Set<string>>(new Set());
   readonly openFilterMenu = signal<'calendars' | 'events' | null>(null);
   readonly currentCalendarView = signal<CalendarViewName>('dayGridMonth');
   readonly isPendingPanelCollapsed = signal(false);
@@ -123,30 +129,15 @@ export class CalendarPage implements OnInit {
   readonly canCreateEvents = computed(() => this.creatableCalendars().length > 0);
 
   readonly filteredEvents = computed(() => {
-    const term = this.searchService.term().trim().toLowerCase();
     const selectedTypes = this.selectedEventTypes();
 
-    return this.events().filter(event => {
-      const matchesType = selectedTypes.includes(event.eventType);
-
-      const searchable = [
-        event.title,
-        event.clientName,
-        event.personName,
-        event.description,
-        event.workDescription,
-        event.createdByEmail,
-      ]
-        .filter(Boolean)
-        .join(' ')
-        .toLowerCase();
-
-      return matchesType && (!term || searchable.includes(term));
-    });
+    return this.events().filter(event => selectedTypes.includes(event.eventType));
   });
 
-  readonly pendingEvents = computed(() =>
-    this.filteredEvents().filter(event => event.status === 'PENDING_APPROVAL'),
+  readonly pendingEvents = computed(() => this.pendingApprovals());
+
+  readonly unreadPendingCount = computed(() =>
+    this.pendingEvents().filter(event => !this.isPendingRead(event.id)).length,
   );
 
   readonly canRespondToSelectedEvent = computed(() => {
@@ -253,10 +244,38 @@ export class CalendarPage implements OnInit {
         events: this.toCalendarEvents(this.filteredEvents()),
       };
     });
+
+    effect(() => {
+      const email = this.currentUser()?.email;
+      this.readPendingIds.set(email ? this.loadReadPendingIds(email) : new Set());
+    });
   }
 
   ngOnInit(): void {
+    this.route.queryParamMap
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(params => {
+        const eventId = params.get('eventId');
+        const date = params.get('date');
+
+        if (!eventId || !date) {
+          return;
+        }
+
+        this.pendingSearchTarget = {
+          eventId,
+          date,
+          calendarId: params.get('calendarId') ?? '',
+        };
+        this.openSearchTarget();
+      });
+
+    this.loadPendingApprovals();
     this.loadCalendars();
+  }
+
+  ngAfterViewInit(): void {
+    this.openSearchTarget();
   }
 
   toggleFilterMenu(filterMenu: 'calendars' | 'events'): void {
@@ -347,7 +366,11 @@ export class CalendarPage implements OnInit {
   }
 
   markAllAsRead(): void {
-    this.notificationsRead.set(true);
+    const ids = new Set(this.readPendingIds());
+
+    this.pendingEvents().forEach(event => ids.add(event.id));
+    this.readPendingIds.set(ids);
+    this.saveReadPendingIds(ids);
   }
 
   togglePendingPanel(): void {
@@ -543,6 +566,7 @@ export class CalendarPage implements OnInit {
           this.isEditMode.set(false);
           this.eventBeingEdited.set(null);
           this.loadEvents();
+          this.loadPendingApprovals();
         },
         error: (error) => {
           this.eventFormError.set(
@@ -575,6 +599,7 @@ export class CalendarPage implements OnInit {
         next: () => {
           this.selectedEvent.set(null);
           this.loadEvents();
+          this.loadPendingApprovals();
         },
         error: (error) => {
           this.eventDetailError.set(
@@ -622,6 +647,10 @@ export class CalendarPage implements OnInit {
     };
 
     return labels[status] ?? status;
+  }
+
+  isPendingRead(eventId: string): boolean {
+    return this.readPendingIds().has(eventId);
   }
 
   formatDateTime(value: string): string {
@@ -771,6 +800,7 @@ export class CalendarPage implements OnInit {
         this.calendars.set(calendars);
         this.selectedCalendarIds.set(calendars.map(calendar => calendar.id));
         this.loadEvents();
+        this.openSearchTarget();
       },
       error: () => {
         this.errorMessage.set('Nao foi possivel carregar os calendarios.');
@@ -808,6 +838,13 @@ export class CalendarPage implements OnInit {
       });
   }
 
+  private loadPendingApprovals(): void {
+    this.eventService
+      .listPendingApprovals()
+      .pipe(catchError(() => of([] as EventResponse[])))
+      .subscribe(events => this.pendingApprovals.set(events));
+  }
+
   private respondToSelectedEvent(action: 'approve' | 'reject'): void {
     const event = this.selectedEvent();
 
@@ -832,6 +869,7 @@ export class CalendarPage implements OnInit {
             ),
           );
           this.selectedEvent.set(updatedEvent);
+          this.loadPendingApprovals();
         },
         error: error => {
           const fallback = action === 'approve'
@@ -841,6 +879,45 @@ export class CalendarPage implements OnInit {
           this.eventDetailError.set(this.extractErrorMessage(error, fallback));
         },
       });
+  }
+
+  private openSearchTarget(): void {
+    const target = this.pendingSearchTarget;
+
+    if (!target || !this.calendarComponent || !this.calendars().length) {
+      return;
+    }
+
+    this.pendingSearchTarget = null;
+
+    if (target.calendarId && this.calendars().some(calendar => calendar.id === target.calendarId)) {
+      const selectedIds = this.selectedCalendarIds();
+
+      if (!selectedIds.includes(target.calendarId)) {
+        this.selectedCalendarIds.set([...selectedIds, target.calendarId]);
+      }
+    }
+
+    this.calendarComponent.getApi().gotoDate(target.date);
+    this.eventDetailError.set('');
+
+    this.eventService.findById(target.eventId).subscribe({
+      next: event => {
+        if (!this.selectedCalendarIds().includes(event.calendarId)) {
+          this.selectedCalendarIds.set([...this.selectedCalendarIds(), event.calendarId]);
+        }
+
+        if (!this.selectedEventTypes().includes(event.eventType)) {
+          this.selectedEventTypes.set([...this.selectedEventTypes(), event.eventType]);
+        }
+
+        this.selectedEvent.set(event);
+        this.loadEvents();
+      },
+      error: () => {
+        this.errorMessage.set('Nao foi possivel abrir o evento encontrado.');
+      },
+    });
   }
 
   private onDatesSet(arg: DatesSetArg): void {
@@ -993,5 +1070,40 @@ export class CalendarPage implements OnInit {
     let hash = 0;
     for (let i = 0; i < email.length; i++) hash += email.charCodeAt(i);
     return this.AVATAR_COLORS[hash % this.AVATAR_COLORS.length];
+  }
+
+  private loadReadPendingIds(email: string): Set<string> {
+    if (!this.canUseLocalStorage()) {
+      return new Set();
+    }
+
+    try {
+      const raw = localStorage.getItem(this.pendingReadStorageKey(email));
+      const ids = raw ? JSON.parse(raw) : [];
+
+      return Array.isArray(ids)
+        ? new Set(ids.filter((id): id is string => typeof id === 'string'))
+        : new Set();
+    } catch {
+      return new Set();
+    }
+  }
+
+  private saveReadPendingIds(ids: Set<string>): void {
+    const email = this.currentUser()?.email;
+
+    if (!email || !this.canUseLocalStorage()) {
+      return;
+    }
+
+    localStorage.setItem(this.pendingReadStorageKey(email), JSON.stringify([...ids]));
+  }
+
+  private pendingReadStorageKey(email: string): string {
+    return `sharedPlanner.readPendingIds.${email.toLowerCase()}`;
+  }
+
+  private canUseLocalStorage(): boolean {
+    return typeof localStorage !== 'undefined';
   }
 }

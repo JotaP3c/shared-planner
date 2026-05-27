@@ -4,6 +4,7 @@ import {
   ClientRevenueSummaryResponse,
   CreateEventRequest,
   EventResponse,
+  EventSearchResponse,
   RevenuePeriod,
   UpdateEventRequest,
   UpdatePaymentRequest,
@@ -25,6 +26,18 @@ export class EventService {
       .set('end', end);
 
     return this.http.get<EventResponse[]>(this.apiUrl, { params });
+  }
+
+  search(term: string, limit = 20) {
+    const params = new HttpParams()
+      .set('term', term)
+      .set('limit', limit);
+
+    return this.http.get<EventSearchResponse[]>(`${this.apiUrl}/search`, { params });
+  }
+
+  listPendingApprovals() {
+    return this.http.get<EventResponse[]>(`${this.apiUrl}/pending-approvals`);
   }
 
   summarizeClientRevenue(calendarId: string, period: RevenuePeriod, date?: string) {

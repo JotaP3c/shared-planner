@@ -77,14 +77,63 @@
   <section class="workspace">
     <header class="topbar">
       <div class="topbar-main">
-        <div class="search-box">
-          <span></span>
-          <input
-            type="search"
-            placeholder="Buscar eventos, clientes ou descrições"
-            [value]="searchTerm()"
-            (input)="onSearch($any($event.target).value)"
-          />
+        <div class="search-wrapper">
+          <div class="search-box" [class.search-active]="isSearchPanelOpen()">
+            <span></span>
+            <input
+              type="search"
+              placeholder="Buscar eventos, clientes ou descrições"
+              [value]="searchTerm()"
+              (focus)="onSearchFocus()"
+              (input)="onSearch($any($event.target).value)"
+              (keydown.escape)="clearSearch()"
+            />
+
+            @if (searchTerm()) {
+              <button
+                class="search-clear-button"
+                type="button"
+                aria-label="Limpar busca"
+                (click)="clearSearch()"
+              >
+                ×
+              </button>
+            }
+          </div>
+
+          @if (isSearchPanelOpen()) {
+            <section class="search-results-panel" aria-label="Resultados da busca">
+              @if (isSearchLoading()) {
+                <p class="search-state">Buscando eventos...</p>
+              } @else if (searchError()) {
+                <p class="search-state error">{{ searchError() }}</p>
+              } @else if (searchResults().length) {
+                <header>
+                  <strong>Eventos encontrados</strong>
+                  <small>{{ searchResults().length }} resultado(s)</small>
+                </header>
+
+                <div class="search-results-list">
+                  @for (result of searchResults(); track result.id) {
+                    <button
+                      class="search-result-item"
+                      type="button"
+                      (click)="selectSearchResult(result)"
+                    >
+                      <span class="result-date">{{ formatSearchResultDate(result.startsAt) }}</span>
+                      <span class="result-main">
+                        <strong>{{ searchResultTitle(result) }}</strong>
+                        <small>{{ searchResultSubtitle(result) }}</small>
+                      </span>
+                      <span class="result-status">{{ result.status }}</span>
+                    </button>
+                  }
+                </div>
+              } @else {
+                <p class="search-state">Nenhum evento encontrado.</p>
+              }
+            </section>
+          }
         </div>
       </div>
 

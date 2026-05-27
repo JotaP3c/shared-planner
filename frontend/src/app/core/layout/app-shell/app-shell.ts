@@ -1,7 +1,9 @@
-import { Component, computed, inject, OnInit, signal } from '@angular/core';
-import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import { Component, computed, inject, OnDestroy, OnInit, signal } from '@angular/core';
+import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import { EventService } from '../../api/event.service';
 import { AuthService } from '../../auth/auth.service';
 import { SearchService } from '../../api/search.service';
+import { EventSearchResponse, EventType } from '../../models/shared-planner.models';
 
 @Component({
   selector: 'app-app-shell',
@@ -9,12 +11,20 @@ import { SearchService } from '../../api/search.service';
   templateUrl: './app-shell.html',
   styleUrl: './app-shell.scss',
 })
-export class AppShell implements OnInit {
+export class AppShell implements OnInit, OnDestroy {
   private readonly authService = inject(AuthService);
   private readonly searchService = inject(SearchService);
+  private readonly eventService = inject(EventService);
+  private readonly router = inject(Router);
+  private searchDebounceId: ReturnType<typeof setTimeout> | null = null;
+  private searchRequestId = 0;
 
   readonly currentUser = this.authService.currentUser;
   readonly searchTerm = this.searchService.term;
+  readonly searchResults = signal<EventSearchResponse[]>([]);
+  readonly isSearchPanelOpen = signal(false);
+  readonly isSearchLoading = signal(false);
+  readonly searchError = signal('');
 
   readonly userInitials = computed(() => {
     const user = this.currentUser();
@@ -62,13 +72,125 @@ export class AppShell implements OnInit {
 
   onSearch(value: string): void {
     this.searchService.set(value);
+    this.searchError.set('');
+
+    if (this.searchDebounceId) {
+      clearTimeout(this.searchDebounceId);
+    }
+
+    const term = value.trim();
+
+    if (term.length < 2) {
+      this.searchRequestId++;
+      this.searchResults.set([]);
+      this.isSearchLoading.set(false);
+      this.isSearchPanelOpen.set(false);
+      return;
+    }
+
+    this.isSearchPanelOpen.set(true);
+    this.isSearchLoading.set(true);
+
+    this.searchDebounceId = setTimeout(() => {
+      this.runGlobalSearch(term);
+    }, 260);
+  }
+
+  onSearchFocus(): void {
+    if (this.searchTerm().trim().length >= 2) {
+      this.isSearchPanelOpen.set(true);
+    }
+  }
+
+  clearSearch(): void {
+    if (this.searchDebounceId) {
+      clearTimeout(this.searchDebounceId);
+      this.searchDebounceId = null;
+    }
+
+    this.searchRequestId++;
+    this.searchService.clear();
+    this.searchResults.set([]);
+    this.searchError.set('');
+    this.isSearchLoading.set(false);
+    this.isSearchPanelOpen.set(false);
+  }
+
+  selectSearchResult(result: EventSearchResponse): void {
+    this.clearSearch();
+    this.closeProfileMenu();
+
+    this.router.navigate(['/calendar'], {
+      queryParams: {
+        eventId: result.id,
+        calendarId: result.calendarId,
+        date: result.startsAt.slice(0, 10),
+        focus: Date.now(),
+      },
+    });
+  }
+
+  searchResultTitle(result: EventSearchResponse): string {
+    return result.clientName || result.personName || result.title;
+  }
+
+  searchResultSubtitle(result: EventSearchResponse): string {
+    return `${this.eventTypeLabel(result.eventType)} - ${result.calendarName}`;
+  }
+
+  formatSearchResultDate(value: string): string {
+    return new Date(value).toLocaleString('pt-BR', {
+      dateStyle: 'short',
+      timeStyle: 'short',
+    });
   }
 
   ngOnInit(): void {
     this.authService.loadCurrentUser().subscribe();
   }
 
+  ngOnDestroy(): void {
+    if (this.searchDebounceId) {
+      clearTimeout(this.searchDebounceId);
+    }
+  }
+
   logout(): void {
     this.authService.logout();
+  }
+
+  private runGlobalSearch(term: string): void {
+    const requestId = ++this.searchRequestId;
+
+    this.eventService.search(term).subscribe({
+      next: results => {
+        if (requestId !== this.searchRequestId) {
+          return;
+        }
+
+        this.searchResults.set(results);
+        this.searchError.set('');
+        this.isSearchLoading.set(false);
+      },
+      error: () => {
+        if (requestId !== this.searchRequestId) {
+          return;
+        }
+
+        this.searchResults.set([]);
+        this.searchError.set('Nao foi possivel buscar eventos agora.');
+        this.isSearchLoading.set(false);
+      },
+    });
+  }
+
+  private eventTypeLabel(eventType: EventType): string {
+    const labels: Record<EventType, string> = {
+      CLIENT: 'Cliente',
+      PERSONAL: 'Pessoal',
+      SHARED: 'Compartilhado',
+    };
+
+    return labels[eventType];
   }
 }

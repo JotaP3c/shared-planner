@@ -10,6 +10,8 @@ import com.sharedplanner.config.AuthorizationService;
 import com.sharedplanner.user.User;
 import com.sharedplanner.user.UserRepository;
 import com.sharedplanner.user.UserRole;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
@@ -117,6 +119,51 @@ public class EventService {
         return eventRepository.findByCalendarIdAndStartsAtLessThanAndEndsAtGreaterThanOrderByStartsAtAsc(calendarId, end, start)
                 .stream()
                 .map(EventResponse::from)
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<EventSearchResponse> search(String term, Integer limit, Authentication authentication) {
+        String normalizedTerm = term == null ? "" : term.trim();
+
+        if (normalizedTerm.length() < 2) {
+            return List.of();
+        }
+
+        int pageSize = limit == null ? 20 : limit;
+        pageSize = Math.max(1, Math.min(pageSize, 50));
+
+        Pageable pageable = PageRequest.of(0, pageSize);
+        User currentUser = currentUser(authentication);
+
+        List<Event> events;
+        if (currentUser.getRole() == UserRole.ADMIN) {
+            events = eventRepository.searchVisibleEventsForAdmin(
+                    normalizedTerm,
+                    EventStatus.CANCELLED,
+                    pageable
+            );
+        } else {
+            List<UUID> visibleCalendarIds = memberRepository.findByUserEmailIgnoreCase(currentUser.getEmail())
+                    .stream()
+                    .map(member -> member.getCalendar().getId())
+                    .distinct()
+                    .toList();
+
+            if (visibleCalendarIds.isEmpty()) {
+                return List.of();
+            }
+
+            events = eventRepository.searchVisibleEventsForMember(
+                    visibleCalendarIds,
+                    normalizedTerm,
+                    EventStatus.CANCELLED,
+                    pageable
+            );
+        }
+
+        return events.stream()
+                .map(EventSearchResponse::from)
                 .toList();
     }
 

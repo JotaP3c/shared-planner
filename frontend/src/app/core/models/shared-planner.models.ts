@@ -83,6 +83,21 @@ export interface EventResponse {
   endsAt: string;
 }
 
+export interface EventSearchResponse {
+  id: string;
+  calendarId: string;
+  calendarName: string;
+  createdByEmail: string;
+  approvalRequestedFromEmail: string | null;
+  eventType: EventType;
+  status: EventStatus;
+  title: string;
+  clientName: string | null;
+  personName: string | null;
+  startsAt: string;
+  endsAt: string;
+}
+
 export interface CreateEventRequest {
   calendarId: string;
   eventType: EventType;

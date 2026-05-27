@@ -262,9 +262,14 @@
             }
           </article>
         } @empty {
-          <p class="empty-state">
+          <div class="pending-empty-state">
+            <div class="pending-empty-illustration" aria-hidden="true">
+              <span></span>
+            </div>
+            <p>
             Nenhuma pendência encontrada para o período atual.
-          </p>
+            </p>
+          </div>
         }
       </div>
 
@@ -444,7 +449,7 @@
         (click)="$event.stopPropagation()"
       >
         <header class="event-detail-header">
-          <div>
+          <div class="event-detail-heading">
             <div class="event-badge-row">
               <span
                 class="event-type-pill"
@@ -466,8 +471,20 @@
               </span>
             </div>
 
-            <h2>{{ event.title }}</h2>
-            <p>{{ calendarName(event.calendarId) }}</p>
+            <div class="event-title-row">
+              <div
+                class="event-detail-avatar"
+                [style.background]="eventAvatarColor(event).bg"
+                [style.color]="eventAvatarColor(event).text"
+              >
+                {{ eventAvatarInitials(event) }}
+              </div>
+
+              <div>
+                <h2>{{ event.title }}</h2>
+                <p>{{ calendarName(event.calendarId) }}</p>
+              </div>
+            </div>
           </div>
 
           <button class="detail-close" type="button" aria-label="Fechar" (click)="closeEventDetails()">
@@ -477,60 +494,60 @@
 
         <div class="event-detail-body">
           <dl class="event-detail-grid">
-            <div>
+            <div class="detail-card detail-start">
               <dt>Inicio</dt>
               <dd>{{ formatDateTime(event.startsAt) }}</dd>
             </div>
 
-            <div>
+            <div class="detail-card detail-end">
               <dt>Fim</dt>
               <dd>{{ formatDateTime(event.endsAt) }}</dd>
             </div>
 
-            <div>
+            <div class="detail-card detail-created">
               <dt>Criado por</dt>
               <dd>{{ event.createdByEmail }}</dd>
             </div>
 
             @if (event.clientName) {
-              <div>
+              <div class="detail-card detail-client">
                 <dt>Cliente</dt>
                 <dd>{{ event.clientName }}</dd>
               </div>
             }
 
             @if (event.personName) {
-              <div>
+              <div class="detail-card detail-person">
                 <dt>Pessoa</dt>
                 <dd>{{ event.personName }}</dd>
               </div>
             }
 
             @if (event.amount !== null) {
-              <div>
+              <div class="detail-card detail-amount">
                 <dt>Valor</dt>
                 <dd>{{ formatMoney(event.amount) }}</dd>
               </div>
             }
 
             @if (event.eventType === 'CLIENT') {
-              <div>
+              <div class="detail-card detail-payment">
                 <dt>Pagamento</dt>
                 <dd>{{ paymentStatusLabel(event.paymentStatus) }}</dd>
               </div>
 
-              <div>
+              <div class="detail-card detail-received">
                 <dt>Recebido</dt>
                 <dd>{{ formatMoney(event.receivedAmount) }}</dd>
               </div>
 
-              <div>
+              <div class="detail-card detail-method">
                 <dt>Forma</dt>
                 <dd>{{ paymentMethodLabel(event.paymentMethod) }}</dd>
               </div>
 
               @if (event.paidAt) {
-                <div>
+                <div class="detail-card detail-paid">
                   <dt>Pago em</dt>
                   <dd>{{ formatDateTime(event.paidAt) }}</dd>
                 </div>
@@ -538,21 +555,21 @@
             }
 
             @if (event.approvalRequestedFromEmail) {
-              <div>
+              <div class="detail-card detail-approval">
                 <dt>Aprovacao pendente</dt>
                 <dd>{{ event.approvalRequestedFromEmail }}</dd>
               </div>
             }
 
             @if (event.description) {
-              <div class="detail-wide">
+              <div class="detail-card detail-description detail-wide">
                 <dt>Descricao</dt>
                 <dd>{{ event.description }}</dd>
               </div>
             }
 
             @if (event.workDescription) {
-              <div class="detail-wide">
+              <div class="detail-card detail-work detail-wide">
                 <dt>Servico</dt>
                 <dd>{{ event.workDescription }}</dd>
               </div>
@@ -665,6 +682,7 @@
                 [disabled]="isUpdatingApproval() || isUpdatingPayment()"
                 (click)="togglePaymentForm(event)"
               >
+                <span class="action-icon payment-action-icon" aria-hidden="true"></span>
                 Pagamento
               </button>
             }
@@ -675,6 +693,7 @@
               [disabled]="isUpdatingApproval()"
               (click)="openEditEventModal(event)"
             >
+              <span class="action-icon edit-action-icon" aria-hidden="true"></span>
               Editar evento
             </button>
 
@@ -684,6 +703,7 @@
               [disabled]="isDeletingEvent() || isUpdatingApproval()"
               (click)="deleteSelectedEvent()"
             >
+              <span class="action-icon delete-action-icon" aria-hidden="true"></span>
               {{ isDeletingEvent() ? 'Cancelando...' : 'Cancelar/desmarcar' }}
             </button>
           }

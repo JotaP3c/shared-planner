@@ -1408,6 +1408,23 @@ export class CalendarPage implements OnInit, AfterViewInit {
     return colors[type];
   }
 
+  eventAvatarInitials(event: EventResponse): string {
+    const source = event.clientName || event.personName || event.title || event.createdByEmail;
+    const initials = source
+      .split(/\s+/)
+      .filter(Boolean)
+      .slice(0, 2)
+      .map(part => part.charAt(0))
+      .join('')
+      .toUpperCase();
+
+    return initials || 'EV';
+  }
+
+  eventAvatarColor(event: EventResponse): { bg: string; text: string } {
+    return this.avatarColor(event.clientName || event.personName || event.createdByEmail);
+  }
+
   avatarColor(email: string): { bg: string; text: string } {
     let hash = 0;
     for (let i = 0; i < email.length; i++) hash += email.charCodeAt(i);

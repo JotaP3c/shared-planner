@@ -491,6 +491,10 @@
   align-content: start;
 }
 
+.pending-list:has(.pending-empty-state) {
+  align-content: stretch;
+}
+
 .pending-item {
   position: relative;
   display: grid;
@@ -547,13 +551,6 @@
   height: 8px;
   border-radius: 50%;
   background: #2457e6;
-}
-
-.empty-state {
-  margin: 18px 0;
-  color: #60749e;
-  font-size: 13px;
-  line-height: 1.5;
 }
 
 .secondary-button {

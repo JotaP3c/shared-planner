@@ -233,6 +233,28 @@
               <strong>{{ event.createdByEmail }}</strong>
               <p>{{ event.title }}</p>
               <small>{{ formatDateTime(event.startsAt) }}</small>
+
+              @if (canRespondToEvent(event)) {
+                <div class="pending-card-actions">
+                  <button
+                    class="pending-action-button approve"
+                    type="button"
+                    [disabled]="pendingActionEventId() === event.id"
+                    (click)="approvePendingEvent(event, $event)"
+                  >
+                    Aprovar
+                  </button>
+
+                  <button
+                    class="pending-action-button reject"
+                    type="button"
+                    [disabled]="pendingActionEventId() === event.id"
+                    (click)="rejectPendingEvent(event, $event)"
+                  >
+                    Reprovar
+                  </button>
+                </div>
+              }
             </div>
 
             @if (!isPendingRead(event.id)) {
@@ -246,7 +268,7 @@
         }
       </div>
 
-      <button class="secondary-button" type="button">
+      <button class="secondary-button" type="button" (click)="openPendingPage()">
         Ver todas as pendências
       </button>
       </aside>
@@ -453,68 +475,166 @@
           </button>
         </header>
 
-        <dl class="event-detail-grid">
-          <div>
-            <dt>Inicio</dt>
-            <dd>{{ formatDateTime(event.startsAt) }}</dd>
-          </div>
-
-          <div>
-            <dt>Fim</dt>
-            <dd>{{ formatDateTime(event.endsAt) }}</dd>
-          </div>
-
-          <div>
-            <dt>Criado por</dt>
-            <dd>{{ event.createdByEmail }}</dd>
-          </div>
-
-          @if (event.clientName) {
+        <div class="event-detail-body">
+          <dl class="event-detail-grid">
             <div>
-              <dt>Cliente</dt>
-              <dd>{{ event.clientName }}</dd>
+              <dt>Inicio</dt>
+              <dd>{{ formatDateTime(event.startsAt) }}</dd>
             </div>
-          }
 
-          @if (event.personName) {
             <div>
-              <dt>Pessoa</dt>
-              <dd>{{ event.personName }}</dd>
+              <dt>Fim</dt>
+              <dd>{{ formatDateTime(event.endsAt) }}</dd>
             </div>
-          }
 
-          @if (event.amount !== null) {
             <div>
-              <dt>Valor</dt>
-              <dd>{{ formatMoney(event.amount) }}</dd>
+              <dt>Criado por</dt>
+              <dd>{{ event.createdByEmail }}</dd>
             </div>
+
+            @if (event.clientName) {
+              <div>
+                <dt>Cliente</dt>
+                <dd>{{ event.clientName }}</dd>
+              </div>
+            }
+
+            @if (event.personName) {
+              <div>
+                <dt>Pessoa</dt>
+                <dd>{{ event.personName }}</dd>
+              </div>
+            }
+
+            @if (event.amount !== null) {
+              <div>
+                <dt>Valor</dt>
+                <dd>{{ formatMoney(event.amount) }}</dd>
+              </div>
+            }
+
+            @if (event.eventType === 'CLIENT') {
+              <div>
+                <dt>Pagamento</dt>
+                <dd>{{ paymentStatusLabel(event.paymentStatus) }}</dd>
+              </div>
+
+              <div>
+                <dt>Recebido</dt>
+                <dd>{{ formatMoney(event.receivedAmount) }}</dd>
+              </div>
+
+              <div>
+                <dt>Forma</dt>
+                <dd>{{ paymentMethodLabel(event.paymentMethod) }}</dd>
+              </div>
+
+              @if (event.paidAt) {
+                <div>
+                  <dt>Pago em</dt>
+                  <dd>{{ formatDateTime(event.paidAt) }}</dd>
+                </div>
+              }
+            }
+
+            @if (event.approvalRequestedFromEmail) {
+              <div>
+                <dt>Aprovacao pendente</dt>
+                <dd>{{ event.approvalRequestedFromEmail }}</dd>
+              </div>
+            }
+
+            @if (event.description) {
+              <div class="detail-wide">
+                <dt>Descricao</dt>
+                <dd>{{ event.description }}</dd>
+              </div>
+            }
+
+            @if (event.workDescription) {
+              <div class="detail-wide">
+                <dt>Servico</dt>
+                <dd>{{ event.workDescription }}</dd>
+              </div>
+            }
+          </dl>
+
+          @if (event.eventType === 'CLIENT' && isPaymentFormOpen()) {
+            <form class="payment-form" [formGroup]="paymentForm" (ngSubmit)="submitPaymentForm()">
+              <header>
+                <div>
+                  <strong>Atualizar pagamento</strong>
+                  <span>Use somente para eventos de cliente.</span>
+                </div>
+              </header>
+
+              <div class="payment-fields">
+                <label>
+                  Status
+                  <select formControlName="paymentStatus">
+                    @for (option of paymentStatusOptions; track option.value) {
+                      <option [value]="option.value">{{ option.label }}</option>
+                    }
+                  </select>
+                </label>
+
+                <label>
+                  Forma
+                  @if (isPaymentMethodRequired()) {
+                    <span class="required-pill">obrigatorio</span>
+                  }
+                  <select formControlName="paymentMethod">
+                    <option value="">Nao informado</option>
+                    @for (option of paymentMethodOptions; track option.value) {
+                      <option [value]="option.value">{{ option.label }}</option>
+                    }
+                  </select>
+                </label>
+
+                <label>
+                  Valor recebido
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    formControlName="receivedAmount"
+                    [readonly]="isReceivedAmountReadOnly()"
+                  />
+                </label>
+
+                <label>
+                  Pago em
+                  <input type="datetime-local" formControlName="paidAt" />
+                </label>
+              </div>
+
+              <p class="payment-hint">{{ paymentFormHint() }}</p>
+
+              @if (paymentFormError()) {
+                <p class="detail-error">{{ paymentFormError() }}</p>
+              }
+
+              <footer>
+                <button
+                  class="ghost-button"
+                  type="button"
+                  [disabled]="isUpdatingPayment()"
+                  (click)="isPaymentFormOpen.set(false)"
+                >
+                  Fechar
+                </button>
+
+                <button class="save-button" type="submit" [disabled]="isUpdatingPayment()">
+                  {{ isUpdatingPayment() ? 'Salvando...' : 'Salvar pagamento' }}
+                </button>
+              </footer>
+            </form>
           }
 
-          @if (event.approvalRequestedFromEmail) {
-            <div>
-              <dt>Aprovacao pendente</dt>
-              <dd>{{ event.approvalRequestedFromEmail }}</dd>
-            </div>
+          @if (eventDetailError()) {
+            <p class="detail-error">{{ eventDetailError() }}</p>
           }
-
-          @if (event.description) {
-            <div class="detail-wide">
-              <dt>Descricao</dt>
-              <dd>{{ event.description }}</dd>
-            </div>
-          }
-
-          @if (event.workDescription) {
-            <div class="detail-wide">
-              <dt>Servico</dt>
-              <dd>{{ event.workDescription }}</dd>
-            </div>
-          }
-        </dl>
-
-        @if (eventDetailError()) {
-          <p class="detail-error">{{ eventDetailError() }}</p>
-        }
+        </div>
 
         <footer class="event-detail-actions">
           @if (canRespondToSelectedEvent()) {
@@ -538,6 +658,17 @@
           }
 
           @if (canEditEvent(event)) {
+            @if (event.eventType === 'CLIENT') {
+              <button
+                class="ghost-button"
+                type="button"
+                [disabled]="isUpdatingApproval() || isUpdatingPayment()"
+                (click)="togglePaymentForm(event)"
+              >
+                Pagamento
+              </button>
+            }
+
             <button
               class="ghost-button"
               type="button"

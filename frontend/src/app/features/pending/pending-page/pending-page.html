@@ -1,1 +1,97 @@
-<p>pending-page works!</p>
+<section class="pending-page">
+  <header class="pending-hero">
+    <div>
+      <span>Fila de aprovacoes</span>
+      <h1>Pendencias</h1>
+      <p>Acompanhe os eventos compartilhados que aguardam resposta.</p>
+    </div>
+
+    <button type="button" (click)="loadPendingEvents()" [disabled]="isLoading()">
+      {{ isLoading() ? 'Atualizando...' : 'Atualizar' }}
+    </button>
+  </header>
+
+  @if (errorMessage()) {
+    <p class="pending-error">{{ errorMessage() }}</p>
+  }
+
+  <article class="pending-board">
+    <header>
+      <div>
+        <strong>{{ pendingCount() }} item(ns)</strong>
+        <span>Somente o usuario solicitado pode aprovar ou reprovar.</span>
+      </div>
+    </header>
+
+    <div class="pending-list">
+      @for (event of pendingEvents(); track event.id) {
+        <section class="pending-card">
+          <div class="pending-avatar">
+            {{ emailInitials(event.createdByEmail) }}
+          </div>
+
+          <div class="pending-content">
+            <div class="pending-title-row">
+              <div>
+                <span class="event-kind">{{ eventTypeLabel(event) }}</span>
+                <h2>{{ eventTitle(event) }}</h2>
+              </div>
+
+              <strong>{{ formatDateTime(event.startsAt) }}</strong>
+            </div>
+
+            <dl>
+              <div>
+                <dt>Criado por</dt>
+                <dd>{{ event.createdByEmail }}</dd>
+              </div>
+
+              <div>
+                <dt>Aprovacao solicitada para</dt>
+                <dd>{{ event.approvalRequestedFromEmail || '-' }}</dd>
+              </div>
+
+              @if (event.description) {
+                <div class="wide">
+                  <dt>Descricao</dt>
+                  <dd>{{ event.description }}</dd>
+                </div>
+              }
+            </dl>
+
+            <footer>
+              <button class="ghost-button" type="button" (click)="openInCalendar(event)">
+                Abrir no calendario
+              </button>
+
+              @if (canRespond(event)) {
+                <button
+                  class="save-button"
+                  type="button"
+                  [disabled]="actionEventId() === event.id"
+                  (click)="approve(event)"
+                >
+                  Aprovar
+                </button>
+
+                <button
+                  class="danger-button"
+                  type="button"
+                  [disabled]="actionEventId() === event.id"
+                  (click)="reject(event)"
+                >
+                  Reprovar
+                </button>
+              }
+            </footer>
+          </div>
+        </section>
+      } @empty {
+        <div class="pending-empty">
+          <strong>Nenhuma pendencia encontrada.</strong>
+          <p>Quando um evento compartilhado depender de aprovacao, ele aparecera aqui.</p>
+        </div>
+      }
+    </div>
+  </article>
+</section>

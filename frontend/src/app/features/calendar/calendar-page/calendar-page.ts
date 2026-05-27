@@ -1,14 +1,14 @@
 import { AfterViewInit, Component, DestroyRef, OnInit, ViewChild, computed, effect, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { FullCalendarComponent, FullCalendarModule } from '@fullcalendar/angular';
 import { CalendarOptions, DatesSetArg, EventInput } from '@fullcalendar/core';
 import ptBrLocale from '@fullcalendar/core/locales/pt-br';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import interactionPlugin from '@fullcalendar/interaction';
 import timeGridPlugin from '@fullcalendar/timegrid';
-import { catchError, finalize, forkJoin, map, of } from 'rxjs';
+import { catchError, distinctUntilChanged, finalize, forkJoin, map, of } from 'rxjs';
 
 import { CalendarService } from '../../../core/api/calendar.service';
 import { EventService } from '../../../core/api/event.service';
@@ -19,7 +19,10 @@ import {
   CreateEventRequest,
   EventResponse,
   EventType,
+  PaymentMethod,
+  PaymentStatus,
   UpdateEventRequest,
+  UpdatePaymentRequest,
 } from '../../../core/models/shared-planner.models';
 
 type CalendarViewName = 'dayGridMonth' | 'timeGridWeek' | 'timeGridDay';
@@ -39,6 +42,7 @@ export class CalendarPage implements OnInit, AfterViewInit {
   private readonly authService = inject(AuthService);
   private readonly formBuilder = inject(NonNullableFormBuilder);
   private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
   private pendingSearchTarget: { eventId: string; calendarId: string; date: string } | null = null;
 
@@ -52,6 +56,10 @@ export class CalendarPage implements OnInit, AfterViewInit {
   readonly isEditMode = signal(false);
   readonly isDeletingEvent = signal(false);
   readonly isUpdatingApproval = signal(false);
+  readonly isUpdatingPayment = signal(false);
+  readonly isPaymentFormOpen = signal(false);
+  readonly paymentFormError = signal('');
+  readonly pendingActionEventId = signal<string | null>(null);
 
   readonly eventForm = this.formBuilder.group({
     calendarId: ['', Validators.required],
@@ -66,6 +74,13 @@ export class CalendarPage implements OnInit, AfterViewInit {
     startTime: ['', Validators.required],
     endTime: ['', Validators.required],
     approvalRequestedFromEmail: [''],
+  });
+
+  readonly paymentForm = this.formBuilder.group({
+    paymentStatus: ['PENDING' as PaymentStatus, Validators.required],
+    paymentMethod: ['' as PaymentMethod | ''],
+    receivedAmount: [''],
+    paidAt: [''],
   });
 
   readonly calendars = signal<CalendarResponse[]>([]);
@@ -88,6 +103,23 @@ export class CalendarPage implements OnInit, AfterViewInit {
     { value: 'CLIENT', label: 'Cliente' },
     { value: 'PERSONAL', label: 'Pessoal' },
     { value: 'SHARED', label: 'Compartilhado' },
+  ];
+
+  readonly paymentStatusOptions: Array<{ value: PaymentStatus; label: string }> = [
+    { value: 'PENDING', label: 'Pendente' },
+    { value: 'PARTIALLY_PAID', label: 'Pago parcialmente' },
+    { value: 'PAID', label: 'Pago' },
+    { value: 'REFUNDED', label: 'Estornado' },
+  ];
+
+  readonly paymentMethodOptions: Array<{ value: PaymentMethod; label: string }> = [
+    { value: 'CASH', label: 'Dinheiro' },
+    { value: 'PIX', label: 'PIX' },
+    { value: 'CREDIT_CARD', label: 'Cartao de credito' },
+    { value: 'DEBIT_CARD', label: 'Cartao de debito' },
+    { value: 'BANK_TRANSFER', label: 'Transferencia' },
+    { value: 'MERCADO_PAGO', label: 'Mercado Pago' },
+    { value: 'OTHER', label: 'Outro' },
   ];
 
   private readonly CALENDAR_COLORS: Array<{ bg: string; text: string; border: string }> = [
@@ -270,6 +302,10 @@ export class CalendarPage implements OnInit, AfterViewInit {
         this.openSearchTarget();
       });
 
+    this.paymentForm.controls.paymentStatus.valueChanges
+      .pipe(distinctUntilChanged(), takeUntilDestroyed(this.destroyRef))
+      .subscribe(status => this.applyPaymentStatusDefaults(status));
+
     this.loadPendingApprovals();
     this.loadCalendars();
   }
@@ -377,17 +413,26 @@ export class CalendarPage implements OnInit, AfterViewInit {
     this.isPendingPanelCollapsed.set(!this.isPendingPanelCollapsed());
   }
 
+  openPendingPage(): void {
+    this.router.navigate(['/pending']);
+  }
+
   openEventDetails(event: EventResponse): void {
     this.eventDetailError.set('');
+    this.paymentFormError.set('');
+    this.isPaymentFormOpen.set(false);
+    this.resetPaymentForm(event);
     this.selectedEvent.set(event);
   }
 
   closeEventDetails(): void {
-    if (this.isDeletingEvent() || this.isUpdatingApproval()) {
+    if (this.isDeletingEvent() || this.isUpdatingApproval() || this.isUpdatingPayment()) {
       return;
     }
 
     this.eventDetailError.set('');
+    this.paymentFormError.set('');
+    this.isPaymentFormOpen.set(false);
     this.selectedEvent.set(null);
   }
 
@@ -613,6 +658,11 @@ export class CalendarPage implements OnInit, AfterViewInit {
     this.respondToSelectedEvent('approve');
   }
 
+  approvePendingEvent(event: EventResponse, mouseEvent: MouseEvent): void {
+    mouseEvent.stopPropagation();
+    this.respondToEvent(event, 'approve');
+  }
+
   rejectSelectedEvent(): void {
     const event = this.selectedEvent();
 
@@ -627,6 +677,83 @@ export class CalendarPage implements OnInit, AfterViewInit {
     }
 
     this.respondToSelectedEvent('reject');
+  }
+
+  rejectPendingEvent(event: EventResponse, mouseEvent: MouseEvent): void {
+    mouseEvent.stopPropagation();
+
+    const confirmed = window.confirm(`Deseja reprovar o evento "${event.title}"?`);
+
+    if (!confirmed) {
+      return;
+    }
+
+    this.respondToEvent(event, 'reject');
+  }
+
+  togglePaymentForm(event: EventResponse): void {
+    this.paymentFormError.set('');
+
+    const shouldOpen = !this.isPaymentFormOpen();
+
+    if (shouldOpen) {
+      this.resetPaymentForm(event);
+    }
+
+    this.isPaymentFormOpen.set(shouldOpen);
+  }
+
+  submitPaymentForm(): void {
+    const event = this.selectedEvent();
+
+    if (!event || event.eventType !== 'CLIENT' || !this.canEditEvent(event)) {
+      return;
+    }
+
+    this.paymentFormError.set('');
+
+    if (this.paymentForm.invalid) {
+      this.paymentForm.markAllAsTouched();
+      this.paymentFormError.set('Informe o status do pagamento.');
+      return;
+    }
+
+    const raw = this.paymentForm.getRawValue();
+    const receivedAmount = this.parseAmount(raw.receivedAmount);
+    const paidAt = this.cleanText(raw.paidAt);
+
+    const request: UpdatePaymentRequest = {
+      paymentStatus: raw.paymentStatus,
+      paymentMethod: raw.paymentMethod || null,
+      receivedAmount,
+      paidAt: paidAt ? `${paidAt}:00` : null,
+    };
+
+    const validationMessage = this.validatePaymentForm(event, request);
+
+    if (validationMessage) {
+      this.paymentFormError.set(validationMessage);
+      return;
+    }
+
+    this.isUpdatingPayment.set(true);
+
+    this.eventService
+      .updatePayment(event.id, request)
+      .pipe(finalize(() => this.isUpdatingPayment.set(false)))
+      .subscribe({
+        next: updatedEvent => {
+          this.updateEventInState(updatedEvent);
+          this.selectedEvent.set(updatedEvent);
+          this.resetPaymentForm(updatedEvent);
+          this.isPaymentFormOpen.set(false);
+        },
+        error: error => {
+          this.paymentFormError.set(
+            this.extractErrorMessage(error, 'Nao foi possivel atualizar o pagamento deste evento.'),
+          );
+        },
+      });
   }
 
   calendarName(calendarId: string): string {
@@ -647,6 +774,64 @@ export class CalendarPage implements OnInit, AfterViewInit {
     };
 
     return labels[status] ?? status;
+  }
+
+  paymentStatusLabel(status: PaymentStatus | null): string {
+    if (!status) {
+      return 'Nao informado';
+    }
+
+    return this.paymentStatusOptions.find(option => option.value === status)?.label ?? status;
+  }
+
+  paymentMethodLabel(method: PaymentMethod | null): string {
+    if (!method) {
+      return 'Nao informado';
+    }
+
+    return this.paymentMethodOptions.find(option => option.value === method)?.label ?? method;
+  }
+
+  paymentFormHint(): string {
+    const status = this.paymentForm.controls.paymentStatus.value;
+    const event = this.selectedEvent();
+    const amount = event?.amount ?? null;
+    const amountText = amount === null ? 'o valor total do evento' : this.formatMoney(amount);
+
+    if (status === 'PAID') {
+      return `Ao marcar como pago, o valor recebido deve ser ${amountText}. Informe tambem a forma de pagamento.`;
+    }
+
+    if (status === 'PARTIALLY_PAID') {
+      return `Para pagamento parcial, informe um valor maior que zero e menor que ${amountText}.`;
+    }
+
+    if (status === 'REFUNDED') {
+      return 'Para estorno, mantenha o valor recebido zerado.';
+    }
+
+    return 'Pagamento pendente deve ficar sem valor recebido e sem data de pagamento.';
+  }
+
+  isPaymentMethodRequired(): boolean {
+    const status = this.paymentForm.controls.paymentStatus.value;
+
+    return status === 'PAID' || status === 'PARTIALLY_PAID';
+  }
+
+  isReceivedAmountReadOnly(): boolean {
+    const status = this.paymentForm.controls.paymentStatus.value;
+
+    return status === 'PENDING' || status === 'REFUNDED';
+  }
+
+  canRespondToEvent(event: EventResponse): boolean {
+    const currentUser = this.currentUser();
+
+    return !!currentUser
+      && event.status === 'PENDING_APPROVAL'
+      && !!event.approvalRequestedFromEmail
+      && event.approvalRequestedFromEmail.toLowerCase() === currentUser.email.toLowerCase();
   }
 
   isPendingRead(eventId: string): boolean {
@@ -736,6 +921,14 @@ export class CalendarPage implements OnInit, AfterViewInit {
     return `${pad(date.getHours())}:${pad(date.getMinutes())}`;
   }
 
+  private toInputDateTime(date: Date): string {
+    return `${this.toInputDate(date)}T${this.toInputTime(date)}`;
+  }
+
+  private nowInputDateTime(): string {
+    return this.toInputDateTime(new Date());
+  }
+
   private addMinutes(date: Date, minutes: number): Date {
     return new Date(date.getTime() + minutes * 60 * 1000);
   }
@@ -754,6 +947,112 @@ export class CalendarPage implements OnInit, AfterViewInit {
     const amount = Number(normalized);
 
     return Number.isFinite(amount) ? amount : null;
+  }
+
+  private formatAmountForInput(amount: number): string {
+    return amount.toFixed(2);
+  }
+
+  private sameAmount(left: number, right: number): boolean {
+    return Math.round(left * 100) === Math.round(right * 100);
+  }
+
+  private applyPaymentStatusDefaults(status: PaymentStatus): void {
+    const event = this.selectedEvent();
+    const controls = this.paymentForm.controls;
+    const patch: Partial<{
+      paymentMethod: PaymentMethod | '';
+      receivedAmount: string;
+      paidAt: string;
+    }> = {};
+
+    if (status === 'PAID') {
+      if (event?.amount !== null && event?.amount !== undefined) {
+        patch.receivedAmount = this.formatAmountForInput(event.amount);
+      }
+
+      if (!this.cleanText(controls.paidAt.value)) {
+        patch.paidAt = this.nowInputDateTime();
+      }
+    }
+
+    if (status === 'PARTIALLY_PAID') {
+      const currentAmount = this.parseAmount(controls.receivedAmount.value);
+
+      if (
+        event?.amount !== null
+        && event?.amount !== undefined
+        && currentAmount !== null
+        && this.sameAmount(currentAmount, event.amount)
+      ) {
+        patch.receivedAmount = '';
+      }
+
+      if (!this.cleanText(controls.paidAt.value)) {
+        patch.paidAt = this.nowInputDateTime();
+      }
+    }
+
+    if (status === 'PENDING' || status === 'REFUNDED') {
+      patch.paymentMethod = '';
+      patch.receivedAmount = '';
+      patch.paidAt = '';
+    }
+
+    if (Object.keys(patch).length) {
+      this.paymentForm.patchValue(patch, { emitEvent: false });
+    }
+
+    this.paymentFormError.set('');
+  }
+
+  private validatePaymentForm(event: EventResponse, request: UpdatePaymentRequest): string | null {
+    const receivedAmount = request.receivedAmount ?? 0;
+    const eventAmount = event.amount;
+
+    if (request.paymentStatus === 'PAID') {
+      if (eventAmount === null) {
+        return 'Informe o valor total do evento antes de marcar como pago.';
+      }
+
+      if (!request.paymentMethod) {
+        return 'Informe a forma de pagamento para marcar como pago.';
+      }
+
+      if (!this.sameAmount(receivedAmount, eventAmount)) {
+        return `Para marcar como pago, o valor recebido deve ser ${this.formatMoney(eventAmount)}.`;
+      }
+    }
+
+    if (request.paymentStatus === 'PARTIALLY_PAID') {
+      if (eventAmount === null) {
+        return 'Informe o valor total do evento antes de marcar como pago parcialmente.';
+      }
+
+      if (!request.paymentMethod) {
+        return 'Informe a forma de pagamento para pagamento parcial.';
+      }
+
+      if (receivedAmount <= 0 || receivedAmount >= eventAmount) {
+        return `O pagamento parcial precisa ser maior que zero e menor que ${this.formatMoney(eventAmount)}.`;
+      }
+    }
+
+    if (request.paymentStatus === 'PENDING') {
+      if (receivedAmount > 0) {
+        return 'Pagamento pendente nao pode ter valor recebido.';
+      }
+
+      if (request.paidAt) {
+        return 'Pagamento pendente nao pode ter data de pagamento.';
+      }
+    }
+
+    if (request.paymentStatus === 'REFUNDED' && receivedAmount > 0) {
+      return 'Pagamento estornado nao pode manter valor recebido.';
+    }
+
+    return null;
   }
 
   private extractErrorMessage(error: unknown, fallbackMessage: string): string {
@@ -855,20 +1154,40 @@ export class CalendarPage implements OnInit, AfterViewInit {
     this.eventDetailError.set('');
     this.isUpdatingApproval.set(true);
 
+    this.respondToEvent(event, action, () => this.isUpdatingApproval.set(false));
+  }
+
+  private respondToEvent(
+    event: EventResponse,
+    action: 'approve' | 'reject',
+    onDone?: () => void,
+  ): void {
+    if (!this.canRespondToEvent(event)) {
+      return;
+    }
+
+    this.pendingActionEventId.set(event.id);
+
     const request = action === 'approve'
       ? this.eventService.approve(event.id)
       : this.eventService.reject(event.id);
 
     request
-      .pipe(finalize(() => this.isUpdatingApproval.set(false)))
+      .pipe(finalize(() => {
+        this.pendingActionEventId.set(null);
+        onDone?.();
+      }))
       .subscribe({
         next: updatedEvent => {
-          this.events.update(events =>
-            events.map(currentEvent =>
-              currentEvent.id === updatedEvent.id ? updatedEvent : currentEvent,
-            ),
+          this.updateEventInState(updatedEvent);
+          this.pendingApprovals.update(events =>
+            events.filter(currentEvent => currentEvent.id !== updatedEvent.id),
           );
-          this.selectedEvent.set(updatedEvent);
+
+          if (this.selectedEvent()?.id === updatedEvent.id) {
+            this.selectedEvent.set(updatedEvent);
+          }
+
           this.loadPendingApprovals();
         },
         error: error => {
@@ -876,9 +1195,32 @@ export class CalendarPage implements OnInit, AfterViewInit {
             ? 'Nao foi possivel aprovar este evento.'
             : 'Nao foi possivel reprovar este evento.';
 
-          this.eventDetailError.set(this.extractErrorMessage(error, fallback));
+          const message = this.extractErrorMessage(error, fallback);
+
+          if (this.selectedEvent()?.id === event.id) {
+            this.eventDetailError.set(message);
+          } else {
+            this.errorMessage.set(message);
+          }
         },
       });
+  }
+
+  private updateEventInState(updatedEvent: EventResponse): void {
+    this.events.update(events =>
+      events.map(currentEvent =>
+        currentEvent.id === updatedEvent.id ? updatedEvent : currentEvent,
+      ),
+    );
+  }
+
+  private resetPaymentForm(event: EventResponse): void {
+    this.paymentForm.reset({
+      paymentStatus: event.paymentStatus ?? 'PENDING',
+      paymentMethod: event.paymentMethod ?? '',
+      receivedAmount: event.receivedAmount === null ? '' : String(event.receivedAmount),
+      paidAt: event.paidAt ? this.toInputDateTime(new Date(event.paidAt)) : '',
+    }, { emitEvent: false });
   }
 
   private openSearchTarget(): void {

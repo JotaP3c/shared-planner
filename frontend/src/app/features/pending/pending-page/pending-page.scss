@@ -1,0 +1,232 @@
+:host {
+  display: block;
+}
+
+.pending-page {
+  display: grid;
+  gap: 18px;
+  color: #0b1f57;
+}
+
+.pending-hero,
+.pending-board {
+  border: 1px solid #dfe8f6;
+  border-radius: 12px;
+  background: #ffffff;
+  box-shadow: 0 16px 42px rgba(15, 50, 100, 0.055);
+}
+
+.pending-hero {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 24px 26px;
+}
+
+.pending-hero span {
+  color: #2457e6;
+  font-size: 12px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.pending-hero h1 {
+  margin: 5px 0;
+  font-size: 28px;
+  font-weight: 900;
+  line-height: 1.12;
+}
+
+.pending-hero p,
+.pending-board header span,
+.pending-empty p {
+  margin: 0;
+  color: #60749e;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.pending-hero button {
+  height: 42px;
+  min-width: 118px;
+  border: 1px solid #c8d9f8;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #2457e6;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.pending-hero button:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+.pending-error {
+  margin: 0;
+  padding: 12px 14px;
+  border: 1px solid #fecaca;
+  border-radius: 8px;
+  background: #fef2f2;
+  color: #dc2626;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.pending-board {
+  padding: 22px;
+}
+
+.pending-board > header {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid #edf2fb;
+}
+
+.pending-board header strong {
+  display: block;
+  margin-bottom: 3px;
+  font-size: 15px;
+  font-weight: 900;
+}
+
+.pending-list {
+  display: grid;
+  gap: 14px;
+  padding-top: 16px;
+}
+
+.pending-card {
+  display: grid;
+  grid-template-columns: 48px minmax(0, 1fr);
+  gap: 14px;
+  padding: 16px;
+  border: 1px solid #e5ecf7;
+  border-radius: 12px;
+  background: linear-gradient(180deg, #ffffff, #f8fbff);
+}
+
+.pending-avatar {
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  background: #dbeafe;
+  color: #1d4ed8;
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.pending-title-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.pending-title-row h2 {
+  margin: 6px 0 0;
+  font-size: 18px;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+}
+
+.pending-title-row strong {
+  flex: 0 0 auto;
+  color: #526a98;
+  font-size: 12px;
+}
+
+.event-kind {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  padding: 0 10px;
+  border-radius: 999px;
+  background: #eef2ff;
+  color: #2457e6;
+  font-size: 11px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.pending-card dl {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin: 14px 0 0;
+}
+
+.pending-card dl > div {
+  min-width: 0;
+  padding: 11px 12px;
+  border: 1px solid #e5ecf7;
+  border-radius: 9px;
+  background: #ffffff;
+}
+
+.pending-card .wide {
+  grid-column: 1 / -1;
+}
+
+.pending-card dt {
+  margin-bottom: 5px;
+  color: #60749e;
+  font-size: 11px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.pending-card dd {
+  margin: 0;
+  color: #0b1f57;
+  font-size: 13px;
+  font-weight: 800;
+  overflow-wrap: anywhere;
+}
+
+.pending-card footer {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.pending-empty {
+  display: grid;
+  place-items: center;
+  min-height: 260px;
+  padding: 40px 20px;
+  border: 1px dashed #c8d9f8;
+  border-radius: 12px;
+  text-align: center;
+}
+
+.pending-empty strong {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 18px;
+  font-weight: 900;
+}
+
+@media (max-width: 720px) {
+  .pending-hero,
+  .pending-title-row {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .pending-card,
+  .pending-card dl {
+    grid-template-columns: 1fr;
+  }
+
+  .pending-avatar {
+    display: none;
+  }
+}

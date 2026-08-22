@@ -1,59 +1,37 @@
-# SharedPlannerFrontend
+# Shared Planner Frontend
 
-This project was generated using [Angular CLI](https://github.com/angular/angular-cli) version 21.2.10.
+Cliente Angular 21 com SSR para autenticação, calendários compartilhados, eventos, aprovações, membros, financeiro e auditoria do Shared Planner.
 
-## Development server
+## Desenvolvimento local
 
-To start a local development server, run:
+Use os scripts versionados pelo projeto, sem depender de uma instalação global do Angular CLI:
 
-```bash
-ng serve
+```powershell
+cd C:\git\shared-planner-frontend
+npm.cmd ci
+npm.cmd start
 ```
 
-Once the server is running, open your browser and navigate to `http://localhost:4200/`. The application will automatically reload whenever you modify any of the source files.
+A aplicação fica em `http://localhost:4200`. O `proxy.conf.json` encaminha `/api` para o backend local em `http://localhost:8080`.
 
-## Code scaffolding
+## Testes e build
 
-Angular CLI includes powerful code scaffolding tools. To generate a new component, run:
-
-```bash
-ng generate component component-name
+```powershell
+npm.cmd test -- --watch=false
+npm.cmd run build
 ```
 
-For a complete list of available schematics (such as `components`, `directives`, or `pipes`), run:
+O build SSR é gravado em `dist/shared-planner-frontend`. Ainda não há suíte E2E instalada ou script E2E no `package.json`; o smoke de interface da infraestrutura é documentado pelo repositório de integração.
 
-```bash
-ng generate --help
+## Imagem Docker standalone
+
+```powershell
+cd C:\git\shared-planner-frontend
+docker build -t shared-planner-frontend .
 ```
 
-## Building
+A imagem executa o servidor SSR como usuário não privilegiado na porta interna `4000`. Para subir PostgreSQL, backend e frontend juntos, use `C:\git\shared-planner\compose.yaml`; ele injeta `BACKEND_URL=http://backend:8080` para o proxy SSR.
 
-To build the project run:
+## Fluxo multi-repositório
 
-```bash
-ng build
-```
-
-This will compile your project and store the build artifacts in the `dist/` directory. By default, the production build optimizes your application for performance and speed.
-
-## Running unit tests
-
-To execute unit tests with the [Vitest](https://vitest.dev/) test runner, use the following command:
-
-```bash
-ng test
-```
-
-## Running end-to-end tests
-
-For end-to-end (e2e) testing, run:
-
-```bash
-ng e2e
-```
-
-Angular CLI does not come with an end-to-end testing framework by default. You can choose one that suits your needs.
-
-## Additional Resources
-
-For more information on using the Angular CLI, including detailed command references, visit the [Angular CLI Overview and Command Reference](https://angular.dev/tools/cli) page.
+Este diretório é o repositório implantável do frontend. A cópia `C:\git\shared-planner\frontend` deve permanecer equivalente por caminho e SHA-256 usando os scripts de sincronização do repositório de integração.

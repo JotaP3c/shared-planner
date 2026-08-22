@@ -31,10 +31,10 @@ public class AuditLog {
     @Column(name = "summary", nullable = false, length = 500)
     private String summary;
 
-    @Column(name = "old_value", columnDefinition = "nvarchar(max)")
+    @Column(name = "old_value", columnDefinition = "text")
     private String oldValue;
 
-    @Column(name = "new_value", columnDefinition = "nvarchar(max)")
+    @Column(name = "new_value", columnDefinition = "text")
     private String newValue;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)

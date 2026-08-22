@@ -857,6 +857,10 @@ export class CalendarPage implements OnInit, AfterViewInit {
   }
 
   canEditEvent(event: EventResponse): boolean {
+    if (event.status === 'CANCELLED') {
+      return false;
+    }
+
     const currentUser = this.currentUser();
 
     if (!currentUser) {

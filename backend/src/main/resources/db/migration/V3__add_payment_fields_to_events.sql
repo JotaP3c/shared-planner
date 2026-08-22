@@ -1,13 +1,6 @@
-ALTER TABLE dbo.events
-ADD payment_status NVARCHAR(30) NOT NULL
-        CONSTRAINT df_events_payment_status DEFAULT ('PENDING'),
-    payment_method NVARCHAR(30) NULL,
-    received_amount DECIMAL(12, 2) NOT NULL
-        CONSTRAINT df_events_received_amount DEFAULT (0),
-    paid_at DATETIME2 NULL;
-GO
-
-ALTER TABLE dbo.events
-ADD CONSTRAINT ck_events_received_amount
-CHECK (received_amount >= 0);
-GO
+ALTER TABLE events
+    ADD COLUMN payment_status VARCHAR(30) NOT NULL DEFAULT 'PENDING',
+    ADD COLUMN payment_method VARCHAR(30) NULL,
+    ADD COLUMN received_amount NUMERIC(12,2) NOT NULL DEFAULT 0,
+    ADD COLUMN paid_at TIMESTAMP NULL,
+    ADD CONSTRAINT ck_events_received_amount CHECK (received_amount >= 0);

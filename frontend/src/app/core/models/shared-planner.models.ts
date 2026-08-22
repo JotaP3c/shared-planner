@@ -40,6 +40,7 @@ export type AuditAction =
   | 'DELETED'
   | 'APPROVED'
   | 'REJECTED'
+  | 'CANCELLED'
   | 'PAYMENT_UPDATED'
   | 'MEMBER_ADDED'
   | 'MEMBER_ROLE_UPDATED';
@@ -60,6 +61,13 @@ export interface AddCalendarMemberRequest {
   email: string;
   role: CalendarMemberRole;
 }
+
+export interface CalendarMemberResponse {
+  id: string; calendarId: string; userEmail: string; userFullName: string;
+  role: CalendarMemberRole; createdAt: string;
+}
+
+export interface UpdateCalendarMemberRequest { role: CalendarMemberRole; }
 
 export interface EventResponse {
   id: string;

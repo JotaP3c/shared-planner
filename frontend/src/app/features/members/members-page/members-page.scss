@@ -1,0 +1,14 @@
+.members-page { display: grid; gap: 20px; color: #172033; }
+.page-header { display: flex; justify-content: space-between; align-items: end; gap: 24px; }
+.page-header span { color: #64748b; font-size: 12px; font-weight: 700; letter-spacing: .12em; }
+.page-header h1 { margin: 5px 0; font-size: 28px; } .page-header p { margin: 0; color: #64748b; }
+label { display: grid; gap: 7px; color: #475569; font-size: 13px; font-weight: 600; }
+input, select { min-height: 40px; border: 1px solid #dbe2ea; border-radius: 9px; background: white; padding: 0 11px; color: #172033; }
+.add-member { display: grid; grid-template-columns: minmax(240px, 1fr) 180px auto; align-items: end; gap: 14px; padding: 18px; border: 1px solid #e2e8f0; border-radius: 14px; background: white; }
+button { min-height: 40px; border: 0; border-radius: 9px; padding: 0 16px; background: #2563eb; color: white; font-weight: 700; cursor: pointer; } button:disabled { opacity: .55; cursor: wait; }
+.members-card { overflow-x: auto; border: 1px solid #e2e8f0; border-radius: 14px; background: white; }
+table { width: 100%; border-collapse: collapse; } th, td { padding: 14px 16px; border-bottom: 1px solid #edf1f5; text-align: left; }
+th { color: #64748b; font-size: 12px; text-transform: uppercase; } td strong, td small { display: block; } td small { margin-top: 3px; color: #64748b; }
+.role { font-size: 13px; font-weight: 700; } .remove { background: #fff1f2; color: #be123c; }
+.message { margin: 0; padding: 11px 14px; border-radius: 9px; } .error { background: #fff1f2; color: #be123c; } .success { background: #ecfdf5; color: #047857; }
+.empty { padding: 24px; color: #64748b; text-align: center; } @media (max-width: 760px) { .page-header { align-items: stretch; flex-direction: column; } .add-member { grid-template-columns: 1fr; } }

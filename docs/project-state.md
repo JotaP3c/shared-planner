@@ -1,4 +1,7 @@
-# Project State - Shared Planner
+# Historical Project State - Shared Planner
+
+> [!IMPORTANT]
+> Este arquivo é um snapshot histórico anterior à migração para PostgreSQL, à conclusão dos fluxos de membros/pendências e à validação da infraestrutura multi-repositório. Ele não descreve o runtime atual. Consulte [Current State](sdd/01-current-state.md), [Validation Report](sdd/20-validation-report.md) e [Infrastructure Validation Report](sdd/29-infrastructure-validation-report.md) como fontes vigentes.
 
 ## General Overview
 

@@ -1,1 +1,14 @@
-<p>members-page works!</p>
+<section class="members-page">
+  <header class="page-header"><div><span>ADMINISTRAÇÃO</span><h1>Membros dos calendários</h1><p>Consulte participantes e gerencie permissões.</p></div><label>Calendário<select [value]="selectedCalendarId()" (change)="selectCalendar($any($event.target).value)">@for (calendar of calendars(); track calendar.id) { <option [value]="calendar.id">{{ calendar.name }}</option> }</select></label></header>
+  @if (errorMessage()) { <p class="message error">{{ errorMessage() }}</p> }
+  @if (successMessage()) { <p class="message success">{{ successMessage() }}</p> }
+  @if (canManage()) { <form class="add-member" (submit)="$event.preventDefault(); addMember()"><label>E-mail<input type="email" required [value]="memberEmail()" (input)="memberEmail.set($any($event.target).value)" placeholder="usuario@email.com" /></label><label>Papel<select [value]="memberRole()" (change)="memberRole.set($any($event.target).value)">@for (role of roles; track role) { <option [value]="role">{{ role }}</option> }</select></label><button type="submit" [disabled]="isSaving()">{{ isSaving() ? 'Salvando...' : 'Adicionar membro' }}</button></form> }
+  <div class="members-card">@if (isLoading()) { <p class="empty">Carregando...</p> } @else {
+    <table><thead><tr><th>Usuário</th><th>Papel</th><th>Entrada</th><th>Ações</th></tr></thead><tbody>
+      @for (member of members(); track member.id) { <tr><td><strong>{{ member.userFullName }}</strong><small>{{ member.userEmail }}</small></td><td>
+        @if (canManage() && !isOwner(member)) { <select [value]="member.role" [disabled]="actionMemberId() === member.id" (change)="updateRole(member, $any($event.target).value)">@for (role of roles; track role) { <option [value]="role">{{ role }}</option> }</select> } @else { <span class="role">{{ member.role }} @if (isOwner(member)) { · OWNER }</span> }
+      </td><td>{{ member.createdAt ? (member.createdAt | date:'short') : '—' }}</td><td>@if (canManage() && !isOwner(member)) { <button class="remove" type="button" [disabled]="actionMemberId() === member.id" (click)="removeMember(member)">Remover</button> } @else { — }</td></tr> }
+      @empty { <tr><td colspan="4" class="empty">Nenhum membro encontrado.</td></tr> }
+    </tbody></table> }
+  </div>
+</section>

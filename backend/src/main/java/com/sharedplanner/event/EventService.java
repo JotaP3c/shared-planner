@@ -231,6 +231,7 @@ public class EventService {
 
         Event event = event(eventId);
         authorizationService.ensureCanEditEvent(event, authentication);
+        ensureNotCancelled(event);
 
         User currentUser = currentUser(authentication);
         String oldValue = eventSnapshot(event);
@@ -274,22 +275,23 @@ public class EventService {
     public void delete(UUID eventId, Authentication authentication) {
         Event event = event(eventId);
         authorizationService.ensureCanEditEvent(event, authentication);
+        ensureNotCancelled(event);
 
         User currentUser = currentUser(authentication);
         String oldValue = eventSnapshot(event);
+
+        event.cancel(currentUser);
 
         auditService.log(
                 AuditEntityType.EVENT,
                 event.getId(),
                 event.getCalendar().getId(),
-                AuditAction.DELETED,
-                "Event deleted: " + event.getTitle(),
+                AuditAction.CANCELLED,
+                "Event cancelled: " + event.getTitle(),
                 oldValue,
-                null,
+                eventSnapshot(event),
                 currentUser
         );
-
-        eventRepository.delete(event);
     }
 
     @Transactional
@@ -345,6 +347,7 @@ public class EventService {
         Event event = event(eventId);
 
         authorizationService.ensureCanEditEvent(event, authentication);
+        ensureNotCancelled(event);
         User currentUser = currentUser(authentication);
 
         validatePayment(event, request);
@@ -476,6 +479,12 @@ public class EventService {
     private void validatePeriod(LocalDateTime startsAt, LocalDateTime endsAt) {
         if (startsAt == null || endsAt == null || !endsAt.isAfter(startsAt)) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Event end must be after start");
+        }
+    }
+
+    private void ensureNotCancelled(Event event) {
+        if (event.getStatus() == EventStatus.CANCELLED) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Cancelled events cannot be changed");
         }
     }
 

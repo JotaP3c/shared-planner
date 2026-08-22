@@ -49,10 +49,10 @@ public class Event {
     @Column(name = "person_name", length = 120)
     private String personName;
 
-    @Column(name = "description")
+    @Column(name = "description", columnDefinition = "text")
     private String description;
 
-    @Column(name = "work_description")
+    @Column(name = "work_description", columnDefinition = "text")
     private String workDescription;
 
     @Column(name = "amount", precision = 12, scale = 2)
@@ -66,7 +66,7 @@ public class Event {
     @Column(name = "payment_method", length = 30)
     private PaymentMethod paymentMethod;
 
-    @Column(name = "received_amount", precision = 12, scale = 2)
+    @Column(name = "received_amount", nullable = false, precision = 12, scale = 2)
     private BigDecimal receivedAmount;
 
     @Column(name = "paid_at")
@@ -180,6 +180,12 @@ public class Event {
 
     public void reject(User updatedBy) {
         this.status = EventStatus.REJECTED;
+        this.updatedBy = updatedBy;
+        this.updatedAt = LocalDateTime.now();
+    }
+
+    public void cancel(User updatedBy) {
+        this.status = EventStatus.CANCELLED;
         this.updatedBy = updatedBy;
         this.updatedAt = LocalDateTime.now();
     }

@@ -1,66 +1,69 @@
 # Shared Planner
 
-Shared Planner is a shared scheduling and calendar application inspired by Google Calendar, focused on personal events, shared events with approval flow, and financial management for client appointments.
+Shared Planner é uma aplicação de agenda compartilhada com autenticação, calendários multiusuário, eventos pessoais, atendimentos de clientes, aprovação de eventos compartilhados, pagamentos, financeiro e auditoria.
 
-## Planned Technologies
+## Stack atual
 
-### Backend
-- Java
-- Spring Boot
-- PostgreSQL
-- Spring Security
-- JWT
+- Backend: Java 17, Spring Boot 4, Security/JWT, JPA, Flyway e PostgreSQL 17.
+- Frontend: Angular 21 com SSR e FullCalendar.
+- Infraestrutura local: Docker Compose com PostgreSQL, backend e frontend.
+- Especificação: Spec-Driven Development em [`docs/sdd`](docs/sdd/README.md).
 
-### Frontend
-- Angular
-- Angular Material
+## Arquitetura multi-repositório
 
-### Infrastructure
-- Docker
-- GitHub
+Este diretório é o repositório de integração, documentação e SDD. Ele mantém cópias de `backend/` e `frontend/` para análise conjunta. Os artefatos implantáveis e os contextos reais do Docker ficam nos repositórios standalone:
 
-## Planned Features
+```text
+C:\git\shared-planner             Integration / SDD / Context
+C:\git\shared-planner-backend     Backend deployable source
+C:\git\shared-planner-frontend    Frontend deployable source
+```
 
-- User registration and authentication
-- Individual calendar for each user
-- Personal events
-- Client appointment events
-- Shared events with approval or rejection flow
-- Financial dashboard for appointments/services
-- Revenue filters by:
-  - Day
-  - Week
-  - Biweekly period
-  - Month
-  
----------------- PT - BR -----------------------
-# Shared Planner
+Cada diretório possui seu próprio `.git`. Metadados Git e artefatos gerados nunca são sincronizados.
 
-Shared Planner é uma aplicação de agenda compartilhada, semelhante ao Google Calendar, com foco em eventos pessoais, eventos compartilhados com aprovação e gestão financeira de atendimentos/clientes.
+## Executar localmente com Docker
 
-## Tecnologias previstas
+```powershell
+cd C:\git\shared-planner
+if (-not (Test-Path -LiteralPath .env)) {
+    Copy-Item -LiteralPath .env.example -Destination .env
+}
+# Preserve o .env existente e substitua apenas placeholders quando necessário.
+powershell -ExecutionPolicy Bypass -File .\scripts\check-repository-sync.ps1
+docker compose config --quiet
+docker compose up --build -d --wait
+```
 
-### Backend
-- Java
-- Spring Boot
-- PostgreSQL
-- Spring Security
-- JWT
+Com as portas padrão:
 
-### Frontend
-- Angular
-- Angular Material
+- Frontend: `http://localhost:4200`
+- Backend/health: `http://localhost:8080/api/health`
+- PostgreSQL/DBeaver: `localhost:5432`
 
-### Infraestrutura
-- Docker
-- GitHub
+As portas efetivas e os contextos podem ser alterados no `.env`. O Compose usa `../shared-planner-backend` e `../shared-planner-frontend` por padrão.
 
-## Funcionalidades previstas
+## Sincronização segura
 
-- Cadastro e login de usuários
-- Agenda individual por usuário
-- Eventos pessoais
-- Eventos de clientes
-- Eventos compartilhados com aprovação ou recusa
-- Dashboard financeiro de atendimentos
-- Filtro de valores por dia, semana, quinzena e mês
+```powershell
+# Preview: não altera arquivos.
+powershell -ExecutionPolicy Bypass -File .\scripts\sync-repositories.ps1
+
+# Depois de revisar o preview:
+powershell -ExecutionPolicy Bypass -File .\scripts\sync-repositories.ps1 -Apply
+```
+
+O script copia somente arquivos ausentes/alterados, não apaga arquivos e valida a paridade por SHA-256. Consulte o [fluxo dos repositórios](docker/repositories.md).
+
+## Desenvolvimento e testes
+
+```powershell
+cd C:\git\shared-planner-backend
+.\mvnw.cmd clean test
+
+cd C:\git\shared-planner-frontend
+npm.cmd ci
+npm.cmd test -- --watch=false
+npm.cmd run build
+```
+
+Mais detalhes estão na [documentação Docker](docker/README.md), no guia de [PostgreSQL](docker/postgres.md), em [DBeaver](docker/dbeaver.md) e na [SDD](docs/sdd/README.md).

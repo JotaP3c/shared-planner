@@ -5,24 +5,39 @@ import {
   writeResponseToNodeResponse,
 } from '@angular/ssr/node';
 import express from 'express';
+import { request as httpRequest } from 'node:http';
+import { request as httpsRequest } from 'node:https';
 import { join } from 'node:path';
+import { URL } from 'node:url';
 
 const browserDistFolder = join(import.meta.dirname, '../browser');
 
 const app = express();
 const angularApp = new AngularNodeAppEngine();
 
-/**
- * Example Express Rest API endpoints can be defined here.
- * Uncomment and define endpoints as necessary.
- *
- * Example:
- * ```ts
- * app.get('/api/{*splat}', (req, res) => {
- *   // Handle API request
- * });
- * ```
- */
+const backendUrl = process.env['BACKEND_URL'];
+
+if (backendUrl) {
+  app.use('/api', (req, res, next) => {
+    const target = new URL(req.originalUrl, backendUrl);
+    const proxyRequest = (target.protocol === 'https:' ? httpsRequest : httpRequest)(
+      target,
+      {
+        method: req.method,
+        headers: { ...req.headers, host: target.host },
+      },
+      (proxyResponse) => {
+        res.status(proxyResponse.statusCode ?? 502);
+        for (const [name, value] of Object.entries(proxyResponse.headers)) {
+          if (value !== undefined) res.setHeader(name, value);
+        }
+        proxyResponse.pipe(res);
+      },
+    );
+    proxyRequest.on('error', next);
+    req.pipe(proxyRequest);
+  });
+}
 
 /**
  * Serve static files from /browser

@@ -6,6 +6,7 @@ public enum AuditAction {
     DELETED,
     APPROVED,
     REJECTED,
+    CANCELLED,
     PAYMENT_UPDATED,
     MEMBER_ADDED,
     MEMBER_ROLE_UPDATED

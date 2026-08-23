@@ -7,6 +7,7 @@ import com.sharedplanner.calendar.CalendarMemberRepository;
 import com.sharedplanner.calendar.SharedCalendar;
 import com.sharedplanner.calendar.SharedCalendarRepository;
 import com.sharedplanner.config.AuthorizationService;
+import com.sharedplanner.config.AuthorizationService.EventFinancialAccess;
 import com.sharedplanner.user.User;
 import com.sharedplanner.user.UserRepository;
 import com.sharedplanner.user.UserRole;
@@ -22,7 +23,9 @@ import java.math.BigDecimal;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @Service
@@ -108,17 +111,19 @@ public class EventService {
                 currentUser
         );
 
-        return EventResponse.from(savedEvent);
+        return response(savedEvent, authentication);
     }
 
     @Transactional(readOnly = true)
     public List<EventResponse> list(UUID calendarId, LocalDateTime start, LocalDateTime end, Authentication authentication) {
         validatePeriod(start, end);
         authorizationService.ensureCalendarVisible(calendarId, authentication);
+        EventFinancialAccess financialAccess = authorizationService
+                .resolveEventFinancialAccess(calendarId, authentication);
 
         return eventRepository.findByCalendarIdAndStartsAtLessThanAndEndsAtGreaterThanOrderByStartsAtAsc(calendarId, end, start)
                 .stream()
-                .map(EventResponse::from)
+                .map(event -> response(event, financialAccess))
                 .toList();
     }
 
@@ -215,7 +220,7 @@ public class EventService {
         Event event = event(eventId);
         authorizationService.ensureCalendarVisible(event.getCalendar().getId(), authentication);
 
-        return EventResponse.from(event);
+        return response(event, authentication);
     }
 
     @Transactional
@@ -232,6 +237,7 @@ public class EventService {
         Event event = event(eventId);
         authorizationService.ensureCanEditEvent(event, authentication);
         ensureNotCancelled(event);
+        validatePaymentIntegrityForUpdate(event, request);
 
         User currentUser = currentUser(authentication);
         String oldValue = eventSnapshot(event);
@@ -268,7 +274,7 @@ public class EventService {
                 currentUser
         );
 
-        return EventResponse.from(event);
+        return response(event, authentication);
     }
 
     @Transactional
@@ -297,9 +303,8 @@ public class EventService {
     @Transactional
     public EventResponse approve(UUID eventId, Authentication authentication) {
         Event event = event(eventId);
-        ensureApprovalTarget(event, authentication.getName());
-
         User currentUser = currentUser(authentication);
+        ensureApprovalTarget(event, currentUser);
         String oldValue = eventSnapshot(event);
 
         event.approve(currentUser);
@@ -315,15 +320,14 @@ public class EventService {
                 currentUser
         );
 
-        return EventResponse.from(event);
+        return response(event, authentication);
     }
 
     @Transactional
     public EventResponse reject(UUID eventId, Authentication authentication) {
         Event event = event(eventId);
-        ensureApprovalTarget(event, authentication.getName());
-
         User currentUser = currentUser(authentication);
+        ensureApprovalTarget(event, currentUser);
         String oldValue = eventSnapshot(event);
 
         event.reject(currentUser);
@@ -339,7 +343,7 @@ public class EventService {
                 currentUser
         );
 
-        return EventResponse.from(event);
+        return response(event, authentication);
     }
 
     @Transactional
@@ -383,7 +387,7 @@ public class EventService {
                 currentUser
         );
 
-        return EventResponse.from(event);
+        return response(event, authentication);
     }
 
     @Transactional(readOnly = true)
@@ -394,13 +398,24 @@ public class EventService {
         if (currentUser.getRole() == UserRole.ADMIN) {
             events = eventRepository.findByStatusOrderByStartsAtAsc(EventStatus.PENDING_APPROVAL);
         } else {
-            events = eventRepository
-                    .findByStatusAndApprovalRequestedFromEmailIgnoreCaseOrderByStartsAtAsc(
-                            EventStatus.PENDING_APPROVAL, currentUser.getEmail()
-                    );
+            events = eventRepository.findPendingApprovalsForCurrentMember(
+                    EventStatus.PENDING_APPROVAL,
+                    currentUser.getEmail(),
+                    currentUser.getId()
+            );
         }
 
-        return events.stream().map(EventResponse::from).toList();
+        Map<UUID, EventFinancialAccess> financialAccessByCalendar = new HashMap<>();
+
+        return events.stream()
+                .map(event -> response(
+                        event,
+                        financialAccessByCalendar.computeIfAbsent(
+                                event.getCalendar().getId(),
+                                calendarId -> authorizationService.resolveEventFinancialAccess(calendarId, authentication)
+                        )
+                ))
+                .toList();
     }
 
     private Event event(UUID eventId) {
@@ -418,14 +433,22 @@ public class EventService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Calendar not found"));
     }
 
-    private void ensureApprovalTarget(Event event, String email) {
+    private void ensureApprovalTarget(Event event, User currentUser) {
         if (event.getStatus() != EventStatus.PENDING_APPROVAL) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Event is not pending approval");
         }
 
         if (event.getApprovalRequestedFrom() == null ||
-                !event.getApprovalRequestedFrom().getEmail().equalsIgnoreCase(email)) {
+                !event.getApprovalRequestedFrom().getEmail().equalsIgnoreCase(currentUser.getEmail())) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "This event is not waiting for your approval");
+        }
+
+        if (!memberRepository.existsByCalendarIdAndUserId(
+                event.getCalendar().getId(), currentUser.getId())) {
+            throw new ResponseStatusException(
+                    HttpStatus.FORBIDDEN,
+                    "Approval target is no longer a calendar member"
+            );
         }
     }
 
@@ -485,6 +508,29 @@ public class EventService {
     private void ensureNotCancelled(Event event) {
         if (event.getStatus() == EventStatus.CANCELLED) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Cancelled events cannot be changed");
+        }
+    }
+
+    private void validatePaymentIntegrityForUpdate(Event event, UpdateEventRequest request) {
+        if (event.getEventType() != EventType.CLIENT
+                || event.getPaymentStatus() == PaymentStatus.PENDING) {
+            return;
+        }
+
+        if (request.eventType() != EventType.CLIENT) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Client events with payment history cannot change type"
+            );
+        }
+
+        if (event.getAmount() == null
+                || request.amount() == null
+                || event.getAmount().compareTo(request.amount()) != 0) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Client events with payment history cannot change amount"
+            );
         }
     }
 
@@ -619,6 +665,18 @@ public class EventService {
                 + "; paymentMethod=" + event.getPaymentMethod()
                 + "; receivedAmount=" + event.getReceivedAmount()
                 + "; paidAt=" + event.getPaidAt();
+    }
+
+    private EventResponse response(Event event, Authentication authentication) {
+        EventFinancialAccess financialAccess = authorizationService.resolveEventFinancialAccess(
+                event.getCalendar().getId(),
+                authentication
+        );
+        return response(event, financialAccess);
+    }
+
+    private EventResponse response(Event event, EventFinancialAccess financialAccess) {
+        return EventResponse.from(event, financialAccess.canView(event));
     }
 
     private record PeriodRange(LocalDateTime start, LocalDateTime endExclusive) {

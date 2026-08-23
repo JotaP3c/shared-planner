@@ -138,22 +138,40 @@ public class Event {
         this.eventType = eventType;
         this.status = status;
         this.title = title;
-        this.clientName = clientName;
-        this.personName = personName;
         this.description = description;
-        this.workDescription = workDescription;
-        this.amount = amount;
 
-        if (this.paymentStatus == null) {
-            this.paymentStatus = PaymentStatus.PENDING;
-            this.receivedAmount = BigDecimal.ZERO;
+        if (eventType == EventType.CLIENT) {
+            this.clientName = clientName;
+            this.personName = null;
+            this.workDescription = workDescription;
+            this.amount = amount;
+
+            if (this.paymentStatus == null) {
+                resetPayment();
+            }
+        } else {
+            this.clientName = null;
+            this.personName = eventType == EventType.PERSONAL ? personName : null;
+            this.workDescription = null;
+            this.amount = null;
+            resetPayment();
         }
 
         this.startsAt = startsAt;
         this.endsAt = endsAt;
-        this.approvalRequestedFrom = approvalRequestedFrom;
+        this.approvalRequestedFrom = eventType == EventType.SHARED ? approvalRequestedFrom : null;
+        if (eventType != EventType.SHARED || status == EventStatus.PENDING_APPROVAL) {
+            this.approvedBy = null;
+        }
         this.updatedAt = LocalDateTime.now();
         this.updatedBy = updatedBy;
+    }
+
+    private void resetPayment() {
+        this.paymentStatus = PaymentStatus.PENDING;
+        this.paymentMethod = null;
+        this.receivedAmount = BigDecimal.ZERO;
+        this.paidAt = null;
     }
 
     public void registerPayment(

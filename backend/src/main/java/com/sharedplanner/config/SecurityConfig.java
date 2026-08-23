@@ -7,6 +7,7 @@ import javax.crypto.spec.SecretKeySpec;
 
 import com.nimbusds.jose.jwk.source.ImmutableSecret;
 import com.sharedplanner.auth.JwtProperties;
+import com.sharedplanner.user.UserRepository;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -17,8 +18,14 @@ import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.oauth2.jose.jws.MacAlgorithm;
+import org.springframework.security.oauth2.core.DelegatingOAuth2TokenValidator;
+import org.springframework.security.oauth2.core.OAuth2Error;
+import org.springframework.security.oauth2.core.OAuth2TokenValidator;
+import org.springframework.security.oauth2.core.OAuth2TokenValidatorResult;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.jwt.JwtEncoder;
+import org.springframework.security.oauth2.jwt.JwtValidators;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.security.oauth2.jwt.NimbusJwtEncoder;
 import org.springframework.security.web.SecurityFilterChain;
@@ -58,13 +65,36 @@ public class SecurityConfig {
     }
 
     @Bean
-    JwtDecoder jwtDecoder(JwtProperties jwtProperties) {
+    JwtDecoder jwtDecoder(JwtProperties jwtProperties, UserRepository userRepository) {
         SecretKey secretKey = secretKey(jwtProperties);
 
-        return NimbusJwtDecoder
+        NimbusJwtDecoder decoder = NimbusJwtDecoder
                 .withSecretKey(secretKey)
                 .macAlgorithm(MacAlgorithm.HS256)
                 .build();
+
+        OAuth2TokenValidator<Jwt> activeUserValidator = jwt -> {
+            String subject = jwt.getSubject();
+            if (subject != null
+                    && !subject.isBlank()
+                    && userRepository.existsByEmailIgnoreCaseAndActiveTrue(subject)) {
+                return OAuth2TokenValidatorResult.success();
+            }
+
+            OAuth2Error error = new OAuth2Error(
+                    "invalid_token",
+                    "Token subject does not identify an active user",
+                    null
+            );
+            return OAuth2TokenValidatorResult.failure(error);
+        };
+
+        decoder.setJwtValidator(new DelegatingOAuth2TokenValidator<>(
+                JwtValidators.createDefaultWithIssuer("shared-planner-api"),
+                activeUserValidator
+        ));
+
+        return decoder;
     }
 
     private SecretKey secretKey(JwtProperties jwtProperties) {

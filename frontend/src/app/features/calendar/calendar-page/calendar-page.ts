@@ -490,7 +490,7 @@ export class CalendarPage implements OnInit, AfterViewInit {
       personName: event.personName ?? '',
       description: event.description ?? '',
       workDescription: event.workDescription ?? '',
-      amount: event.amount === null ? '' : String(event.amount),
+      amount: event.amount == null ? '' : String(event.amount),
       date: this.toInputDate(startsAt),
       startTime: this.toInputTime(startsAt),
       endTime: this.toInputTime(endsAt),
@@ -694,6 +694,11 @@ export class CalendarPage implements OnInit, AfterViewInit {
   togglePaymentForm(event: EventResponse): void {
     this.paymentFormError.set('');
 
+    if (event.eventType !== 'CLIENT' || !this.hasFinancialDetails(event) || !this.canEditEvent(event)) {
+      this.isPaymentFormOpen.set(false);
+      return;
+    }
+
     const shouldOpen = !this.isPaymentFormOpen();
 
     if (shouldOpen) {
@@ -706,7 +711,12 @@ export class CalendarPage implements OnInit, AfterViewInit {
   submitPaymentForm(): void {
     const event = this.selectedEvent();
 
-    if (!event || event.eventType !== 'CLIENT' || !this.canEditEvent(event)) {
+    if (
+      !event
+      || event.eventType !== 'CLIENT'
+      || !this.hasFinancialDetails(event)
+      || !this.canEditEvent(event)
+    ) {
       return;
     }
 
@@ -776,7 +786,7 @@ export class CalendarPage implements OnInit, AfterViewInit {
     return labels[status] ?? status;
   }
 
-  paymentStatusLabel(status: PaymentStatus | null): string {
+  paymentStatusLabel(status: PaymentStatus | null | undefined): string {
     if (!status) {
       return 'Nao informado';
     }
@@ -784,7 +794,7 @@ export class CalendarPage implements OnInit, AfterViewInit {
     return this.paymentStatusOptions.find(option => option.value === status)?.label ?? status;
   }
 
-  paymentMethodLabel(method: PaymentMethod | null): string {
+  paymentMethodLabel(method: PaymentMethod | null | undefined): string {
     if (!method) {
       return 'Nao informado';
     }
@@ -845,8 +855,8 @@ export class CalendarPage implements OnInit, AfterViewInit {
     });
   }
 
-  formatMoney(value: number | null): string {
-    if (value === null) {
+  formatMoney(value: number | null | undefined): string {
+    if (value == null) {
       return '-';
     }
 
@@ -889,6 +899,12 @@ export class CalendarPage implements OnInit, AfterViewInit {
     return event.eventType === 'SHARED'
       && calendar.canCreateEvents
       && event.approvalRequestedFromEmail?.toLowerCase() === currentUser.email.toLowerCase();
+  }
+
+  hasFinancialDetails(event: EventResponse): boolean {
+    return Object.prototype.hasOwnProperty.call(event, 'amount')
+      && Object.prototype.hasOwnProperty.call(event, 'paymentStatus')
+      && Object.prototype.hasOwnProperty.call(event, 'receivedAmount');
   }
 
   private defaultEventCalendarId(): string {
@@ -1015,7 +1031,7 @@ export class CalendarPage implements OnInit, AfterViewInit {
     const eventAmount = event.amount;
 
     if (request.paymentStatus === 'PAID') {
-      if (eventAmount === null) {
+      if (eventAmount == null) {
         return 'Informe o valor total do evento antes de marcar como pago.';
       }
 
@@ -1029,7 +1045,7 @@ export class CalendarPage implements OnInit, AfterViewInit {
     }
 
     if (request.paymentStatus === 'PARTIALLY_PAID') {
-      if (eventAmount === null) {
+      if (eventAmount == null) {
         return 'Informe o valor total do evento antes de marcar como pago parcialmente.';
       }
 
@@ -1222,7 +1238,7 @@ export class CalendarPage implements OnInit, AfterViewInit {
     this.paymentForm.reset({
       paymentStatus: event.paymentStatus ?? 'PENDING',
       paymentMethod: event.paymentMethod ?? '',
-      receivedAmount: event.receivedAmount === null ? '' : String(event.receivedAmount),
+      receivedAmount: event.receivedAmount == null ? '' : String(event.receivedAmount),
       paidAt: event.paidAt ? this.toInputDateTime(new Date(event.paidAt)) : '',
     }, { emitEvent: false });
   }

@@ -62,4 +62,74 @@ describe('CalendarPage', () => {
 
     expect(component.canEditEvent(cancelledEvent)).toBe(false);
   });
+
+  it('does not render or open financial controls for a redacted CLIENT event', () => {
+    const authService = TestBed.inject(AuthService);
+    authService.currentUser.set({
+      id: 'admin',
+      fullName: 'Admin',
+      email: 'admin@example.com',
+      role: 'ADMIN',
+      active: true,
+      createdAt: '',
+      updatedAt: '',
+    });
+
+    const redactedEvent = {
+      id: 'redacted-event',
+      calendarId: 'calendar',
+      createdByEmail: 'owner@example.com',
+      approvalRequestedFromEmail: null,
+      approvedByEmail: null,
+      eventType: 'CLIENT',
+      status: 'SCHEDULED',
+      title: 'Atendimento protegido',
+      clientName: 'Cliente',
+      personName: null,
+      description: null,
+      workDescription: 'Serviço',
+      startsAt: '2026-08-24T10:00:00',
+      endsAt: '2026-08-24T11:00:00',
+    } satisfies EventResponse;
+
+    component.selectedEvent.set(redactedEvent);
+    fixture.detectChanges();
+
+    const panel: HTMLElement | null = fixture.nativeElement.querySelector('.event-detail-panel');
+    expect(component.hasFinancialDetails(redactedEvent)).toBe(false);
+    expect(panel?.querySelector('.detail-amount')).toBeNull();
+    expect(panel?.querySelector('.detail-payment')).toBeNull();
+    expect(panel?.querySelector('.detail-received')).toBeNull();
+    expect(panel?.querySelector('.detail-method')).toBeNull();
+    expect(panel?.querySelector('.detail-paid')).toBeNull();
+    expect(panel?.querySelector('.payment-form')).toBeNull();
+    expect(panel?.querySelector('.payment-action-icon')).toBeNull();
+
+    component.togglePaymentForm(redactedEvent);
+    expect(component.isPaymentFormOpen()).toBe(false);
+  });
+
+  it('recognizes financial access when nullable payment metadata is omitted', () => {
+    const pendingEvent = {
+      id: 'pending-payment',
+      calendarId: 'calendar',
+      createdByEmail: 'admin@example.com',
+      approvalRequestedFromEmail: null,
+      approvedByEmail: null,
+      eventType: 'CLIENT',
+      status: 'SCHEDULED',
+      title: 'Atendimento',
+      clientName: 'Cliente',
+      personName: null,
+      description: null,
+      workDescription: 'Serviço',
+      amount: 100,
+      paymentStatus: 'PENDING',
+      receivedAmount: 0,
+      startsAt: '2026-08-24T10:00:00',
+      endsAt: '2026-08-24T11:00:00',
+    } satisfies EventResponse;
+
+    expect(component.hasFinancialDetails(pendingEvent)).toBe(true);
+  });
 });

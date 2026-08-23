@@ -1,9 +1,11 @@
 import { Component, computed, inject, OnDestroy, OnInit, signal } from '@angular/core';
 import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import { catchError, finalize, of, switchMap } from 'rxjs';
+import { CalendarService } from '../../api/calendar.service';
 import { EventService } from '../../api/event.service';
 import { AuthService } from '../../auth/auth.service';
 import { SearchService } from '../../api/search.service';
-import { EventSearchResponse, EventType } from '../../models/shared-planner.models';
+import { CalendarResponse, EventSearchResponse, EventType } from '../../models/shared-planner.models';
 
 @Component({
   selector: 'app-app-shell',
@@ -13,6 +15,7 @@ import { EventSearchResponse, EventType } from '../../models/shared-planner.mode
 })
 export class AppShell implements OnInit, OnDestroy {
   private readonly authService = inject(AuthService);
+  private readonly calendarService = inject(CalendarService);
   private readonly searchService = inject(SearchService);
   private readonly eventService = inject(EventService);
   private readonly router = inject(Router);
@@ -42,6 +45,31 @@ export class AppShell implements OnInit, OnDestroy {
   });
 
   readonly isAdmin = computed(() => this.currentUser()?.role === 'ADMIN');
+  readonly financeCalendars = signal<CalendarResponse[]>([]);
+  readonly financeAccessResolved = signal(false);
+  readonly canAccessFinance = computed(() => {
+    if (!this.financeAccessResolved()) {
+      return false;
+    }
+
+    const user = this.currentUser();
+
+    if (!user) {
+      return false;
+    }
+
+    if (user.role === 'ADMIN') {
+      return true;
+    }
+
+    if (user.role === 'FINANCE') {
+      return this.financeCalendars().some(calendar => calendar.memberRole !== null);
+    }
+
+    return this.financeCalendars().some(calendar =>
+      calendar.memberRole === 'ADMIN' || calendar.memberRole === 'FINANCE',
+    );
+  });
 
   readonly openNavGroups = signal<Set<string>>(new Set(['admin']));
   readonly showProfileMenu = signal(false);
@@ -146,7 +174,16 @@ export class AppShell implements OnInit, OnDestroy {
   }
 
   ngOnInit(): void {
-    this.authService.loadCurrentUser().subscribe();
+    this.financeAccessResolved.set(false);
+    this.authService
+      .loadCurrentUser()
+      .pipe(
+        switchMap(user => user
+          ? this.calendarService.list().pipe(catchError(() => of([])))
+          : of([])),
+        finalize(() => this.financeAccessResolved.set(true)),
+      )
+      .subscribe(calendars => this.financeCalendars.set(calendars));
   }
 
   ngOnDestroy(): void {

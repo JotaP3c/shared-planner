@@ -9,7 +9,7 @@ services:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     ports:
-      - "${POSTGRES_PORT:-5432}:5432"
+      - "${BIND_ADDRESS:-127.0.0.1}:${POSTGRES_PORT:-5432}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -33,7 +33,7 @@ services:
       APP_JWT_SECRET: ${APP_JWT_SECRET}
       APP_JWT_EXPIRATION_MINUTES: ${APP_JWT_EXPIRATION_MINUTES:-120}
     ports:
-      - "${BACKEND_PORT:-8080}:8080"
+      - "${BIND_ADDRESS:-127.0.0.1}:${BACKEND_PORT:-8080}:8080"
     depends_on:
       postgres:
         condition: service_healthy
@@ -55,7 +55,7 @@ services:
       PORT: 4000
       BACKEND_URL: http://backend:8080
     ports:
-      - "${FRONTEND_PORT:-4200}:4000"
+      - "${BIND_ADDRESS:-127.0.0.1}:${FRONTEND_PORT:-4200}:4000"
     depends_on:
       backend:
         condition: service_healthy

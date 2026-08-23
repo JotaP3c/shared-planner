@@ -22,6 +22,7 @@ export class AuthService {
   private readonly platformId = inject(PLATFORM_ID);
   private readonly tokenKey = 'sharedPlanner.token';
   private readonly apiUrl = '/api';
+  private unauthorizedNavigationPending = false;
 
   readonly currentUser = signal<UserResponse | null>(null);
 
@@ -39,16 +40,29 @@ export class AuthService {
 
     return this.http.get<unknown>(`${this.apiUrl}/auth/me`).pipe(
       tap(response => this.currentUser.set(this.normalizeUser(response))),
-      catchError(() => {
-        this.clearSession();
-        return of(null);
-      }),
+      catchError(() => of(null)),
     );
   }
 
   logout(): void {
     this.clearSession();
     this.router.navigate(['/login']);
+  }
+
+  handleUnauthorized(): void {
+    this.clearSession();
+
+    if (this.router.url.split('?')[0] === '/login' || this.unauthorizedNavigationPending) {
+      return;
+    }
+
+    this.unauthorizedNavigationPending = true;
+    void this.router
+      .navigate(['/login'])
+      .finally(() => {
+        this.unauthorizedNavigationPending = false;
+      })
+      .catch(() => undefined);
   }
 
   getToken(): string | null {

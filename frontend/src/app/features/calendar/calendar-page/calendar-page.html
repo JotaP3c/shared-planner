@@ -523,34 +523,36 @@
               </div>
             }
 
-            @if (event.amount !== null) {
-              <div class="detail-card detail-amount">
-                <dt>Valor</dt>
-                <dd>{{ formatMoney(event.amount) }}</dd>
-              </div>
-            }
-
-            @if (event.eventType === 'CLIENT') {
-              <div class="detail-card detail-payment">
-                <dt>Pagamento</dt>
-                <dd>{{ paymentStatusLabel(event.paymentStatus) }}</dd>
-              </div>
-
-              <div class="detail-card detail-received">
-                <dt>Recebido</dt>
-                <dd>{{ formatMoney(event.receivedAmount) }}</dd>
-              </div>
-
-              <div class="detail-card detail-method">
-                <dt>Forma</dt>
-                <dd>{{ paymentMethodLabel(event.paymentMethod) }}</dd>
-              </div>
-
-              @if (event.paidAt) {
-                <div class="detail-card detail-paid">
-                  <dt>Pago em</dt>
-                  <dd>{{ formatDateTime(event.paidAt) }}</dd>
+            @if (hasFinancialDetails(event)) {
+              @if (event.amount !== null && event.amount !== undefined) {
+                <div class="detail-card detail-amount">
+                  <dt>Valor</dt>
+                  <dd>{{ formatMoney(event.amount) }}</dd>
                 </div>
+              }
+
+              @if (event.eventType === 'CLIENT') {
+                <div class="detail-card detail-payment">
+                  <dt>Pagamento</dt>
+                  <dd>{{ paymentStatusLabel(event.paymentStatus) }}</dd>
+                </div>
+
+                <div class="detail-card detail-received">
+                  <dt>Recebido</dt>
+                  <dd>{{ formatMoney(event.receivedAmount) }}</dd>
+                </div>
+
+                <div class="detail-card detail-method">
+                  <dt>Forma</dt>
+                  <dd>{{ paymentMethodLabel(event.paymentMethod) }}</dd>
+                </div>
+
+                @if (event.paidAt) {
+                  <div class="detail-card detail-paid">
+                    <dt>Pago em</dt>
+                    <dd>{{ formatDateTime(event.paidAt) }}</dd>
+                  </div>
+                }
               }
             }
 
@@ -576,7 +578,7 @@
             }
           </dl>
 
-          @if (event.eventType === 'CLIENT' && isPaymentFormOpen()) {
+          @if (event.eventType === 'CLIENT' && hasFinancialDetails(event) && isPaymentFormOpen()) {
             <form class="payment-form" [formGroup]="paymentForm" (ngSubmit)="submitPaymentForm()">
               <header>
                 <div>
@@ -675,7 +677,7 @@
           }
 
           @if (canEditEvent(event)) {
-            @if (event.eventType === 'CLIENT') {
+            @if (event.eventType === 'CLIENT' && hasFinancialDetails(event)) {
               <button
                 class="ghost-button"
                 type="button"

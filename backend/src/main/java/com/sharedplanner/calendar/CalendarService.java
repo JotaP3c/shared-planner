@@ -121,6 +121,7 @@ public class CalendarService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Member not found"));
 
         String oldValue = memberSnapshot(member);
+        ensureOwnerRemainsAdmin(member, request.role());
         member.changeRole(request.role(), currentUser);
 
         auditService.log(
@@ -171,6 +172,7 @@ public class CalendarService {
     private void updateMemberRole(CalendarMember member, CalendarMemberRole role, User currentUser) {
         String oldValue = memberSnapshot(member);
 
+        ensureOwnerRemainsAdmin(member, role);
         member.changeRole(role, currentUser);
 
         auditService.log(
@@ -206,6 +208,16 @@ public class CalendarService {
         }
 
         return role;
+    }
+
+    private void ensureOwnerRemainsAdmin(CalendarMember member, CalendarMemberRole role) {
+        if (member.getCalendar().getOwner().getId().equals(member.getUser().getId())
+                && role != CalendarMemberRole.ADMIN) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Calendar owner must remain an ADMIN"
+            );
+        }
     }
 
     private User currentUser(Authentication authentication) {

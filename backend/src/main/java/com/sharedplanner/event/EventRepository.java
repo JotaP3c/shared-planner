@@ -20,9 +20,23 @@ public interface EventRepository extends JpaRepository<Event, UUID> {
 
     List<Event> findByStatusOrderByStartsAtAsc(EventStatus status);
 
-    List<Event> findByStatusAndApprovalRequestedFromEmailIgnoreCaseOrderByStartsAtAsc(
-            EventStatus status,
-            String email
+    @Query("""
+            select e
+            from Event e
+            where e.status = :status
+              and lower(e.approvalRequestedFrom.email) = lower(:email)
+              and exists (
+                select cm.id
+                from CalendarMember cm
+                where cm.calendar.id = e.calendar.id
+                  and cm.user.id = :userId
+              )
+            order by e.startsAt asc
+            """)
+    List<Event> findPendingApprovalsForCurrentMember(
+            @Param("status") EventStatus status,
+            @Param("email") String email,
+            @Param("userId") UUID userId
     );
 
     @Query("""

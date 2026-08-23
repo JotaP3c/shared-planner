@@ -3,6 +3,7 @@ package com.sharedplanner.config;
 import com.sharedplanner.calendar.CalendarMember;
 import com.sharedplanner.calendar.CalendarMemberRepository;
 import com.sharedplanner.event.Event;
+import com.sharedplanner.event.EventType;
 import com.sharedplanner.user.User;
 import com.sharedplanner.user.UserRepository;
 import com.sharedplanner.user.UserRole;
@@ -130,6 +131,39 @@ public class AuthorizationService {
         }
 
         throw new ResponseStatusException(HttpStatus.FORBIDDEN, "You cannot access finance module");
+    }
+
+    public EventFinancialAccess resolveEventFinancialAccess(UUID calendarId, Authentication authentication) {
+        User user = currentUser(authentication);
+
+        if (user.getRole() == UserRole.ADMIN) {
+            return new EventFinancialAccess(true, false, authentication.getName());
+        }
+
+        return memberRepository
+                .findByCalendarIdAndUserEmailIgnoreCase(calendarId, authentication.getName())
+                .map(member -> new EventFinancialAccess(
+                        user.getRole() == UserRole.FINANCE || member.getRole().canUseFinance(),
+                        member.getRole().canEditOwnEvents(),
+                        authentication.getName()
+                ))
+                .orElseGet(() -> new EventFinancialAccess(false, false, authentication.getName()));
+    }
+
+    public record EventFinancialAccess(
+            boolean canViewAll,
+            boolean canViewOwn,
+            String actorEmail
+    ) {
+        public boolean canView(Event event) {
+            if (event.getEventType() != EventType.CLIENT) {
+                return false;
+            }
+
+            return canViewAll
+                    || (canViewOwn
+                    && event.getCreatedBy().getEmail().equalsIgnoreCase(actorEmail));
+        }
     }
 
     private boolean isAdmin(Authentication authentication) {

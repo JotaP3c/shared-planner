@@ -82,11 +82,11 @@ export interface EventResponse {
   personName: string | null;
   description: string | null;
   workDescription: string | null;
-  amount: number | null;
-  paymentStatus: PaymentStatus | null;
-  paymentMethod: PaymentMethod | null;
-  receivedAmount: number | null;
-  paidAt: string | null;
+  amount?: number | null;
+  paymentStatus?: PaymentStatus | null;
+  paymentMethod?: PaymentMethod | null;
+  receivedAmount?: number | null;
+  paidAt?: string | null;
   startsAt: string;
   endsAt: string;
 }

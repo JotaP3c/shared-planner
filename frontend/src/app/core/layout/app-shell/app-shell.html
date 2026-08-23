@@ -36,21 +36,21 @@
         }
       </section>
 
-      <section class="nav-group">
-        <button type="button" [class.open]="isNavGroupOpen('finance')" (click)="toggleNavGroup('finance')">
-          <span class="nav-icon finance"></span>
-          Financeiro
-          <small></small>
-        </button>
+      @if (canAccessFinance()) {
+        <section class="nav-group" data-testid="finance-navigation">
+          <button type="button" [class.open]="isNavGroupOpen('finance')" (click)="toggleNavGroup('finance')">
+            <span class="nav-icon finance"></span>
+            Financeiro
+            <small></small>
+          </button>
 
-        @if (isNavGroupOpen('finance')) {
-          <div class="nav-subitems">
-            <a routerLink="/finance" routerLinkActive="active">Receitas</a>
-            <a routerLink="/finance" routerLinkActive="active">Despesas</a>
-            <a routerLink="/finance" routerLinkActive="active">Relatórios</a>
-          </div>
-        }
-      </section>
+          @if (isNavGroupOpen('finance')) {
+            <div class="nav-subitems">
+              <a routerLink="/finance" routerLinkActive="active">Resumo de receitas</a>
+            </div>
+          }
+        </section>
+      }
 
       <a routerLink="/settings" routerLinkActive="active">
         <span class="nav-icon settings"></span>

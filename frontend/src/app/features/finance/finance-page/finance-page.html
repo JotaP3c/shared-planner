@@ -1,1 +1,199 @@
-<p>finance-page works!</p>
+<section class="finance-page" aria-labelledby="finance-title">
+  <header class="finance-hero">
+    <div>
+      <span>Financeiro</span>
+      <h1 id="finance-title">Resumo de receitas</h1>
+      <p>Acompanhe valores e pagamentos dos atendimentos de cada calendário.</p>
+    </div>
+
+    <button
+      class="secondary-button"
+      type="button"
+      [disabled]="!selectedCalendarId() || isLoadingSummary()"
+      (click)="refresh()"
+    >
+      {{ isLoadingSummary() ? 'Atualizando...' : 'Atualizar resumo' }}
+    </button>
+  </header>
+
+  @if (isLoadingCalendars()) {
+    <section class="state-card" aria-live="polite" aria-busy="true">
+      <span class="state-icon loading" aria-hidden="true"></span>
+      <strong>Carregando calendários...</strong>
+      <p>Estamos verificando as agendas às quais você possui acesso financeiro.</p>
+    </section>
+  } @else if (calendarErrorMessage()) {
+    <section class="state-card error" role="alert">
+      <span class="state-icon" aria-hidden="true">!</span>
+      <strong>Não foi possível abrir o financeiro</strong>
+      <p>{{ calendarErrorMessage() }}</p>
+      <button type="button" (click)="loadCalendars()">Tentar novamente</button>
+    </section>
+  } @else if (noAccess()) {
+    <section class="state-card" data-testid="finance-no-access">
+      <span class="state-icon lock" aria-hidden="true"></span>
+      <strong>Sem acesso financeiro</strong>
+      <p>
+        Você precisa ser administrador global, Finance global membro da agenda,
+        ou membro ADMIN/FINANCE do calendário.
+      </p>
+    </section>
+  } @else if (authorizedCalendars().length) {
+    <form class="finance-filters" (submit)="$event.preventDefault(); applyFilters()">
+      <div class="filter-heading">
+        <div>
+          <span>Filtros</span>
+          <strong>Defina a agenda e o intervalo</strong>
+        </div>
+        <small>Datas inicial e final são inclusivas.</small>
+      </div>
+
+      <div class="filter-grid">
+        <label>
+          Calendário
+          <select
+            aria-label="Calendário financeiro"
+            [value]="selectedCalendarId()"
+            [disabled]="isLoadingSummary()"
+            (change)="selectCalendar($any($event.target).value)"
+          >
+            @for (calendar of authorizedCalendars(); track calendar.id) {
+              <option [value]="calendar.id">{{ calendar.name }}</option>
+            }
+          </select>
+        </label>
+
+        <label>
+          Período
+          <select
+            aria-label="Período financeiro"
+            [value]="selectedPeriod()"
+            (change)="selectPeriod($any($event.target).value)"
+          >
+            @for (period of periodOptions; track period.value) {
+              <option [value]="period.value">{{ period.label }}</option>
+            }
+          </select>
+        </label>
+
+        @if (selectedPeriod() === 'CUSTOM') {
+          <label>
+            Data inicial
+            <input
+              type="date"
+              aria-label="Data inicial"
+              [value]="customStartDate()"
+              (input)="setCustomStartDate($any($event.target).value)"
+            />
+          </label>
+
+          <label>
+            Data final
+            <input
+              type="date"
+              aria-label="Data final"
+              [value]="customEndDate()"
+              (input)="setCustomEndDate($any($event.target).value)"
+            />
+          </label>
+        } @else {
+          <label>
+            Data de referência
+            <input
+              type="date"
+              aria-label="Data de referência"
+              [value]="referenceDate()"
+              (input)="setReferenceDate($any($event.target).value)"
+            />
+          </label>
+        }
+
+        <button class="primary-button" type="submit" [disabled]="isLoadingSummary()">
+          Aplicar período
+        </button>
+      </div>
+
+      <p class="active-period" aria-live="polite">
+        <span aria-hidden="true"></span>
+        Intervalo atual: <strong>{{ periodLabel() }}</strong>
+      </p>
+    </form>
+
+    @if (errorMessage()) {
+      <section class="inline-error" role="alert">
+        <div>
+          <strong>Não foi possível atualizar o resumo.</strong>
+          <p>{{ errorMessage() }}</p>
+        </div>
+        <button type="button" (click)="refresh()">Tentar novamente</button>
+      </section>
+    }
+
+    @if (isLoadingSummary()) {
+      <section class="state-card compact" aria-live="polite" aria-busy="true">
+        <span class="state-icon loading" aria-hidden="true"></span>
+        <strong>Calculando resumo...</strong>
+      </section>
+    } @else if (summary(); as finance) {
+      <section class="summary-section" aria-labelledby="values-title">
+        <header>
+          <div>
+            <span>Visão geral</span>
+            <h2 id="values-title">{{ selectedCalendar()?.name }}</h2>
+          </div>
+          <small>{{ periodLabel() }}</small>
+        </header>
+
+        <div class="amount-grid">
+          <article class="amount-card expected" data-testid="expected-amount">
+            <span>Receita esperada</span>
+            <strong>{{ formatCurrency(finance.expectedAmount) }}</strong>
+            <small>{{ finance.appointmentCount }} atendimento(s)</small>
+          </article>
+
+          <article class="amount-card received" data-testid="received-amount">
+            <span>Valor recebido</span>
+            <strong>{{ formatCurrency(finance.receivedAmount) }}</strong>
+            <small>{{ finance.paidCount }} pagamento(s) integral(is)</small>
+          </article>
+
+          <article class="amount-card pending" data-testid="pending-amount">
+            <span>Valor pendente</span>
+            <strong>{{ formatCurrency(finance.pendingAmount) }}</strong>
+            <small>Esperado menos recebido</small>
+          </article>
+        </div>
+
+        <div class="count-grid" aria-label="Contagens por situação de pagamento">
+          <article>
+            <span>Total de atendimentos</span>
+            <strong data-testid="appointment-count">{{ finance.appointmentCount }}</strong>
+          </article>
+          <article>
+            <span>Pagos</span>
+            <strong data-testid="paid-count">{{ finance.paidCount }}</strong>
+          </article>
+          <article>
+            <span>Pendentes</span>
+            <strong data-testid="pending-count">{{ finance.pendingCount }}</strong>
+          </article>
+          <article>
+            <span>Parcialmente pagos</span>
+            <strong data-testid="partially-paid-count">{{ finance.partiallyPaidCount }}</strong>
+          </article>
+          <article>
+            <span>Reembolsados</span>
+            <strong data-testid="refunded-count">{{ finance.refundedCount }}</strong>
+          </article>
+        </div>
+
+        @if (isEmpty()) {
+          <div class="empty-summary" data-testid="finance-empty">
+            <strong>Nenhum atendimento no período</strong>
+            <p>Não há receitas de eventos CLIENT não cancelados neste intervalo.</p>
+          </div>
+        }
+      </section>
+    }
+  }
+</section>

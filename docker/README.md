@@ -28,7 +28,7 @@ docker compose up --build -d --wait
 docker compose ps
 ```
 
-Com os valores padrão, o frontend fica em `http://localhost:4200`, o backend em `http://localhost:8080` e o PostgreSQL é publicado em `localhost:5432`. As portas efetivas sempre vêm do `.env`.
+Com os valores padrão, `BIND_ADDRESS=127.0.0.1`: frontend fica em `http://localhost:4200`, backend em `http://localhost:8080` e PostgreSQL em `localhost:5432`, todos restritos ao loopback. Portas e bind efetivos vêm do `.env`; expor outra interface exige decisão consciente e revisão de segurança.
 
 Para parar preservando dados, use `docker compose down`. Não use `docker compose down -v` sem um backup e autorização para apagar o banco local.
 

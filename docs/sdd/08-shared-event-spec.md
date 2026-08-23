@@ -19,6 +19,6 @@ stateDiagram-v2
   REJECTED --> CANCELLED: cancela
 ```
 
-`CANCELLED` é terminal para edição, pagamento e novo cancelamento. Alvo SHARED com papel ADMIN/EDITOR ainda pode editar o evento inteiro antes do cancelamento. TARGET exige decidir se edição reinicia aprovação e quem pode editar (Q-004).
+`CANCELLED` é terminal para edição, pagamento e novo cancelamento. O alvo só permanece apto a listar, aprovar ou rejeitar enquanto for usuário ativo e membro atual do calendário; remover o vínculo revoga imediatamente essas ações sem apagar o evento pendente. Alvo SHARED com papel ADMIN/EDITOR ainda pode editar o evento inteiro antes do cancelamento. TARGET exige decidir se edição reinicia aprovação e quem pode editar (Q-004).
 
-UI CURRENT: fila `/pending`, painel no calendário e detalhe permitem aprovar/rejeitar. Critérios: AC-SHARED-001–004. Evidência: `EventService.approvalUser`, `ensureApprovalTarget`, `update`, `PendingPage`.
+UI CURRENT: fila `/pending`, painel no calendário e detalhe permitem aprovar/rejeitar. Critérios: AC-SHARED-001–005. Evidência: `EventRepository.findPendingApprovalsForCurrentMember`, `EventService.ensureApprovalTarget`, `update`, `PendingPage` e regressão de alvo removido em `ApiSecurityIntegrationTests`.

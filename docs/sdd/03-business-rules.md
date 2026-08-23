@@ -10,6 +10,7 @@
 | BR-CAL-002 | CURRENT: apenas ADMIN global cria calendário e vira owner/ADMIN. | CONFIRMED | `CalendarService.create` |
 | BR-CAL-003 | ADMIN global ou ADMIN do calendário gerencia membros; owner não é removível. | CONFIRMED | `ensureCanManageCalendar`, `removeMember` |
 | BR-CAL-004 | TARGET: visualizar calendário não concede criação. | CONFIRMED | requisito-alvo + `canCreateEvents` |
+| BR-CAL-005 | O owner deve permanecer membro `ADMIN`; não pode ser removido nem rebaixado por mutação de membership. | CONFIRMED | identidade de owner + proteção já aplicada na UI |
 | BR-EVT-001 | Tipos são CLIENT, PERSONAL, SHARED; fim deve ser posterior ao início. | CONFIRMED | enums, `EventService.validatePeriod` |
 | BR-EVT-002 | ADMIN/EDITOR de calendário criam; VIEWER/FINANCE não criam; ADMIN global ignora vínculo. | CONFIRMED | `CalendarMemberRole`, `ensureCanCreateEvent` |
 | BR-EVT-003 | EDITOR edita/cancela próprios; calendar ADMIN e global ADMIN editam todos. | CONFIRMED | `ensureCanEditEvent` |
@@ -20,10 +21,12 @@
 | BR-SHARED-001 | SHARED exige outro usuário ativo, membro do calendário, como alvo e nasce PENDING_APPROVAL. | CONFIRMED | `approvalUser`, `create` |
 | BR-SHARED-002 | Só o alvo pode aprovar/rejeitar evento pendente. | CONFIRMED | `ensureApprovalTarget` |
 | BR-SHARED-003 | ADMIN global lista todas as pendências, mas não pode aprová-las se não for alvo. | CONFIRMED | `listPendingApprovals`, `ensureApprovalTarget` |
+| BR-SHARED-004 | O alvo só pode listar/aprovar/rejeitar enquanto permanecer usuário ativo e membro atual do calendário; remover o vínculo revoga a decisão. | CONFIRMED | `SEC-AUTHZ-007`, `SAC-AUTHZ-008` |
 | BR-FIN-001 | Financeiro soma somente CLIENT não CANCELLED no intervalo. | CONFIRMED | `EventRepository.summarizeFinance` |
 | BR-FIN-002 | DAILY, WEEKLY, BIWEEKLY e MONTHLY existem; resumo aceita intervalo inclusivo customizado. | CONFIRMED | `RevenuePeriod`, `periodRange`, `FinanceService.summarize` |
 | BR-FIN-003 | Acesso: ADMIN global; FINANCE global se membro; calendar ADMIN/FINANCE. | CONFIRMED | `ensureCanUseFinance` |
 | BR-PAY-001 | Pagamento só se aplica a CLIENT e deve manter status/valor/método coerentes. | CONFIRMED | `validatePayment` |
 | BR-PAY-002 | Atualizar pagamento usa a mesma permissão de editar evento. | CONFIRMED | `updatePayment` → `ensureCanEditEvent` |
+| BR-PAY-003 | Atualizar o evento não pode invalidar o snapshot financeiro: após pagamento sair de `PENDING`, `eventType` e `amount` ficam imutáveis; conversão ainda pendente para tipo não-CLIENT limpa campos financeiros. | CONFIRMED | `SEC-INPUT-003`, `SAC-DATA-004` |
 | BR-AUDIT-001 | Criação/alteração/cancelamento, pagamento, aprovação, membros e usuários geram log. | CONFIRMED | chamadas `auditService.log` |
 | BR-AUDIT-002 | Todos logs: ADMIN global; por calendário: calendar ADMIN. | CONFIRMED | `ensureCanViewAuditLogs` |

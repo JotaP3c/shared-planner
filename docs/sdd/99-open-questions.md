@@ -1,5 +1,7 @@
 # 99 — Questões em aberto
 
+Atualização de 2026-08-22: o hardening de redaction financeira, revogação de membro SHARED, owner, integridade de pagamento, JWT, interceptor e loopback não decidiu implicitamente nenhuma questão abaixo. Em especial, Q-004 e Q-005 permanecem `OPEN`; a implementação preserva a política CURRENT enquanto fecha falhas independentes de confidencialidade/integridade.
+
 ## Q-001
 
 Contexto: calendário pode ter owner, ADMIN e EDITOR, mas TARGET diz que evento comum deve estar na agenda própria. Pergunta: “própria” significa calendário cujo usuário é owner, um calendário pessoal tipado, ou evento com responsável igual ao ator? Impacto: autorização, dados, UI e migração. Opções: A) owner; B) tipo de calendário; C) responsibleUser. Recomendação técnica: C combinado com tipo explícito de calendário se houver agendas coletivas. Status: OPEN.

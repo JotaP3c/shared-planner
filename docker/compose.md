@@ -35,4 +35,4 @@ docker compose logs -f
 docker compose down
 ```
 
-As portas `POSTGRES_PORT`, `BACKEND_PORT` e `FRONTEND_PORT` também podem ser alteradas no `.env`.
+As portas `POSTGRES_PORT`, `BACKEND_PORT` e `FRONTEND_PORT` também podem ser alteradas no `.env`. `BIND_ADDRESS` usa `127.0.0.1` por padrão para impedir exposição acidental à rede; alterá-lo amplia a superfície e exige revisão de segurança.

@@ -16,7 +16,7 @@ Centralizar política própria/terceiro, remover ambiguidades SHARED e separar p
 
 ### Phase 3 — Frontend operacional
 
-Gestão de membros foi concluída. Próximas unidades: financeiro, users, audit e guards/menus por capacidade.
+Gestão de membros e Finance foram concluídos no integrado. O interceptor e a navegação Finance agora respeitam origem/capacidade. Próximas unidades: users, audit, estados assíncronos remanescentes e guards/menus ainda não cobertos.
 
 ### Phase 4 — Automação
 
@@ -45,7 +45,7 @@ Expandir testes unitários, integração, repository e E2E, priorizando autoriza
 4. Construir cada Dockerfile a partir da raiz standalone.
 5. Subir a stack e executar saúde, login e regressão mínima.
 
-Resultado: paridade oficial backend `80/80` e frontend `74/74` após exclusões normativas; contextos absolutos standalone comprovados; builds independentes PASS; stack com três serviços `healthy`; health direto/proxy 200; regressão API PASS; persistência PostgreSQL PASS. O frontend manteve três warnings conhecidos de budget SCSS e 28 vulnerabilidades reportadas pelo `npm audit`, registradas como dívida técnica não bloqueante desta validação.
+Resultado histórico da Phase III: paridade backend `80/80` e frontend `74/74` após exclusões normativas, stack saudável e regressão mínima aprovada. Após o incremento integrado de 2026-08-22, a sincronização oficial foi repetida e confirmou paridade backend `84/84` e frontend `76/76`; as suítes standalone passaram com 16 testes backend e 31 frontend, o build SSR concluiu com 9 rotas e os audits npm runtime/completo retornaram zero vulnerabilidades. A stack reconstruída a partir dos standalones permaneceu com os três serviços `healthy`, portas em loopback e regressão HTTP/autorização aprovada.
 
 ### Phase IV — Acesso local — concluída
 
@@ -60,4 +60,4 @@ Todos os gates técnicos anteriores passaram. Backend e frontend receberam commi
 
 ## Próxima ação
 
-Após o handoff informar o SHA da integração e confirmar `Push performed: NO`, retomar a próxima unidade funcional.
+Prosseguir com a página administrativa de usuários, mantendo o gate S0/S1 zerado, e depois atacar Audit e os itens S2/S3 e P1 restantes. Q-004 e Q-005 devem ser decididas antes de qualquer mudança na política CURRENT correspondente.

@@ -19,7 +19,9 @@
 
 ¹ `ensureCanEditEvent` permite ao alvo SHARED com papel que cria (`ADMIN`/`EDITOR`) alterar o evento inteiro, além dos endpoints específicos de aprovação.
 
-Global `FINANCE` não tem acesso universal: precisa ser membro do calendário. Papel global e papel contextual são avaliados em `AuthorizationService`.
+Global `FINANCE` não tem acesso universal: precisa ser membro do calendário. Papel global e papel contextual são avaliados em `AuthorizationService`. A resposta de evento só inclui campos financeiros para global ADMIN, global FINANCE membro, calendar ADMIN/FINANCE ou EDITOR autor conforme a capacidade CURRENT de pagamento; demais membros recebem esses campos omitidos. O frontend não renderiza valores nem controles de pagamento quando o contrato os omite.
+
+O owner permanece obrigatoriamente membro `ADMIN`: DELETE, PUT e o upsert por POST rejeitam remoção ou downgrade. A remoção de qualquer outro alvo SHARED revoga imediatamente a fila e approve/reject. Essas correções não alteram a política de edição SHARED (Q-004) nem decidem quem deve alterar pagamento no modelo futuro (Q-005).
 
 ## TARGET
 

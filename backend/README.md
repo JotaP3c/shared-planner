@@ -7,7 +7,7 @@
 
 O **Shared Planner** é uma aplicação de agenda compartilhada voltada a casais e pequenos grupos. O produto reúne calendários multiusuário, compromissos pessoais, atendimentos de clientes, eventos que dependem da aprovação de outra pessoa, controle de pagamentos, visão financeira e trilha de auditoria.
 
-Este repositório contém a API responsável pelas regras de negócio, autenticação, autorização, persistência e evolução do banco de dados. Ele também é o **contexto implantável independente do backend** usado pelo Docker Compose do projeto.
+Este repositório contém a API responsável pelas regras de negócio, autenticação, autorização, persistência e evolução do banco de dados. Ele também é o **contexto implantável independente do backend** usado pelo Docker Compose do projeto. O incremento atual está sincronizado entre a cópia integrada e o standalone, com paridade oficial de 84/84 arquivos e regressão concluída nos dois contextos.
 
 ## O produto
 
@@ -126,9 +126,9 @@ O comportamento atualmente implementado é:
 | Consultar financeiro | todos | sim | não | sim | não |
 | Gerenciar membros | todos | sim | não | não | não |
 | Consultar auditoria | todos | do calendário | não | não | não |
-| Aprovar ou rejeitar `SHARED` | somente se for o alvo | somente se for o alvo | somente se for o alvo | somente se for o alvo | somente se for o alvo |
+| Aprovar ou rejeitar `SHARED` | somente se for alvo ativo e membro atual | somente se for alvo ativo e membro atual | somente se for alvo ativo e membro atual | somente se for alvo ativo e membro atual | somente se for alvo ativo e membro atual |
 
-O papel global `FINANCE` não concede acesso irrestrito: o usuário também precisa pertencer ao calendário. Atualizações de pagamento seguem a permissão de edição do evento.
+O papel global `FINANCE` não concede acesso irrestrito: o usuário também precisa pertencer ao calendário. Campos financeiros de eventos são omitidos para ator sem capacidade; a autorização é resolvida uma vez por request/calendar e cacheada por calendário em pendências. Atualizações de pagamento seguem a permissão CURRENT de edição do evento; a política futura permanece aberta em Q-005. O owner do calendário não pode ser removido nem rebaixado de `ADMIN`.
 
 ## Endpoints principais
 
@@ -208,6 +208,8 @@ Com as portas padrão:
 - healthcheck: `http://localhost:8080/api/health`;
 - PostgreSQL: `localhost:5432`.
 
+O Compose vincula os três serviços a `127.0.0.1` por padrão por meio de `BIND_ADDRESS`. Exposição a outra interface exige alteração consciente e não torna seeds/credenciais locais adequados a ambiente compartilhado.
+
 O arquivo `.env` é local e ignorado pelo Git. Somente `.env.example`, com placeholders, deve ser versionado. Nunca publique senha de banco, segredo JWT, token ou credencial de usuário.
 
 Para acompanhar somente esta API:
@@ -253,7 +255,7 @@ O Flyway cria ou atualiza as tabelas dentro do banco existente. A API inicia em 
 | `APP_JWT_SECRET` | sim | Segredo aleatório e exclusivo para assinatura HS256 |
 | `APP_JWT_EXPIRATION_MINUTES` | não | Validade do token; padrão de 120 minutos |
 
-Os defaults presentes no profile `dev` existem apenas para desenvolvimento local e não devem ser reutilizados em ambientes compartilhados ou de produção.
+Os defaults não sensíveis de URL/usuário no profile `dev` existem apenas para desenvolvimento local. Senha do banco e segredo JWT não possuem fallback utilizável: devem vir do ambiente; o segredo JWT precisa ter ao menos 32 caracteres e a duração deve ser positiva.
 
 ## Uso básico da API
 
@@ -294,6 +296,8 @@ Set-Location C:\git\shared-planner-backend
 
 Os testes automatizados usam H2 em modo de compatibilidade PostgreSQL com Flyway desabilitado para feedback rápido. O gate completo do projeto também executa a aplicação contra PostgreSQL real pela stack Docker.
 
+O incremento de 2026-08-22 passou com 16/16 testes tanto no integrado quanto no standalone. A suíte cobre JWT ausente/adulterado/expirado/issuer incorreto e usuário inativo, BOLA, contratos sem senha/hash, owner, revogação SHARED, redação financeira sem N+1, precisão/integridade de pagamento e resumo Finance. O pacote standalone e as imagens Docker também foram construídos com sucesso; Flyway V7 e a regressão HTTP passaram no PostgreSQL real. A matriz completa de status de pagamento, concorrência, auditoria, CI/E2E e privilégios PostgreSQL continuam como gates adicionais.
+
 O pacote gerado fica em `target/`. Esse diretório é artefato de build e não deve ser commitado.
 
 ## Imagem Docker independente
@@ -314,11 +318,15 @@ O build da imagem não executa os testes; rode `mvnw.cmd clean test` como gate a
 
 ## Segurança
 
-- autenticação stateless com JWT assinado por HS256;
+- autenticação stateless com JWT HS256, expiração, issuer `shared-planner-api` e usuário ativo validados;
 - senhas persistidas como hash BCrypt;
 - apenas `GET /api/health` e `POST /api/auth/login` são públicos;
 - autorização aplicada no backend, independentemente do que a interface exibe;
 - usuários inativos não autenticam;
+- eventos omitem os cinco campos financeiros sem capacidade; a resolução por request/calendar evita N+1;
+- membership atual é revalidada na fila e nas decisões SHARED;
+- owner não pode ser removido nem rebaixado;
+- segredo JWT é externo e validado com mínimo de 32 caracteres; não há fallback dev conhecido;
 - cancelamentos preservam o evento como `CANCELLED` para manter rastreabilidade;
 - ações de usuários, calendários, membros, eventos, aprovações e pagamentos geram auditoria;
 - `.env`, logs, tokens e artefatos locais estão excluídos do versionamento e do contexto Docker.

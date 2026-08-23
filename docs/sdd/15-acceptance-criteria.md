@@ -21,6 +21,12 @@ Scenario: Proteger o proprietário
   When tentar remover o membro que é owner
   Then responder 400 e preservar o vínculo
 
+AC-CAL-003 [BR-CAL-005]
+Scenario: Não rebaixar o proprietário
+  Given o vínculo ADMIN do owner
+  When uma mutação de membro tenta atribuir EDITOR, FINANCE ou VIEWER
+  Then responder 400 e preservar o papel ADMIN
+
 AC-PERM-001 [BR-EVT-002]
 Scenario: Viewer não cria evento
   Given um VIEWER autenticado
@@ -85,6 +91,13 @@ Scenario: Impedir resposta por terceiro ou status inválido
   When aprovar ou rejeitar
   Then responder 403 para ator incorreto ou 400 para status incorreto
 
+AC-SHARED-005 [BR-SHARED-004]
+Scenario: Revogar pendência ao remover o alvo do calendário
+  Given um SHARED pendente destinado a um membro
+  When o vínculo desse membro é removido
+  Then a pendência não aparece mais para ele
+  And approve/reject são negados sem alterar o evento
+
 AC-FIN-001 [BR-FIN-001]
 Scenario: Calcular resumo
   Given CLIENT pagos, parciais, pendentes e cancelados, além de PERSONAL/SHARED
@@ -103,6 +116,21 @@ Scenario: Negar financeiro a viewer
   When consultar resumo financeiro
   Then responder 403
 
+AC-FIN-004 [BR-FIN-001, BR-FIN-002]
+Scenario Outline: Consultar resumo pela página Finance
+  Given um calendário autorizado e uma data de referência
+  When selecionar <periodo>
+  Then a página consulta o intervalo civil inclusivo correspondente
+  And exibe valores e contagens do summary
+  Examples: | periodo | DAILY | WEEKLY | BIWEEKLY | MONTHLY | CUSTOM |
+
+AC-FIN-005 [BR-FIN-003]
+Scenario: Não oferecer calendário financeiro sem capacidade
+  Given um USER membro apenas como EDITOR ou VIEWER
+  When abrir a página Finance
+  Then nenhum total desse calendário é solicitado ou exibido
+  And o backend continua negando chamada manual
+
 AC-PAY-001 [BR-PAY-001]
 Scenario: Registrar pagamento integral
   Given CLIENT de valor 70 e ator autorizado
@@ -120,6 +148,13 @@ Scenario: Impedir atualização sem permissão de edição
   Given usuário não autorizado a editar o evento
   When atualizar pagamento
   Then responder 403
+
+AC-PAY-004 [BR-PAY-003]
+Scenario Outline: Edição comum preserva integridade do pagamento
+  Given um CLIENT cujo pagamento não está PENDING
+  When tentar <mudanca>
+  Then responder 400 e preservar o snapshot financeiro
+  Examples: | mudanca | alterar amount | alterar eventType |
 
 AC-AUDIT-001 [BR-AUDIT-001]
 Scenario: Auditar mudança

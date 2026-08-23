@@ -50,8 +50,11 @@ shared-planner-backend    shared-planner-frontend
 | PostgreSQL e containers | [22](22-postgresql-migration-spec.md), [23](23-containerization-spec.md), [25](25-infrastructure-acceptance-criteria.md) |
 | Arquitetura multi-repositório | [24](24-repository-split-spec.md), [26](26-multi-repository-sync-spec.md) |
 | Acesso local e credenciais de teste | [27](27-local-access-and-test-credentials-spec.md) |
-| Transferência de dados | [28](28-postgresql-data-transfer-plan.md) |
-| Evidência de infraestrutura | [29](29-infrastructure-validation-report.md) |
+| Auditoria funcional | [28 — completude](28-functional-completeness-audit.md) |
+| Segurança | [29 — spec](29-security-spec.md), [30 — threat model](30-threat-model.md), [31 — auditoria](31-security-audit-report.md), [32 — critérios](32-security-acceptance-criteria.md) |
+| Backlog priorizado | [33](33-development-backlog.md) |
+| Transferência de dados | [28 — plano PostgreSQL](28-postgresql-data-transfer-plan.md) |
+| Evidência de infraestrutura | [29 — validação de infraestrutura](29-infrastructure-validation-report.md) |
 | Decisões pendentes | [99](99-open-questions.md) |
 
 ## Estado desta baseline
@@ -63,8 +66,11 @@ shared-planner-backend    shared-planner-frontend
 - `DBEAVER_CONNECTION_VALIDATED`
 - `INDEPENDENT_COMMITS_COMPLETE_ON_THIS_DELIVERY`
 - `PUSH_NOT_PERFORMED`
+- `INTEGRATED_SECURITY_GATE_S0_0_S1_0`
+- `FINANCE_REVENUE_SUMMARY_IMPLEMENTED`
+- `STANDALONE_RESYNC_VALIDATED_84_76`
 
-Os gates de infraestrutura estão concluídos e documentados no relatório 29. O produto ainda contém decisões funcionais abertas registradas em [99](99-open-questions.md); elas orientam as próximas unidades de desenvolvimento e não invalidam a baseline técnica.
+Os gates de infraestrutura históricos estão documentados no relatório de infraestrutura 29. O incremento atual possui 16 testes backend, 31 testes frontend e build SSR com 9 rotas; os dois S1 foram encerrados e Finance foi implementado. Os standalones foram sincronizados, revalidados e mantêm paridade oficial 84/84 no backend e 76/76 no frontend. O produto mantém decisões funcionais abertas em [99](99-open-questions.md), especialmente Q-004/Q-005, sem invalidar os controles independentes já aplicados.
 
 ## Fluxo SDD
 

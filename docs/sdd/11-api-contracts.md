@@ -13,18 +13,18 @@ Todas as respostas são JSON salvo 204/string; todas as rotas, exceto health/log
 | GET `/api/calendars` | — | `CalendarResponse[]`, 200 | visíveis; ADMIN vê todos |
 | POST `/api/calendars` | `{name}` | `CalendarResponse`, 201 | global ADMIN |
 | GET `/api/calendars/{id}/members` | — | `CalendarMemberResponse[]`, 200 | calendário visível |
-| POST `/api/calendars/{id}/members` | `{email,role?}` | 204 | global/calendar ADMIN; default VIEWER |
-| PUT `/api/calendars/{id}/members/{memberId}` | `{role}` | membro, 200 | global/calendar ADMIN |
+| POST `/api/calendars/{id}/members` | `{email,role?}` | 204 | global/calendar ADMIN; default VIEWER; owner permanece ADMIN |
+| PUT `/api/calendars/{id}/members/{memberId}` | `{role}` | membro, 200 | global/calendar ADMIN; owner permanece ADMIN |
 | DELETE `/api/calendars/{id}/members/{memberId}` | — | 204 | global/calendar ADMIN; owner protegido |
 | GET `/api/events` | `calendarId,start,end` ISO datetime | `EventResponse[]`, 200 | calendário visível; sobreposição do intervalo |
 | POST `/api/events` | `CreateEventRequest` | `EventResponse`, 201 | BR-EVT-002 e regras por tipo |
 | GET `/api/events/search` | `term,limit?` | `EventSearchResponse[]`, 200 | visíveis; termo <2 → []; limite default 20/max 50 |
-| GET `/api/events/pending-approvals` | — | `EventResponse[]`, 200 | alvo; ADMIN lista todas |
+| GET `/api/events/pending-approvals` | — | `EventResponse[]`, 200 | alvo ativo e membro atual; ADMIN lista todas |
 | GET `/api/events/{id}` | — | `EventResponse`, 200 | calendário visível |
-| PUT `/api/events/{id}` | `UpdateEventRequest` | `EventResponse`, 200 | permissão de edição; status recalculado |
+| PUT `/api/events/{id}` | `UpdateEventRequest` | `EventResponse`, 200 | permissão de edição; status recalculado; BR-PAY-003 |
 | DELETE `/api/events/{id}` | — | 204 | permissão de edição; transição persistente para CANCELLED e auditoria |
-| POST `/api/events/{id}/approve` | `{}` | `EventResponse`, 200 | alvo + pendente |
-| POST `/api/events/{id}/reject` | `{}` | `EventResponse`, 200 | alvo + pendente |
+| POST `/api/events/{id}/approve` | `{}` | `EventResponse`, 200 | alvo ativo + membro atual + pendente |
+| POST `/api/events/{id}/reject` | `{}` | `EventResponse`, 200 | alvo ativo + membro atual + pendente |
 | PUT `/api/events/{id}/payment` | `UpdatePaymentRequest` | `EventResponse`, 200 | edição + BR-PAY-001 |
 | GET `/api/events/client-revenue` | `calendarId,period,date?` | resumo, 200 | financeiro; date default hoje |
 | GET `/api/finance/summary` | `calendarId,startDate,endDate` | `FinanceSummaryResponse`, 200 | financeiro |
@@ -33,7 +33,8 @@ Todas as respostas são JSON salvo 204/string; todas as rotas, exceto health/log
 ## Contratos por tipo
 
 - CLIENT: exige clientName/workDescription/amount; PERSONAL: exige personName; SHARED: exige approvalRequestedFromEmail diferente do ator e membro.
-- `EventResponse` contém IDs/e-mails, tipo/status, conteúdo, pagamento e datas. Não há envelope padronizado de erro documentado.
+- `EventResponse` contém IDs/e-mails, tipo/status, conteúdo e datas. Os campos `amount`, `paymentStatus`, `paymentMethod`, `receivedAmount` e `paidAt` são omitidos quando o ator não possui capacidade financeira ou de pagamento aprovada para aquele evento; ver `SEC-AUTHZ-006`.
+- Não há envelope padronizado de erro documentado.
 - PROPOSED, sujeito a decisões: endpoint/atributo que represente agenda/responsável próprio; nenhuma URL deve ser fixada antes de Q-001/Q-002.
 
 Evidência: todos `*Controller.java`, DTOs e services backend.

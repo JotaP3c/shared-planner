@@ -1,6 +1,6 @@
 # Shared Planner Frontend
 
-![Angular 21](https://img.shields.io/badge/Angular-21-DD0031?logo=angular&logoColor=white)
+![Angular 21.2.21](https://img.shields.io/badge/Angular-21.2.21-DD0031?logo=angular&logoColor=white)
 ![TypeScript 5.9](https://img.shields.io/badge/TypeScript-5.9-3178C6?logo=typescript&logoColor=white)
 ![Node.js 24](https://img.shields.io/badge/Node.js-24-339933?logo=nodedotjs&logoColor=white)
 ![Docker](https://img.shields.io/badge/Docker-ready-2496ED?logo=docker&logoColor=white)
@@ -21,18 +21,18 @@ Essa distinção permite combinar agenda, colaboração e controle financeiro ma
 
 ## Estado funcional
 
-O frontend já possui o fluxo principal de autenticação por e-mail/senha e agenda. Algumas áreas administrativas estão deliberadamente expostas como evolução do produto e ainda não devem ser consideradas concluídas.
+O frontend possui autenticação, agenda e resumo Finance operacionais. Algumas áreas administrativas continuam expostas como evolução do produto e não devem ser consideradas concluídas. O incremento atual está sincronizado entre a cópia integrada e o standalone, com paridade oficial de 76/76 arquivos e regressão concluída nos dois contextos.
 
 | Área | Estado atual |
 |---|---|
-| Autenticação | Login JWT, recuperação da identidade atual, guarda de rotas, interceptor Bearer e logout |
+| Autenticação | Login JWT, identidade atual, guarda, Bearer restrito a `/api` same-origin, encerramento em 401 e preservação em 403/500 |
 | Calendários | Listagem, seleção múltipla, cores, filtros e visualizações por mês, semana e dia |
 | Eventos | Criação, consulta, edição e cancelamento lógico de `CLIENT`, `PERSONAL` e `SHARED` |
 | Busca | Pesquisa global por eventos, clientes e descrições, com navegação para o resultado no calendário |
 | Aprovações | Fila de eventos compartilhados, indicação de não lidos e ações de aprovar/rejeitar pelo usuário solicitado |
-| Pagamentos | Consulta e atualização de status, método, valor recebido e data de pagamento em eventos `CLIENT` |
+| Pagamentos | Consulta/atualização em `CLIENT`; dados e controles são omitidos quando a resposta vem financeiramente redigida |
 | Membros | Listagem, inclusão, alteração de papel e remoção, respeitando a proteção do proprietário |
-| Financeiro | Cliente HTTP disponível; tela `/finance` ainda é um placeholder |
+| Financeiro | `/finance` funcional com calendário autorizado, DAILY/WEEKLY/BIWEEKLY/MONTHLY/CUSTOM, oito métricas e estados completos |
 | Usuários | Cliente HTTP para criação/edição; tela `/admin/users` ainda é um placeholder |
 | Auditoria | Cliente HTTP e contrato disponíveis; tela `/audit` ainda é um placeholder |
 | Configurações | Rota reservada, ainda sem fluxo funcional definido |
@@ -45,7 +45,7 @@ As ações visuais de login com Google, criação de conta e recuperação de se
 
 O produto combina papéis globais (`ADMIN`, `FINANCE`, `USER`) com papéis por calendário (`ADMIN`, `FINANCE`, `EDITOR`, `VIEWER`). Eles controlam administração global, criação e edição de eventos, gestão de membros, acesso financeiro e visibilidade.
 
-O frontend usa `authGuard` para exigir uma sessão nas rotas internas e adapta parte da navegação à identidade atual. A decisão final de acesso é sempre do backend, que valida o JWT e as permissões contextuais em cada requisição; ocultar um botão na interface não substitui autorização no servidor.
+O frontend usa `authGuard` para exigir uma sessão nas rotas internas e adapta parte da navegação à identidade atual. O grupo Finance só aparece quando a combinação de papel global e membership concede capacidade; a rota direta apresenta no-access quando necessário. A decisão final é sempre do backend, que valida JWT e permissões contextuais em cada requisição; ocultar um botão não substitui autorização no servidor.
 
 ## Arquitetura
 
@@ -138,7 +138,7 @@ Em shells nos quais `npm` não é interceptado pelo PowerShell, os mesmos comand
 
 O frontend espera que a API esteja em `http://localhost:8080`. As instruções de banco, variáveis de ambiente, Flyway e execução da API estão no [README do backend](https://github.com/JotaP3c/shared-planner-backend#readme).
 
-Uma resposta `401` ou `403` deve ser investigada primeiro no backend: a interface melhora a experiência ocultando ou desabilitando algumas ações, mas o servidor é a autoridade final de autorização.
+Uma resposta `401` encerra a sessão local e direciona ao login de forma idempotente. `403` informa negação sem apagar a sessão; 500 e falhas de rede também preservam o estado autenticado. Em todos os casos o servidor permanece a autoridade final de autorização.
 
 ## Executar a stack completa com Docker Compose
 
@@ -220,7 +220,7 @@ npm.cmd run serve:ssr:shared-planner-frontend
 | `/calendar` | Calendários, eventos, busca, detalhe, pagamentos e painel de pendências | Funcional |
 | `/pending` | Fila completa de aprovações | Funcional |
 | `/members` | Participantes e papéis dos calendários | Funcional |
-| `/finance` | Resumo financeiro de atendimentos | Placeholder; API de receitas disponível |
+| `/finance` | Resumo de receitas por calendário e intervalo autorizado | Funcional; acesso direto possui estado no-access |
 | `/admin/users` | Administração global de usuários | Placeholder; link exibido somente a ADMIN |
 | `/audit` | Consulta a logs de auditoria | Placeholder; cliente HTTP disponível |
 | `/settings` | Preferências da aplicação | Placeholder |
@@ -236,11 +236,11 @@ Os clientes em `src/app/core/api` consomem estes grupos de endpoints:
 | Autenticação | `/api/auth` | Login e usuário atual |
 | Calendários | `/api/calendars` | Listagem, criação e membros |
 | Eventos | `/api/events` | CRUD, busca, aprovações, pagamentos e receita de clientes |
-| Financeiro | `/api/finance` | Resumo por intervalo; tela ainda pendente |
+| Financeiro | `/api/finance` | Resumo por intervalo, consumido pela página Finance |
 | Usuários | `/api/users` | Criação/edição; tela ainda pendente |
 | Auditoria | `/api/audit-logs` | Contrato pronto; tela ainda pendente |
 
-O `authInterceptor` adiciona `Authorization: Bearer <token>` às requisições protegidas. Login e health permanecem públicos. Os modelos TypeScript espelham os DTOs utilizados pela aplicação, mas o contrato definitivo está documentado na [especificação da API](https://github.com/JotaP3c/shared-planner/blob/main/docs/sdd/11-api-contracts.md).
+O `authInterceptor` adiciona `Authorization: Bearer <token>` somente a URLs `/api` same-origin e não sobrescreve um `Authorization` explícito. Login e health permanecem públicos; URL externa nunca recebe o token. Em 401 ele encerra a sessão uma vez; 403/500 preservam a sessão. Os modelos TypeScript espelham os DTOs utilizados pela aplicação, incluindo campos financeiros opcionais/redigidos, mas o contrato definitivo está na [especificação da API](https://github.com/JotaP3c/shared-planner/blob/main/docs/sdd/11-api-contracts.md).
 
 ## Scripts
 
@@ -263,14 +263,20 @@ npm.cmd test -- --watch=false
 npm.cmd run build
 ```
 
-A baseline de infraestrutura de 21/08/2026 registrou:
+A baseline standalone de infraestrutura de 21/08/2026 registrou:
 
 - 10 arquivos de teste e 13 testes aprovados;
 - build SSR aprovado e rotas prerenderizadas;
 - smoke de autenticação e calendário aprovado em navegador headless;
 - build da imagem standalone e stack integrada aprovados.
 
-Ainda não existe suíte E2E nem script E2E no `package.json`. O relatório também registra três warnings de budget SCSS e alertas do `npm audit`; consulte o [relatório de validação](https://github.com/JotaP3c/shared-planner/blob/main/docs/sdd/29-infrastructure-validation-report.md) e reavalie-os em qualquer atualização de dependências. Evite `npm audit fix --force` sem análise de compatibilidade e regressão.
+O incremento de 22/08/2026 passou no integrado e no standalone com:
+
+- 31 testes em 12 arquivos;
+- build SSR com 9 rotas prerenderizadas e 4 warnings de budget SCSS;
+- Angular 21.2.21, `npm ci` com 505 pacotes e `npm audit --omit=dev`/audit completo com 0 vulnerabilidades.
+
+Além disso, a paridade oficial confirmou 76/76 arquivos, a imagem Docker foi reconstruída e o smoke da stack validou frontend/health, autenticação, autorização e redação financeira. Ainda não existe suíte E2E nem script E2E no `package.json`; a baseline anterior permanece apenas como evidência histórica. Evite `npm audit fix --force` sem análise de compatibilidade e regressão.
 
 ## Segurança
 
@@ -278,7 +284,9 @@ Ainda não existe suíte E2E nem script E2E no `package.json`. O relatório tamb
 - O frontend nunca deve receber `APP_JWT_SECRET`, credenciais do PostgreSQL ou outros segredos de infraestrutura.
 - `BACKEND_URL` é configuração exclusiva do processo SSR; não é uma credencial.
 - A guarda de rota valida a presença da sessão para navegação, enquanto o backend valida identidade, token, papéis globais e papéis de calendário.
-- Respostas `401` e `403` não devem ser contornadas no cliente; a matriz vigente está na [especificação de permissões](https://github.com/JotaP3c/shared-planner/blob/main/docs/sdd/04-permissions.md).
+- Bearer só é anexado a `/api` same-origin; headers explícitos e URLs externas são preservados sem vazamento do token.
+- `401` limpa a sessão e navega ao login; `403` e demais falhas preservam a sessão. Nenhuma negação deve ser contornada no cliente.
+- Eventos sem campos financeiros não renderizam valores nem controles de pagamento; o backend continua a autoridade da redação.
 - Arquivos `.env`, logs, `node_modules/`, `dist/` e `.angular/` não pertencem ao controle de versão nem à sincronização entre repositórios.
 
 ## Topologia multi-repositório

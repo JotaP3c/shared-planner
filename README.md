@@ -5,13 +5,13 @@ Shared Planner é uma aplicação de agenda compartilhada com autenticação, ca
 ## Stack atual
 
 - Backend: Java 17, Spring Boot 4, Security/JWT, JPA, Flyway e PostgreSQL 17.
-- Frontend: Angular 21 com SSR e FullCalendar.
+- Frontend: Angular 21.2.21 com SSR e FullCalendar.
 - Infraestrutura local: Docker Compose com PostgreSQL, backend e frontend.
 - Especificação: Spec-Driven Development em [`docs/sdd`](docs/sdd/README.md).
 
 [![Java 17](https://img.shields.io/badge/Java-17-ED8B00?logo=openjdk&logoColor=white)](backend/README.md)
 [![Spring Boot 4.0.6](https://img.shields.io/badge/Spring%20Boot-4.0.6-6DB33F?logo=springboot&logoColor=white)](backend/README.md)
-[![Angular 21](https://img.shields.io/badge/Angular-21-DD0031?logo=angular&logoColor=white)](frontend/README.md)
+[![Angular 21.2.21](https://img.shields.io/badge/Angular-21.2.21-DD0031?logo=angular&logoColor=white)](frontend/README.md)
 [![PostgreSQL 17](https://img.shields.io/badge/PostgreSQL-17-4169E1?logo=postgresql&logoColor=white)](docker/postgres.md)
 [![Docker Compose](https://img.shields.io/badge/Docker%20Compose-ready-2496ED?logo=docker&logoColor=white)](docker/README.md)
 [![License MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
@@ -30,7 +30,7 @@ Além da agenda, o produto contempla membros e papéis por calendário, busca gl
 
 ### Estado funcional
 
-O fluxo principal de autenticação e agenda já está integrado. Algumas áreas seguem no roadmap e aparecem na interface como telas-base, portanto não devem ser interpretadas como módulos concluídos.
+O fluxo principal de autenticação e agenda está integrado. O resumo financeiro também foi concluído; Users, Audit e Settings seguem no roadmap e não devem ser interpretados como módulos concluídos. As cópias integradas e os repositórios standalone estão sincronizados e revalidados pelo gate final.
 
 | Área | Estado atual |
 |---|---|
@@ -38,10 +38,10 @@ O fluxo principal de autenticação e agenda já está integrado. Algumas áreas
 | Calendários | Listagem, seleção, cores, filtros e visualizações mensal, semanal e diária |
 | Eventos | Criação, consulta, edição e cancelamento lógico de eventos <code>CLIENT</code>, <code>PERSONAL</code> e <code>SHARED</code> |
 | Busca | Pesquisa global e navegação até o evento selecionado |
-| Aprovações | Fila de solicitações e ações de aprovar ou rejeitar pelo usuário convidado |
+| Aprovações | Fila e ações do usuário convidado enquanto ele permanecer ativo e membro atual do calendário |
 | Pagamentos | Consulta e atualização dos dados de pagamento de atendimentos |
-| Membros | Inclusão, alteração de papel e remoção conforme autorização |
-| Financeiro | API disponível; a página <code>/finance</code> ainda é uma tela-base |
+| Membros | Inclusão, alteração de papel e remoção conforme autorização; owner não pode ser removido nem rebaixado de <code>ADMIN</code> |
+| Financeiro | Resumo de receitas funcional em <code>/finance</code>, com calendários autorizados, períodos civis/custom, oito métricas e estados completos |
 | Usuários | API administrativa disponível; a página <code>/admin/users</code> ainda é uma tela-base |
 | Auditoria | API e contratos disponíveis; a página <code>/audit</code> ainda é uma tela-base |
 | Configurações | Rota <code>/settings</code> reservada para evolução |
@@ -189,6 +189,7 @@ O arquivo [<code>.env.example</code>](.env.example) documenta todas as variávei
 
 | Grupo | Variáveis |
 |---|---|
+| Rede local | <code>BIND_ADDRESS</code> (padrão seguro: <code>127.0.0.1</code>) |
 | PostgreSQL | <code>POSTGRES_DB</code>, <code>POSTGRES_USER</code>, <code>POSTGRES_PASSWORD</code>, <code>POSTGRES_PORT</code> |
 | API | <code>BACKEND_PORT</code>, <code>APP_JWT_SECRET</code>, <code>APP_JWT_EXPIRATION_MINUTES</code> |
 | Frontend | <code>FRONTEND_PORT</code> |
@@ -222,6 +223,25 @@ npm.cmd run build
 ~~~
 
 Os testes unitários não substituem a validação integrada da stack nem os critérios de aceite definidos no SDD. A estratégia completa está em [Test Strategy](docs/sdd/16-test-strategy.md).
+
+Baseline integrada validada em 2026-08-22:
+
+- backend: 16 testes PASS;
+- frontend: 31 testes em 12 arquivos PASS;
+- build SSR: PASS, 9 rotas prerenderizadas e 4 avisos de budget CSS;
+- dependências frontend: Angular 21.2.21, `npm ci` com 505 pacotes e audits runtime/completo com 0 vulnerabilidades.
+
+O gate final multi-repositório de 2026-08-22 confirmou:
+
+- paridade oficial: backend 84/84 e frontend 76/76 arquivos comparáveis;
+- standalone backend: 16/16 testes PASS;
+- standalone frontend: `npm ci` com 505 pacotes, 31/31 testes, build SSR com 9 rotas/4 avisos e audits runtime/completo = 0;
+- Docker: builds backend/frontend PASS, Flyway V7 atualizado e três serviços `healthy`, vinculados a `127.0.0.1` nas portas 5432/8080/4200;
+- containers sem root: backend UID 10001 e frontend UID 1000;
+- HTTP: frontend, health direto e health via proxy = 200; endpoint protegido sem token = 401;
+- autorização: ADMIN passou em login/me/users/audit/finance; VIEWER recebeu 403 em users/finance e resposta CLIENT com campos financeiros omitidos.
+
+Essas evidências valem para os standalones sincronizados e para a integração atual. Riscos S2/S3 e decisões Q-004/Q-005 continuam documentados, sem impedir o gate local concluído.
 
 ## Sincronização dos repositórios
 
@@ -286,9 +306,12 @@ Quando houver divergência entre uma expectativa informal e a especificação vi
 
 ## Segurança
 
-- JWT é enviado no cabeçalho <code>Authorization: Bearer</code> e validado pelo backend.
+- JWT é enviado somente a <code>/api</code> same-origin pelo interceptor; o backend valida HS256, expiração, issuer e usuário ativo.
 - Senhas persistidas devem usar hash; nunca devem aparecer em código, logs ou documentação.
 - O backend revalida papéis globais e permissões por calendário em cada operação protegida.
+- Campos financeiros de eventos são omitidos quando o ator não possui capacidade; remoção de membership revoga listagem e decisão SHARED.
+- Respostas 401 encerram a sessão frontend; 403 e demais falhas não apagam a sessão.
+- As portas do Compose usam loopback por padrão; exposição à rede exige alteração consciente de <code>BIND_ADDRESS</code>.
 - Healthchecks não devem expor credenciais nem informações sensíveis.
 - Imagens de produção executam com usuários não privilegiados sempre que suportado pelo componente.
 
@@ -303,6 +326,9 @@ Este projeto ainda está em evolução. Antes de uso em produção, realize uma 
 | Backend | [<code>backend/README.md</code>](backend/README.md) |
 | Frontend | [<code>frontend/README.md</code>](frontend/README.md) |
 | Especificações SDD | [<code>docs/sdd/README.md</code>](docs/sdd/README.md) |
+| Auditoria funcional | [<code>docs/sdd/28-functional-completeness-audit.md</code>](docs/sdd/28-functional-completeness-audit.md) |
+| Auditoria de segurança | [<code>docs/sdd/31-security-audit-report.md</code>](docs/sdd/31-security-audit-report.md) |
+| Backlog priorizado | [<code>docs/sdd/33-development-backlog.md</code>](docs/sdd/33-development-backlog.md) |
 | Perguntas em aberto | [<code>docs/sdd/99-open-questions.md</code>](docs/sdd/99-open-questions.md) |
 
 ## Licença

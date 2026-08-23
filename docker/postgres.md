@@ -1,6 +1,6 @@
 # PostgreSQL
 
-PostgreSQL 17 é o único banco de runtime. O serviço Compose se chama `postgres`, usa a porta interna `5432` e publica `${POSTGRES_PORT:-5432}` no host. Banco, usuário, senha e porta publicada vêm do `.env`; a senha nunca deve ser copiada para documentação versionada.
+PostgreSQL 17 é o único banco de runtime. O serviço Compose se chama `postgres`, usa a porta interna `5432` e publica `${POSTGRES_PORT:-5432}` no endereço `${BIND_ADDRESS:-127.0.0.1}` do host. Banco, usuário, senha, bind e porta publicada vêm do `.env`; a senha nunca deve ser copiada para documentação versionada. Produção não deve publicar o banco diretamente.
 
 ## Validar pelo container
 

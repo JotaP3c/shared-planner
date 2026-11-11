@@ -1,5 +1,20 @@
 # 01 — Current State (AS-IS)
 
+## Atualização — 2026-11-11 (correção de incidentes)
+
+Ver [incident-corrections/](incident-corrections/requirements.md). Mudanças de estado:
+
+- Flyway **V1–V8**: V8 adiciona confirmação de atendimento (`events.confirmation_*`,
+  `reschedule_count`, `unschedule_*`) e `appointment_confirmation_history`. Ainda não
+  executada em PostgreSQL real por esta rodada.
+- Eventos CLIENT têm três dimensões independentes: `status` (equipe), `paymentStatus`
+  (pagamento) e `confirmationStatus` (cliente).
+- `POST /api/calendars/{id}/members` não é mais upsert: 404 sem conta, 409 inativo ou já
+  membro. Papel muda só por `PUT`.
+- Financeiro com evolução, distribuição por pagamento e por confirmação e atendimentos
+  recentes (`/api/finance/timeline`, `/api/finance/appointments`).
+- Auditoria com tela real (sem snapshots). Sidebar e painel direito recolhíveis.
+
 ## Retrato atual — 2026-11-11 (consolidação + redesign)
 
 Este bloco substitui, como estado vigente, as contagens e caminhos abaixo; o texto de

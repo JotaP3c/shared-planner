@@ -18,6 +18,12 @@
 | Tema (R-02) | — | — | ThemeService/index.html/LoginPage/SettingsPage | requirements R-02 | `theme.service.spec.ts`, `login-page.spec.ts`, `settings-page.spec.ts` |
 | Consistência (R-03/R-04) | — | — | DataChangeService, CalendarPage, PendingPage, AppShell | requirements R-03/R-04 | regressões de reabertura, sino, resumo e duração |
 | Acessibilidade de modais (R-07) | — | — | DialogFocusDirective | BLG-TD-006 | `dialog-focus.directive.spec.ts` |
+| NF-01 confirmação de atendimento | `POST /events/{id}/confirm`, `/unschedule`, `GET /confirmation-history` | V8: `events.confirmation_*`, `appointment_confirmation_history` | AppointmentConfirmation, modal de detalhes | incident-corrections RF-03/RF-04 | `AppointmentConfirmationIntegrationTests` (10), `appointment-confirmation.spec.ts` |
+| INC-03 membros | `CalendarService.addMember` 404/409 | `calendar_members` (UK) | MembersPage | RF-06 | `CalendarMemberIntegrationTests` (6), `members-page.spec.ts` |
+| INC-04 usuários | `UserService.update` (último ADMIN) | `users` | UsersPage | RF-07 | `UserAdministrationIntegrationTests` (5), `users-page.spec.ts` |
+| INC-05 financeiro | `/finance/summary`, `/timeline`, `/appointments` | `events` | FinancePage, DonutChart, BarChart | RF-04/RF-05 | `FinanceSummaryIntegrationTests` (4), `finance-page.spec.ts` |
+| INC-06 layout | — | — | LayoutPreferencesService, AppShell, CalendarPage | RF-08 | `layout-preferences.service.spec.ts`, shell/calendar specs |
+| INC-07 auditoria | `GET /api/audit-logs` | `audit_logs` | AuditPage | RF-09 | `audit-page.spec.ts` |
 
 ## Infraestrutura
 

@@ -13,7 +13,7 @@ Todas as respostas são JSON salvo 204/string; todas as rotas, exceto health/log
 | GET `/api/calendars` | — | `CalendarResponse[]`, 200 | visíveis; ADMIN vê todos |
 | POST `/api/calendars` | `{name}` | `CalendarResponse`, 201 | global ADMIN |
 | GET `/api/calendars/{id}/members` | — | `CalendarMemberResponse[]`, 200 | calendário visível |
-| POST `/api/calendars/{id}/members` | `{email,role?}` | 204 | global/calendar ADMIN; default VIEWER; owner permanece ADMIN |
+| POST `/api/calendars/{id}/members` | `{email,role?}` | 204 | global/calendar ADMIN; default VIEWER; e-mail normalizado; **404** sem conta, **409** conta inativa ou já membro (sem upsert desde 2026-11-11); nunca cria conta |
 | PUT `/api/calendars/{id}/members/{memberId}` | `{role}` | membro, 200 | global/calendar ADMIN; owner permanece ADMIN |
 | DELETE `/api/calendars/{id}/members/{memberId}` | — | 204 | global/calendar ADMIN; owner protegido |
 | GET `/api/events` | `calendarId,start,end` ISO datetime | `EventResponse[]`, 200 | calendário visível; sobreposição do intervalo |
@@ -29,6 +29,11 @@ Todas as respostas são JSON salvo 204/string; todas as rotas, exceto health/log
 | GET `/api/events/client-revenue` | `calendarId,period,date?` | resumo, 200 | financeiro; date default hoje |
 | GET `/api/finance/summary` | `calendarId,startDate,endDate` | `FinanceSummaryResponse`, 200 | financeiro |
 | GET `/api/audit-logs` | `calendarId?,entityType?,entityId?,limit?` | logs, 200 | global ADMIN ou calendar ADMIN; limit 1–100 |
+| POST `/api/events/{id}/confirm` | — | `EventResponse`, 200 | edição do evento; CLIENT; PENDING_CONFIRMATION/RESCHEDULED → CONFIRMED; 409 transição inválida |
+| POST `/api/events/{id}/unschedule` | `{reason: RESCHEDULE\|GAVE_UP\|OTHER, notes?, newStartsAt?, newEndsAt?}` | `EventResponse`, 200 | notes obrigatório em OTHER; datas obrigatórias em RESCHEDULE (mesmo evento); 409 se já desmarcado |
+| GET `/api/events/{id}/confirmation-history` | — | histórico, 200 | calendário visível |
+| GET `/api/finance/timeline` | `calendarId,startDate,endDate` | `{granularity: DAY\|MONTH, points[]}` | capacidade financeira; DAY ≤ 62 dias; máx. 1100 dias |
+| GET `/api/finance/appointments` | `calendarId,startDate,endDate,limit?` | atendimentos recentes | capacidade financeira; limit 1–50 (padrão 10) |
 
 ## Contratos por tipo
 

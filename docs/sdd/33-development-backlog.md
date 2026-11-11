@@ -60,6 +60,10 @@ Estado após validação multi-repositório: `S0 = 0` e `S1 = 0`. Os dois S1, o 
 | BLG-BUG-010 (proposto) | P1 | Pendência SHARED decidida e depois reaberta ficava oculta até recarregar a página (`resolvedEventIds` vitalício). | Consulta iniciada após a decisão é autoritativa; resposta anterior não ressuscita item. | FIXED 2026-11-11 — `pending-page.spec.ts` |
 | BLG-BUG-011 (proposto) | P2 | Card financeiro do calendário e contador do sino não refletiam criação/edição/cancelamento/pagamento/aprovação. | `DataChangeService` invalida resumo e contador. | FIXED 2026-11-11 — `calendar-page.spec.ts`, `app-shell.spec.ts` |
 | BLG-BUG-012 (proposto) | P2 | Atalho de duração truncava o término em 23:59 exibindo duração diferente da aplicada. | Durações que ultrapassam o dia não são oferecidas nem aplicadas. | FIXED 2026-11-11 — `calendar-page.spec.ts` |
+| BLG-BUG-014 (proposto) | P1 | `<select [value]>` com opções em `@for` exibia a 1ª opção: Financeiro mostrava "Diário" calculando o mês; Membros mostrava "Administrador" enviando VIEWER. | Opções com `[selected]`; specs de sincronia. | FIXED 2026-11-11 — `finance-page.spec.ts`, `members-page.spec.ts` |
+| BLG-BUG-015 (proposto) | P1 | `POST /members` sobrescrevia papel de membro existente e não distinguia inexistente/inativo; e-mail sem trim. | 404/409 distintos, sem upsert, normalização. | FIXED 2026-11-11 — `CalendarMemberIntegrationTests` |
+| BLG-FE-010 (proposto) | P1 | Confirmação de atendimento (NF-01). | Confirmar/desmarcar/remarcar, histórico, auditoria, financeiro. | DONE 2026-11-11 — `AppointmentConfirmationIntegrationTests`, `appointment-confirmation.spec.ts`; V8 pendente em PG real |
+| BLG-FE-005 | P2 | Auditoria. | Lista real com filtros e escopo por papel, sem snapshots. | PARTIAL 2026-11-11 — retenção/minimização no backend dependem de Q-006 |
 | BLG-BUG-013 (proposto) | P2 | Tema: PNG opaco no login quebrava o tema escuro; script pré-pintura divergia do serviço em valor inválido; sem sync entre abas. | Resolvedor único, SVG com tokens, seletor no login, listener `storage`. | FIXED 2026-11-11 — `theme.service.spec.ts`, `login-page.spec.ts` |
 
 ## BUSINESS RULE

@@ -27,6 +27,18 @@
 - Validação: backend 19/19 e frontend 53/53 em 13 arquivos (integrado e standalones); build SSR com 9 rotas e 4 warnings de budget conhecidos; paridade backend 85/85 e frontend 78/78.
 - Q-004, Q-005 e a leitura de BR-PAY-003 (PAID → PENDING → troca de tipo/valor) continuam abertas.
 
+## Incremento 2026-11-11 (noite) — correção de incidentes e confirmação de agendamento
+
+Detalhes em [incident-corrections/](incident-corrections/tasks.md). Sem commit/push.
+
+- INC-01 login sem nota de token; INC-02 modal em seções; INC-03 membros (select, 404/409,
+  sem upsert); INC-04 usuários (ícones, desativação lógica, último ADMIN); INC-05 financeiro
+  (select de período, KPIs, donuts, evolução, recentes); INC-06 sidebar/painel recolhíveis;
+  INC-07 auditoria real.
+- NF-01 confirmação de atendimento (confirmar, desmarcar com motivo, remarcar no mesmo
+  evento, histórico e auditoria) com integração financeira.
+- Backend 37 → 60 testes. Frontend: ver 20.
+
 ## Incremento 2026-11-11 (tarde) — consolidação SDD + remodelagem
 
 Continuação da execução interrompida do agente anterior (que só havia criado os 3 docs de

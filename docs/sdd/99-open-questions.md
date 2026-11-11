@@ -46,6 +46,11 @@ foi preservado e, quando relevante, fixado por teste.
 | BLG-BR-007 | Settings | só aparência (entregue); perfil editável; notificações | manter mínimo até haver API | sem edição de perfil |
 | BLG-UX-004 | eventos multidia | não suportar (atual); data de término separada | só com requisito | atalho não oferece durações além de 23:59 |
 | E2E/CI (proposto) | sem ferramenta de E2E | Playwright; Cypress | Playwright com dados isolados | fluxos completos só validados manualmente |
+| Q-008 (proposta) | Quem confirma/desmarca atendimento | A) mesma regra de edição do evento (implementado); B) também FINANCE; C) qualquer membro com acesso | A até decisão | VIEWER/FINANCE recebem 403 |
+| Q-009 (proposta) | Desmarcado pode voltar a confirmado? | A) não, exige novo agendamento (implementado: 409); B) permitir "reverter desmarcação" auditado | B com auditoria, se houver demanda | atendente precisa criar novo evento |
+| Q-010 (proposta) | Desativar dono de calendário | A) permitido, propriedade mantida (implementado); B) bloquear até transferir propriedade | B, com fluxo de transferência | calendário pode ficar sem dono ativo (ADMIN global continua administrando) |
+| Q-011 (proposta) | `GET /api/audit-logs` ainda devolve `oldValue/newValue` | A) manter contrato (implementado; a UI não exibe); B) remover/mascarar no backend | B, junto com Q-006 | snapshots seguem acessíveis via API para quem tem permissão |
+| Q-012 (proposta) | Convite de pessoa sem conta | A) não suportado (implementado: orienta cadastro); B) convite por e-mail com token | B exige envio de e-mail e expiração | cadastro manual pelo ADMIN global |
 
 ## Futuras possibilidades (não requisitos)
 

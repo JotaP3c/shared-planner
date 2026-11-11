@@ -77,6 +77,21 @@ leitura das referências e dos tokens, não por captura de tela. Lint não está
 Os audits "zero" observados dentro do sandbox do onboarding contradiziam a execução externa;
 nesta rodada os audits rodaram com acesso ao registro e os números acima são os reais.
 
+## Correção de incidentes — 2026-11-11 (noite)
+
+| Verificação | Resultado real |
+|---|---|
+| Backend `mvnw.cmd -q -B test` (monorepo) | **PASS 60/60** em 11 suítes (novas: confirmação 10, membros 6, usuários 5; Finance 2→4; segurança ajustada para 409) |
+| Frontend `ng test --no-watch` (monorepo) | **PASS 109/109** em 17 arquivos (antes 86/15) |
+| Frontend `ng build` (SSR) | **PASS**, 1 rota pré-renderizada, 0 avisos |
+| Migration V8 em PostgreSQL | **Não executada** (H2 cria schema por entidades; banco local não alterado) |
+| Teste manual em navegador / comparação com `docs/reffs` | **Não executado** pelo agente; roteiro em `incident-corrections/tasks.md` |
+| Standalones | Não sincronizados nesta rodada (sem commit/push autorizados); rodar `sync-repositories.ps1` antes de publicar |
+
+Bugs comprovados e corrigidos: select com `[value]` + `@for` (Financeiro e Membros),
+POST de membro como upsert, e-mail sem normalização, ausência de proteção explícita do
+último ADMIN, corrida de e-mail duplicado (500 → 409).
+
 ## Escopo da validação em andamento
 
 Este documento preserva a evidência funcional. A validação histórica de contexts standalone do Compose, DBeaver e infraestrutura está detalhada em [29](29-infrastructure-validation-report.md); a evidência atual de segurança está em [31](31-security-audit-report.md).

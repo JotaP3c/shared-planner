@@ -4,9 +4,11 @@ import { signal, WritableSignal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 
 import { AuthService } from '../../../core/auth/auth.service';
+import { provideRouter } from '@angular/router';
 import {
   CalendarResponse,
   FinanceSummaryResponse,
+  FinanceTimelineResponse,
   UserResponse,
 } from '../../../core/models/shared-planner.models';
 import { FinancePage } from './finance-page';
@@ -55,8 +57,32 @@ describe('FinancePage', () => {
     pendingCount: 2,
     partiallyPaidCount: 1,
     refundedCount: 1,
+    confirmedAmount: 600,
+    unconfirmedAmount: 400,
+    unscheduledAmount: 0,
+    confirmedCount: 5,
+    awaitingConfirmationCount: 2,
+    rescheduledCount: 1,
+    unscheduledCount: 0,
+    rescheduleOccurrences: 1,
     ...overrides,
   });
+
+  /** Evolução e recentes são carregados depois do resumo; descarta os pendentes. */
+  const flushDetails = (points: FinanceTimelineResponse['points'] = []) => {
+    http.match(request => request.url === '/api/finance/timeline')
+      .filter(request => !request.cancelled)
+      .forEach(request => request.flush({
+        calendarId: request.request.params.get('calendarId'),
+        startDate: request.request.params.get('startDate'),
+        endDate: request.request.params.get('endDate'),
+        granularity: 'DAY',
+        points,
+      }));
+    http.match(request => request.url === '/api/finance/appointments')
+      .filter(request => !request.cancelled)
+      .forEach(request => request.flush([]));
+  };
 
   beforeEach(async () => {
     currentUser = signal<UserResponse | null>(user('USER'));
@@ -64,6 +90,7 @@ describe('FinancePage', () => {
     await TestBed.configureTestingModule({
       imports: [FinancePage],
       providers: [
+        provideRouter([]),
         provideHttpClient(),
         provideHttpClientTesting(),
         { provide: AuthService, useValue: { currentUser } },
@@ -77,6 +104,7 @@ describe('FinancePage', () => {
   });
 
   afterEach(() => {
+    flushDetails();
     http.verify();
   });
 
@@ -104,11 +132,75 @@ describe('FinancePage', () => {
     expect(element.querySelector('[data-testid="partially-paid-count"]')?.textContent?.trim()).toBe('1');
     expect(element.querySelector('[data-testid="refunded-count"]')?.textContent?.trim()).toBe('1');
 
-    // Gráfico derivado só das contagens reais: 4/8 pagos = 50%.
+    // Donut de pagamento: QUANTIDADE real, 4/8 pagos = 50%.
     const chart = element.querySelector('[data-testid="payment-status-chart"]');
     expect(chart).not.toBeNull();
-    expect(chart?.querySelector('[role="img"]')?.getAttribute('aria-label')).toContain('Pagos: 4');
-    expect((chart?.querySelector('.slice.paid') as HTMLElement).style.width).toBe('50%');
+    expect(chart?.querySelector('[role="img"]')?.getAttribute('aria-label')).toContain('Pago 4 (50%)');
+    expect(chart?.querySelector('[data-testid="donut-legend-paid"]')?.textContent).toContain('50%');
+    expect(chart?.querySelectorAll('[data-testid^="donut-segment-"]').length).toBe(4);
+
+    // Confirmação em gráfico separado, sem misturar com pagamento.
+    const confirmation = element.querySelector('[data-testid="confirmation-chart"]');
+    expect(confirmation?.textContent).toContain('Confirmados');
+    expect(confirmation?.textContent).not.toContain('Reembolsado');
+    expect(element.querySelector('[data-testid="confirmed-count"]')?.textContent?.trim()).toBe('5');
+    expect(element.querySelector('[data-testid="confirmed-amount"]')?.textContent).toContain('600');
+  });
+
+  it('loads the revenue evolution and recent appointments for the applied period', async () => {
+    component.setReferenceDate('2026-11-11');
+    http.expectOne('/api/calendars').flush([calendar('finance', 'FINANCE')]);
+    await fixture.whenStable();
+    expectSummaryRequest('finance', '2026-11-01', '2026-11-30')
+      .flush(summary('finance', '2026-11-01', '2026-11-30'));
+
+    const timeline = http.expectOne(request => request.url === '/api/finance/timeline');
+    expect(timeline.request.params.get('startDate')).toBe('2026-11-01');
+    expect(timeline.request.params.get('endDate')).toBe('2026-11-30');
+    timeline.flush({
+      calendarId: 'finance', startDate: '2026-11-01', endDate: '2026-11-30', granularity: 'DAY',
+      points: [
+        { date: '2026-11-11', expectedAmount: 50, receivedAmount: 50, appointmentCount: 1 },
+        { date: '2026-11-12', expectedAmount: 100, receivedAmount: 0, appointmentCount: 1 },
+      ],
+    });
+    http.expectOne(request => request.url === '/api/finance/appointments').flush([{
+      eventId: 'e1', calendarId: 'finance', startsAt: '2026-11-11T15:00:00', clientName: 'joao teste',
+      workDescription: 'Corte', amount: 50, receivedAmount: 50, paymentStatus: 'PAID', confirmationStatus: 'CONFIRMED',
+    }]);
+    fixture.detectChanges();
+
+    const element: HTMLElement = fixture.nativeElement;
+    expect(component.timelinePoints().map(point => point.label)).toEqual(['11/11', '12/11']);
+    expect(element.querySelector('[data-testid="revenue-evolution-chart"] svg')).not.toBeNull();
+    const recent = element.querySelector('[data-testid="recent-appointments"]');
+    expect(recent?.textContent).toContain('joao teste');
+    expect(recent?.textContent).toContain('Confirmado');
+    expect(recent?.textContent).toContain('Pago');
+    expect(recent?.querySelector('a')?.getAttribute('href')).toContain('eventId=e1');
+  });
+
+  it('keeps the visible period select in sync with the applied period (INC-05a)', async () => {
+    component.setReferenceDate('2026-11-11');
+    http.expectOne('/api/calendars').flush([calendar('finance', 'FINANCE')]);
+    await fixture.whenStable();
+    expectSummaryRequest('finance', '2026-11-01', '2026-11-30')
+      .flush(summary('finance', '2026-11-01', '2026-11-30'));
+    fixture.detectChanges();
+
+    const select = fixture.nativeElement.querySelector('[data-testid="finance-period-select"]') as HTMLSelectElement;
+    // Antes da correção o navegador exibia "Diário" (1ª opção) com o estado em MONTHLY.
+    expect(select.value).toBe('MONTHLY');
+    expect(select.selectedOptions[0].textContent).toContain('Mensal');
+
+    select.value = 'DAILY';
+    select.dispatchEvent(new Event('change'));
+    component.applyFilters();
+    expectSummaryRequest('finance', '2026-11-11', '2026-11-11')
+      .flush(summary('finance', '2026-11-11', '2026-11-11'));
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('[data-testid="finance-active-period"]')?.textContent)
+      .toContain('11 de nov. de 2026');
   });
 
   it('applies global ADMIN and global FINANCE membership rules before requesting finance', async () => {

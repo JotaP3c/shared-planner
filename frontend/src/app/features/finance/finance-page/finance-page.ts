@@ -1,14 +1,22 @@
 import { Component, OnInit, computed, effect, inject, signal, untracked } from '@angular/core';
-import { finalize } from 'rxjs';
+import { RouterLink } from '@angular/router';
+import { Subscription, finalize, forkJoin } from 'rxjs';
 
 import { CalendarService } from '../../../core/api/calendar.service';
 import { FinanceService } from '../../../core/api/finance.service';
 import { AuthService } from '../../../core/auth/auth.service';
 import {
+  AppointmentConfirmationStatus,
   CalendarResponse,
+  FinanceAppointmentResponse,
   FinanceSummaryResponse,
+  FinanceTimelineResponse,
+  PaymentStatus,
   RevenuePeriod,
 } from '../../../core/models/shared-planner.models';
+import { BarChart, BarChartPoint } from '../../../shared/ui/charts/bar-chart';
+import { DonutChart, DonutSlice } from '../../../shared/ui/charts/donut-chart';
+import { Icon } from '../../../shared/ui/icon/icon';
 
 type FinancePeriod = RevenuePeriod | 'CUSTOM';
 
@@ -19,7 +27,7 @@ interface DateRange {
 
 @Component({
   selector: 'app-finance-page',
-  imports: [],
+  imports: [RouterLink, DonutChart, BarChart, Icon],
   templateUrl: './finance-page.html',
   styleUrl: './finance-page.scss',
 })
@@ -51,6 +59,11 @@ export class FinancePage implements OnInit {
   readonly isLoadingSummary = signal(false);
   readonly calendarErrorMessage = signal('');
   readonly errorMessage = signal('');
+  readonly timeline = signal<FinanceTimelineResponse | null>(null);
+  readonly appointments = signal<FinanceAppointmentResponse[]>([]);
+  readonly isLoadingDetails = signal(false);
+  readonly detailsError = signal('');
+  private detailsSubscription: Subscription | null = null;
 
   readonly authorizedCalendars = computed(() => {
     const user = this.currentUser();
@@ -223,33 +236,114 @@ export class FinancePage implements OnInit {
     this.loadSummary();
   }
 
-  /** Fatias do gráfico calculadas só com as contagens reais do summary (BR-FIN-001). */
-  statusSlices(finance: FinanceSummaryResponse): Array<{ key: string; label: string; count: number; percent: number }> {
-    const total = finance.appointmentCount || 0;
-    const slices = [
-      { key: 'paid', label: 'Pagos', count: finance.paidCount },
-      { key: 'partial', label: 'Parcialmente pagos', count: finance.partiallyPaidCount },
-      { key: 'pending', label: 'Pendentes', count: finance.pendingCount },
-      { key: 'refunded', label: 'Reembolsados', count: finance.refundedCount },
-    ];
-
-    return slices.map(slice => ({
-      ...slice,
-      percent: total > 0 ? (slice.count / total) * 100 : 0,
-    }));
-  }
-
-  statusChartLabel(finance: FinanceSummaryResponse): string {
-    return this.statusSlices(finance)
-      .map(slice => `${slice.label}: ${slice.count}`)
-      .join(', ');
-  }
-
   formatCurrency(value: number): string {
     return new Intl.NumberFormat('pt-BR', {
       style: 'currency',
       currency: 'BRL',
     }).format(value ?? 0);
+  }
+
+  /** Rótulos da evolução: dia (dd/MM) ou mês (mmm/aa), conforme a granularidade do backend. */
+  readonly timelinePoints = computed<BarChartPoint[]>(() => {
+    const timeline = this.timeline();
+
+    if (!timeline) {
+      return [];
+    }
+
+    return timeline.points.map(point => {
+      const date = this.parseDate(point.date);
+      const label = !date
+        ? point.date
+        : timeline.granularity === 'DAY'
+          ? `${String(date.getDate()).padStart(2, '0')}/${String(date.getMonth() + 1).padStart(2, '0')}`
+          : date.toLocaleDateString('pt-BR', { month: 'short', year: '2-digit' });
+
+      return { label, primary: Number(point.expectedAmount) || 0, secondary: Number(point.receivedAmount) || 0 };
+    });
+  });
+
+  /** Donut de pagamento: QUANTIDADE de atendimentos, categorias mutuamente exclusivas. */
+  paymentSlices(finance: FinanceSummaryResponse): DonutSlice[] {
+    return [
+      { key: 'paid', label: 'Pago', value: finance.paidCount ?? 0, tone: 'paid' },
+      { key: 'partial', label: 'Parcialmente pago', value: finance.partiallyPaidCount ?? 0, tone: 'partial' },
+      { key: 'pending', label: 'Pendente', value: finance.pendingCount ?? 0, tone: 'pending' },
+      { key: 'refunded', label: 'Reembolsado', value: finance.refundedCount ?? 0, tone: 'refunded' },
+    ];
+  }
+
+  /** Donut de confirmação: QUANTIDADE, situação atual (não mistura com pagamento). */
+  confirmationSlices(finance: FinanceSummaryResponse): DonutSlice[] {
+    return [
+      { key: 'confirmed', label: 'Confirmados', value: finance.confirmedCount ?? 0, tone: 'confirmed' },
+      { key: 'awaiting', label: 'Aguardando', value: finance.awaitingConfirmationCount ?? 0, tone: 'awaiting' },
+      { key: 'unscheduled', label: 'Desmarcados', value: finance.unscheduledCount ?? 0, tone: 'unscheduled' },
+      { key: 'rescheduled', label: 'Remarcados', value: finance.rescheduledCount ?? 0, tone: 'rescheduled' },
+    ];
+  }
+
+  activeAppointmentCount(finance: FinanceSummaryResponse): number {
+    return Math.max(0, (finance.appointmentCount ?? 0) - (finance.unscheduledCount ?? 0));
+  }
+
+  readonly formatCurrencyFn = (value: number) => this.formatCurrency(value);
+
+  paymentStatusLabel(status: PaymentStatus): string {
+    const labels: Record<PaymentStatus, string> = {
+      PENDING: 'Pendente',
+      PARTIALLY_PAID: 'Parcial',
+      PAID: 'Pago',
+      REFUNDED: 'Reembolsado',
+    };
+    return labels[status] ?? status;
+  }
+
+  confirmationLabel(status: AppointmentConfirmationStatus | null): string {
+    const labels: Record<AppointmentConfirmationStatus, string> = {
+      PENDING_CONFIRMATION: 'Aguardando',
+      CONFIRMED: 'Confirmado',
+      CANCELLED: 'Desmarcado',
+      RESCHEDULED: 'Remarcado',
+    };
+    return status ? labels[status] ?? status : 'Aguardando';
+  }
+
+  appointmentQueryParams(item: FinanceAppointmentResponse): Record<string, string> {
+    return { eventId: item.eventId, calendarId: item.calendarId, date: item.startsAt.slice(0, 10) };
+  }
+
+  formatAppointmentDate(value: string): string {
+    return new Date(value).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
+  }
+
+  private loadDetails(calendarId: string, range: DateRange, requestId: number): void {
+    this.detailsSubscription?.unsubscribe();
+    this.detailsError.set('');
+    this.isLoadingDetails.set(true);
+
+    this.detailsSubscription = forkJoin({
+      timeline: this.financeService.timeline(calendarId, range.startDate, range.endDate),
+      appointments: this.financeService.appointments(calendarId, range.startDate, range.endDate),
+    }).subscribe({
+      next: ({ timeline, appointments }) => {
+        if (requestId !== this.summaryRequestId) {
+          return;
+        }
+
+        this.timeline.set(timeline);
+        this.appointments.set(appointments);
+        this.isLoadingDetails.set(false);
+      },
+      error: () => {
+        if (requestId !== this.summaryRequestId) {
+          return;
+        }
+
+        this.detailsError.set('Não foi possível carregar a evolução e os atendimentos recentes.');
+        this.isLoadingDetails.set(false);
+      },
+    });
   }
 
   private loadSummary(): void {
@@ -264,6 +358,7 @@ export class FinancePage implements OnInit {
     const requestId = ++this.summaryRequestId;
     this.errorMessage.set('');
     this.summary.set(null);
+    this.clearDetails();
     this.isLoadingSummary.set(true);
 
     this.financeService
@@ -277,6 +372,10 @@ export class FinancePage implements OnInit {
         next: summary => {
           if (requestId === this.summaryRequestId) {
             this.summary.set(summary);
+
+            if ((summary.appointmentCount ?? 0) > 0) {
+              this.loadDetails(calendarId, range, requestId);
+            }
           }
         },
         error: error => {
@@ -293,6 +392,16 @@ export class FinancePage implements OnInit {
     this.summaryRequestId++;
     this.summary.set(null);
     this.isLoadingSummary.set(false);
+    this.clearDetails();
+  }
+
+  private clearDetails(): void {
+    this.detailsSubscription?.unsubscribe();
+    this.detailsSubscription = null;
+    this.timeline.set(null);
+    this.appointments.set([]);
+    this.detailsError.set('');
+    this.isLoadingDetails.set(false);
   }
 
   private resolveDateRange(

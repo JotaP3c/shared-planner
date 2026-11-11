@@ -181,6 +181,42 @@ export interface FinanceSummaryResponse {
   pendingCount: number;
   partiallyPaidCount: number;
   refundedCount: number;
+  /** Indicadores de confirmação (contagens mutuamente exclusivas sobre appointmentCount). */
+  confirmedAmount: number;
+  unconfirmedAmount: number;
+  unscheduledAmount: number;
+  confirmedCount: number;
+  awaitingConfirmationCount: number;
+  rescheduledCount: number;
+  unscheduledCount: number;
+  rescheduleOccurrences: number;
+}
+
+export interface FinanceTimelinePoint {
+  date: string;
+  expectedAmount: number;
+  receivedAmount: number;
+  appointmentCount: number;
+}
+
+export interface FinanceTimelineResponse {
+  calendarId: string;
+  startDate: string;
+  endDate: string;
+  granularity: 'DAY' | 'MONTH';
+  points: FinanceTimelinePoint[];
+}
+
+export interface FinanceAppointmentResponse {
+  eventId: string;
+  calendarId: string;
+  startsAt: string;
+  clientName: string | null;
+  workDescription: string | null;
+  amount: number;
+  receivedAmount: number;
+  paymentStatus: PaymentStatus;
+  confirmationStatus: AppointmentConfirmationStatus | null;
 }
 
 export interface UserResponse {

@@ -3,7 +3,7 @@
     <div>
       <span class="eyebrow">Financeiro</span>
       <h1 id="finance-title">Resumo de receitas</h1>
-      <p>Acompanhe valores e pagamentos dos atendimentos de cada calendário.</p>
+      <p>Receitas, pagamentos e confirmação dos atendimentos de cliente de cada calendário.</p>
     </div>
 
     <button
@@ -12,7 +12,8 @@
       [disabled]="!selectedCalendarId() || isLoadingSummary()"
       (click)="refresh()"
     >
-      {{ isLoadingSummary() ? 'Atualizando...' : 'Atualizar resumo' }}
+      <sp-icon name="refresh" [size]="16" />
+      {{ isLoadingSummary() ? 'Atualizando...' : 'Atualizar dados' }}
     </button>
   </header>
 
@@ -113,7 +114,7 @@
         </button>
       </div>
 
-      <p class="active-period" aria-live="polite">
+      <p class="active-period" aria-live="polite" data-testid="finance-active-period">
         <span aria-hidden="true"></span>
         Intervalo atual: <strong>{{ periodLabel() }}</strong>
       </p>
@@ -132,8 +133,8 @@
         <strong>Calculando resumo...</strong>
       </section>
     } @else if (summary(); as finance) {
-      <section class="page-panel summary-section" aria-labelledby="values-title">
-        <header>
+      <section class="summary-section" aria-labelledby="values-title">
+        <header class="summary-heading">
           <div>
             <span>Visão geral</span>
             <h2 id="values-title">{{ selectedCalendar()?.name }}</h2>
@@ -141,72 +142,172 @@
           <small>{{ periodLabel() }}</small>
         </header>
 
-        <div class="amount-grid">
-          <article class="amount-card expected" data-testid="expected-amount">
-            <span>Receita esperada</span>
+        <!-- KPIs principais -->
+        <div class="kpi-grid">
+          <article class="kpi-card tone-expected" data-testid="expected-amount">
+            <span class="kpi-icon" aria-hidden="true"><sp-icon name="wallet" [size]="20" /></span>
+            <span class="kpi-label">Receita prevista</span>
             <strong>{{ formatCurrency(finance.expectedAmount) }}</strong>
-            <small>{{ finance.appointmentCount }} atendimento(s)</small>
+            <small>{{ activeAppointmentCount(finance) }} atendimento(s) não desmarcado(s)</small>
           </article>
 
-          <article class="amount-card received" data-testid="received-amount">
-            <span>Valor recebido</span>
+          <article class="kpi-card tone-received" data-testid="received-amount">
+            <span class="kpi-icon" aria-hidden="true"><sp-icon name="check" [size]="20" /></span>
+            <span class="kpi-label">Receita recebida</span>
             <strong>{{ formatCurrency(finance.receivedAmount) }}</strong>
             <small>{{ finance.paidCount }} pagamento(s) integral(is)</small>
           </article>
 
-          <article class="amount-card pending" data-testid="pending-amount">
-            <span>Valor pendente</span>
+          <article class="kpi-card tone-pending" data-testid="pending-amount">
+            <span class="kpi-icon" aria-hidden="true"><sp-icon name="clock" [size]="20" /></span>
+            <span class="kpi-label">Receita pendente</span>
             <strong>{{ formatCurrency(finance.pendingAmount) }}</strong>
-            <small>Esperado menos recebido</small>
+            <small>Prevista menos recebida</small>
           </article>
-        </div>
 
-        <div class="count-grid" aria-label="Contagens por situação de pagamento">
-          <article>
-            <span>Total de atendimentos</span>
+          <article class="kpi-card tone-partial">
+            <span class="kpi-icon" aria-hidden="true"><sp-icon name="calendar" [size]="20" /></span>
+            <span class="kpi-label">Total de atendimentos</span>
             <strong data-testid="appointment-count">{{ finance.appointmentCount }}</strong>
-          </article>
-          <article>
-            <span>Pagos</span>
-            <strong data-testid="paid-count">{{ finance.paidCount }}</strong>
-          </article>
-          <article>
-            <span>Pendentes</span>
-            <strong data-testid="pending-count">{{ finance.pendingCount }}</strong>
-          </article>
-          <article>
-            <span>Parcialmente pagos</span>
-            <strong data-testid="partially-paid-count">{{ finance.partiallyPaidCount }}</strong>
-          </article>
-          <article>
-            <span>Reembolsados</span>
-            <strong data-testid="refunded-count">{{ finance.refundedCount }}</strong>
+            <small>Clientes no período (inclui desmarcados)</small>
           </article>
         </div>
 
-        @if (finance.appointmentCount > 0) {
-          <figure class="status-chart" data-testid="payment-status-chart">
-            <figcaption>Distribuição por situação de pagamento</figcaption>
-            <div class="status-bar" role="img" [attr.aria-label]="statusChartLabel(finance)">
-              @for (slice of statusSlices(finance); track slice.key) {
-                @if (slice.count > 0) {
-                  <span [class]="'slice ' + slice.key" [style.width.%]="slice.percent"></span>
-                }
-              }
-            </div>
-            <ul class="status-legend">
-              @for (slice of statusSlices(finance); track slice.key) {
-                <li><i [class]="'swatch ' + slice.key" aria-hidden="true"></i>{{ slice.label }}: {{ slice.count }}</li>
-              }
-            </ul>
-          </figure>
-        }
+        <!-- Indicadores secundários -->
+        <div class="count-grid" aria-label="Indicadores por situação">
+          <article><span>Pagos</span><strong data-testid="paid-count">{{ finance.paidCount }}</strong></article>
+          <article><span>Pendentes</span><strong data-testid="pending-count">{{ finance.pendingCount }}</strong></article>
+          <article><span>Parcialmente pagos</span><strong data-testid="partially-paid-count">{{ finance.partiallyPaidCount }}</strong></article>
+          <article><span>Reembolsados</span><strong data-testid="refunded-count">{{ finance.refundedCount }}</strong></article>
+          <article><span>Confirmados</span><strong data-testid="confirmed-count">{{ finance.confirmedCount }}</strong></article>
+          <article><span>Aguardando confirmação</span><strong data-testid="awaiting-count">{{ finance.awaitingConfirmationCount }}</strong></article>
+          <article><span>Remarcados</span><strong data-testid="rescheduled-count">{{ finance.rescheduledCount }}</strong></article>
+          <article><span>Desmarcados</span><strong data-testid="unscheduled-count">{{ finance.unscheduledCount }}</strong></article>
+        </div>
+
+        <div class="confirmation-amounts" aria-label="Receita por confirmação">
+          <div>
+            <span>Prevista confirmada</span>
+            <strong data-testid="confirmed-amount">{{ formatCurrency(finance.confirmedAmount) }}</strong>
+          </div>
+          <div>
+            <span>Potencial ainda não confirmada</span>
+            <strong data-testid="unconfirmed-amount">{{ formatCurrency(finance.unconfirmedAmount) }}</strong>
+          </div>
+          <div>
+            <span>Associada a desmarcações</span>
+            <strong data-testid="unscheduled-amount">{{ formatCurrency(finance.unscheduledAmount) }}</strong>
+            <small>Não é prejuízo: valores já recebidos seguem em "Receita recebida".</small>
+          </div>
+        </div>
 
         @if (isEmpty()) {
           <div class="empty-summary" data-testid="finance-empty">
             <strong>Nenhum atendimento no período</strong>
             <p>Não há receitas de eventos CLIENT não cancelados neste intervalo.</p>
           </div>
+        } @else {
+          <div class="chart-grid">
+            <article class="page-panel chart-panel wide" aria-labelledby="evolution-title">
+              <header class="chart-header">
+                <h3 id="evolution-title">Evolução da receita</h3>
+                <small>{{ timeline()?.granularity === 'MONTH' ? 'Por mês' : 'Por dia' }} · valores em R$</small>
+              </header>
+              @if (isLoadingDetails()) {
+                <p class="sp-chart-empty" role="status">Carregando evolução...</p>
+              } @else if (detailsError()) {
+                <p class="page-feedback is-error" role="alert">{{ detailsError() }}</p>
+              } @else {
+                <sp-bar-chart
+                  data-testid="revenue-evolution-chart"
+                  label="Evolução da receita prevista e recebida"
+                  primaryLabel="Prevista"
+                  secondaryLabel="Recebida"
+                  [points]="timelinePoints()"
+                  [format]="formatCurrencyFn"
+                />
+              }
+            </article>
+
+            <article class="page-panel chart-panel" aria-labelledby="payment-title" data-testid="payment-status-chart">
+              <header class="chart-header">
+                <h3 id="payment-title">Distribuição de pagamentos</h3>
+                <small>Quantidade de atendimentos</small>
+              </header>
+              <sp-donut-chart
+                label="Distribuição de pagamentos"
+                centerLabel="atendimentos"
+                [slices]="paymentSlices(finance)"
+              />
+            </article>
+
+            <article class="page-panel chart-panel" aria-labelledby="confirmation-title" data-testid="confirmation-chart">
+              <header class="chart-header">
+                <h3 id="confirmation-title">Confirmação dos atendimentos</h3>
+                <small>Situação atual · {{ finance.rescheduleOccurrences }} remarcação(ões) no histórico</small>
+              </header>
+              <sp-donut-chart
+                label="Confirmação dos atendimentos"
+                centerLabel="atendimentos"
+                [slices]="confirmationSlices(finance)"
+              />
+            </article>
+          </div>
+
+          <article class="page-panel recent-panel" aria-labelledby="recent-title">
+            <header class="chart-header">
+              <h3 id="recent-title">Atendimentos recentes</h3>
+              <small>Mais recentes do período</small>
+            </header>
+
+            @if (isLoadingDetails()) {
+              <p class="sp-chart-empty" role="status">Carregando atendimentos...</p>
+            } @else if (appointments().length) {
+              <div class="page-table-wrap">
+                <table class="page-table is-stackable" data-testid="recent-appointments">
+                  <thead>
+                    <tr>
+                      <th scope="col">Data</th>
+                      <th scope="col">Cliente</th>
+                      <th scope="col">Serviço</th>
+                      <th scope="col">Valor</th>
+                      <th scope="col">Agendamento</th>
+                      <th scope="col">Pagamento</th>
+                      <th scope="col"><span class="sr-only">Detalhes</span></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    @for (item of appointments(); track item.eventId) {
+                      <tr>
+                        <td data-label="Data">{{ formatAppointmentDate(item.startsAt) }}</td>
+                        <td data-label="Cliente">{{ item.clientName || '—' }}</td>
+                        <td data-label="Serviço">{{ item.workDescription || '—' }}</td>
+                        <td data-label="Valor">{{ formatCurrency(item.amount) }}</td>
+                        <td data-label="Agendamento">
+                          <span [class]="'sp-pill confirmation-' + (item.confirmationStatus || 'PENDING_CONFIRMATION').toLowerCase()">
+                            {{ confirmationLabel(item.confirmationStatus) }}
+                          </span>
+                        </td>
+                        <td data-label="Pagamento">
+                          <span [class]="'sp-pill payment-' + item.paymentStatus.toLowerCase()">
+                            {{ paymentStatusLabel(item.paymentStatus) }}
+                          </span>
+                        </td>
+                        <td data-label="Detalhes">
+                          <a class="link-button" routerLink="/calendar" [queryParams]="appointmentQueryParams(item)"
+                             [attr.aria-label]="'Ver detalhes de ' + (item.clientName || 'atendimento')">
+                            Ver <sp-icon name="arrow-right" [size]="14" />
+                          </a>
+                        </td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+            } @else if (!detailsError()) {
+              <p class="sp-chart-empty">Nenhum atendimento para listar.</p>
+            }
+          </article>
         }
       </section>
     }

@@ -164,6 +164,62 @@ describe('UsersPage', () => {
     request.flush(user('admin', { role: 'ADMIN', fullName: 'Admin Renomeado' }));
   });
 
+  it('offers pencil and trash actions with accessible names (INC-04)', () => {
+    http.expectOne('/api/users').flush([user('admin', { role: 'ADMIN', fullName: 'Admin' }), user('ana')]);
+    fixture.detectChanges();
+    const element: HTMLElement = fixture.nativeElement;
+
+    const edit = element.querySelector('[data-testid="edit-user-ana"]') as HTMLButtonElement;
+    expect(edit.getAttribute('aria-label')).toBe('Editar Pessoa ana');
+    expect(edit.title).toBe('Editar');
+    edit.click();
+    expect(component.panelMode()).toBe('edit');
+
+    const ownTrash = element.querySelector('[data-testid="deactivate-user-admin"]') as HTMLButtonElement;
+    expect(ownTrash.disabled).toBe(true);
+  });
+
+  it('deactivates another user logically only after confirmation, and can reactivate', () => {
+    http.expectOne('/api/users').flush([user('ana')]);
+    fixture.detectChanges();
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false);
+
+    (fixture.nativeElement.querySelector('[data-testid="deactivate-user-ana"]') as HTMLButtonElement).click();
+    http.expectNone('/api/users/ana');
+
+    confirmSpy.mockReturnValue(true);
+    (fixture.nativeElement.querySelector('[data-testid="deactivate-user-ana"]') as HTMLButtonElement).click();
+    const request = http.expectOne('/api/users/ana');
+    expect(request.request.method).toBe('PUT');
+    expect(request.request.body).toEqual({ fullName: 'Pessoa ana', role: 'USER', active: false });
+    request.flush(user('ana', { active: false }));
+    fixture.detectChanges();
+
+    expect(component.users()[0].active).toBe(false);
+    expect(fixture.nativeElement.querySelector('[data-testid="reactivate-user-ana"]')).not.toBeNull();
+
+    (fixture.nativeElement.querySelector('[data-testid="reactivate-user-ana"]') as HTMLButtonElement).click();
+    http.expectOne('/api/users/ana').flush(user('ana', { active: true }));
+    expect(component.users()[0].active).toBe(true);
+    confirmSpy.mockRestore();
+  });
+
+  it('shows the last-administrator protection message on 409', () => {
+    http.expectOne('/api/users').flush([user('ana', { role: 'ADMIN' })]);
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+
+    component.setActive(component.users()[0], false);
+    http.expectOne('/api/users/ana').flush(
+      { detail: 'At least one active administrator is required' },
+      { status: 409, statusText: 'Conflict' },
+    );
+    fixture.detectChanges();
+
+    expect(component.actionError()).toContain('ao menos um administrador ativo');
+    expect(component.users()[0].active).toBe(true);
+    vi.restoreAllMocks();
+  });
+
   it('surfaces the backend refusal when the update is rejected', () => {
     http.expectOne('/api/users').flush([user('ana')]);
     component.openEdit(component.users()[0]);

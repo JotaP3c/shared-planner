@@ -6,6 +6,26 @@
   min-width: 240px;
 }
 
+.row-actions {
+  display: inline-flex;
+  gap: 6px;
+
+  .icon-button {
+    width: 34px;
+    height: 34px;
+  }
+
+  .icon-button.danger:hover:not(:disabled) {
+    border-color: var(--sp-danger);
+    color: var(--sp-danger);
+  }
+
+  .icon-button:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
+}
+
 .checkbox-field span {
   display: flex;
   align-items: center;

@@ -22,6 +22,10 @@
     <p class="page-feedback is-success" role="status" data-testid="users-success">{{ successMessage() }}</p>
   }
 
+  @if (actionError()) {
+    <p class="page-feedback is-error" role="alert" data-testid="users-action-error">{{ actionError() }}</p>
+  }
+
   @if (loadError()) {
     <p class="page-feedback is-error" role="alert" data-testid="users-load-error">
       {{ loadError() }}
@@ -135,7 +139,7 @@
     <header class="page-panel-head">
       <div>
         <strong>{{ filteredUsers().length }} usuário(s)</strong>
-        <span>E-mail e senha não podem ser alterados por esta tela.</span>
+        <span>E-mail e senha não podem ser alterados por esta tela. A lixeira desativa a conta (sem excluir o histórico).</span>
       </div>
 
       <label class="sp-field users-search">
@@ -184,14 +188,45 @@
                   </span>
                 </td>
                 <td data-label="Ações">
-                  <button
-                    class="secondary-button"
-                    type="button"
-                    [attr.aria-label]="'Editar ' + user.fullName"
-                    (click)="openEdit(user)"
-                  >
-                    Editar
-                  </button>
+                  <div class="row-actions">
+                    <button
+                      class="icon-button"
+                      type="button"
+                      [attr.data-testid]="'edit-user-' + user.id"
+                      [attr.aria-label]="'Editar ' + user.fullName"
+                      title="Editar"
+                      [disabled]="isSaving()"
+                      (click)="openEdit(user)"
+                    >
+                      <sp-icon name="edit" [size]="16" />
+                    </button>
+
+                    @if (user.active) {
+                      <button
+                        class="icon-button danger"
+                        type="button"
+                        [attr.data-testid]="'deactivate-user-' + user.id"
+                        [attr.aria-label]="isSelf(user) ? 'Você não pode desativar a própria conta' : 'Desativar ' + user.fullName"
+                        [title]="isSelf(user) ? 'Você não pode desativar a própria conta' : 'Desativar'"
+                        [disabled]="isSelf(user) || isSaving()"
+                        (click)="setActive(user, false)"
+                      >
+                        <sp-icon name="trash" [size]="16" />
+                      </button>
+                    } @else {
+                      <button
+                        class="icon-button"
+                        type="button"
+                        [attr.data-testid]="'reactivate-user-' + user.id"
+                        [attr.aria-label]="'Reativar ' + user.fullName"
+                        title="Reativar"
+                        [disabled]="isSaving()"
+                        (click)="setActive(user, true)"
+                      >
+                        <sp-icon name="refresh" [size]="16" />
+                      </button>
+                    }
+                  </div>
                 </td>
               </tr>
             }

@@ -5,12 +5,13 @@ import { finalize } from 'rxjs';
 import { UserService } from '../../../core/api/user.service';
 import { AuthService } from '../../../core/auth/auth.service';
 import { UserResponse, UserRole } from '../../../core/models/shared-planner.models';
+import { Icon } from '../../../shared/ui/icon/icon';
 
 type PanelMode = 'closed' | 'create' | 'edit';
 
 @Component({
   selector: 'app-users-page',
-  imports: [ReactiveFormsModule],
+  imports: [ReactiveFormsModule, Icon],
   templateUrl: './users-page.html',
   styleUrl: './users-page.scss',
 })
@@ -31,6 +32,8 @@ export class UsersPage implements OnInit {
   readonly accessDenied = signal(false);
   readonly isSaving = signal(false);
   readonly formError = signal('');
+  /** Erro de ação na linha (desativar/reativar), distinto de falha de carregamento. */
+  readonly actionError = signal('');
   readonly successMessage = signal('');
   readonly panelMode = signal<PanelMode>('closed');
   readonly editingUser = signal<UserResponse | null>(null);
@@ -216,6 +219,42 @@ export class UsersPage implements OnInit {
       });
   }
 
+  /**
+   * Lixeira = desativação lógica (INC-04): exclusão física quebraria eventos, calendários,
+   * auditoria e cadastros que referenciam o usuário. Reativação usa o mesmo contrato.
+   */
+  setActive(user: UserResponse, active: boolean): void {
+    if (this.isSaving() || (!active && this.isSelf(user))) {
+      return;
+    }
+
+    const question = active
+      ? `Reativar a conta de ${user.fullName}?`
+      : `Desativar a conta de ${user.fullName}? A pessoa não conseguirá mais entrar, mas o histórico é mantido.`;
+
+    if (!window.confirm(question)) {
+      return;
+    }
+
+    this.clearFeedback();
+    this.isSaving.set(true);
+
+    this.userService
+      .update(user.id, { fullName: user.fullName, role: user.role, active })
+      .pipe(finalize(() => this.isSaving.set(false)))
+      .subscribe({
+        next: updated => {
+          this.users.update(users => users.map(item => (item.id === updated.id ? updated : item)));
+          this.successMessage.set(active ? `Conta de ${updated.fullName} reativada.` : `Conta de ${updated.fullName} desativada.`);
+
+          if (this.editingUser()?.id === updated.id) {
+            this.closePanel();
+          }
+        },
+        error: error => this.actionError.set(this.errorText(error, 'Não foi possível alterar a situação da conta.')),
+      });
+  }
+
   isSelf(user: UserResponse): boolean {
     const me = this.currentUser();
     return !!me && me.email.toLowerCase() === user.email.toLowerCase();
@@ -241,7 +280,10 @@ export class UsersPage implements OnInit {
     const status = (error as { status?: number })?.status;
 
     if (status === 409) {
-      return 'Já existe um usuário com este e-mail.';
+      const detail = (error as { error?: { detail?: string } })?.error?.detail ?? '';
+      return detail.includes('administrator')
+        ? 'É necessário manter ao menos um administrador ativo.'
+        : 'Já existe um usuário com este e-mail.';
     }
 
     if (status === 403) {
@@ -262,6 +304,7 @@ export class UsersPage implements OnInit {
 
   private clearFeedback(): void {
     this.formError.set('');
+    this.actionError.set('');
     this.successMessage.set('');
   }
 

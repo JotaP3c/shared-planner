@@ -1,1 +1,203 @@
-<p>users-page works!</p>
+<section class="page users-page" aria-labelledby="users-title">
+  <header class="page-header">
+    <div>
+      <span class="eyebrow">Administração</span>
+      <h1 id="users-title">Usuários</h1>
+      <p>Cadastre usuários e gerencie nome, papel e situação de acesso.</p>
+    </div>
+
+    <div class="page-actions">
+      <button class="secondary-button" type="button" (click)="loadUsers()" [disabled]="isLoading()">
+        {{ isLoading() ? 'Atualizando...' : 'Atualizar' }}
+      </button>
+      @if (!accessDenied()) {
+        <button class="primary-button" type="button" (click)="openCreate()" data-testid="open-create-user">
+          Novo usuário
+        </button>
+      }
+    </div>
+  </header>
+
+  @if (successMessage()) {
+    <p class="page-feedback is-success" role="status" data-testid="users-success">{{ successMessage() }}</p>
+  }
+
+  @if (loadError()) {
+    <p class="page-feedback is-error" role="alert" data-testid="users-load-error">
+      {{ loadError() }}
+      @if (!accessDenied()) {
+        <button class="ghost-button" type="button" (click)="loadUsers()" [disabled]="isLoading()">
+          Tentar novamente
+        </button>
+      }
+    </p>
+  }
+
+  @if (panelMode() === 'create') {
+    <form class="page-form" [formGroup]="createForm" (ngSubmit)="submitCreate()" aria-label="Novo usuário" novalidate>
+      <label class="sp-field">
+        Nome completo
+        <input type="text" formControlName="fullName" autocomplete="off" maxlength="120" />
+        @if (showError('create', 'fullName', 'required') || showError('create', 'fullName', 'blank')) {
+          <span class="field-error" role="alert">Informe o nome.</span>
+        }
+      </label>
+
+      <label class="sp-field">
+        E-mail
+        <input type="email" formControlName="email" autocomplete="off" />
+        @if (showError('create', 'email', 'required') || showError('create', 'email', 'email')) {
+          <span class="field-error" role="alert">Informe um e-mail válido.</span>
+        }
+      </label>
+
+      <label class="sp-field">
+        Senha inicial
+        <input type="password" formControlName="password" autocomplete="new-password" />
+        @if (showError('create', 'password', 'required') || showError('create', 'password', 'minlength')) {
+          <span class="field-error" role="alert">A senha precisa ter ao menos 6 caracteres.</span>
+        }
+      </label>
+
+      <label class="sp-field">
+        Papel
+        <select formControlName="role">
+          @for (role of roles; track role) {
+            <option [value]="role">{{ roleLabel(role) }}</option>
+          }
+        </select>
+      </label>
+
+      @if (formError()) {
+        <p class="page-feedback is-error" role="alert" data-testid="users-form-error">{{ formError() }}</p>
+      }
+
+      <div class="page-actions">
+        <button class="primary-button" type="submit" [disabled]="isSaving()">
+          {{ isSaving() ? 'Salvando...' : 'Criar usuário' }}
+        </button>
+        <button class="secondary-button" type="button" (click)="closePanel()" [disabled]="isSaving()">Cancelar</button>
+      </div>
+    </form>
+  }
+
+  @if (panelMode() === 'edit' && editingUser(); as editing) {
+    <form class="page-form" [formGroup]="editForm" (ngSubmit)="submitEdit()" aria-label="Editar usuário" novalidate>
+      <label class="sp-field">
+        Nome completo
+        <input type="text" formControlName="fullName" autocomplete="off" maxlength="120" />
+        @if (showError('edit', 'fullName', 'required') || showError('edit', 'fullName', 'blank')) {
+          <span class="field-error" role="alert">Informe o nome.</span>
+        }
+      </label>
+
+      <label class="sp-field">
+        E-mail
+        <input type="email" [value]="editing.email" disabled />
+      </label>
+
+      <label class="sp-field">
+        Papel
+        <select formControlName="role">
+          @for (role of roles; track role) {
+            <option [value]="role">{{ roleLabel(role) }}</option>
+          }
+        </select>
+      </label>
+
+      <label class="sp-field checkbox-field">
+        <span>
+          <input type="checkbox" formControlName="active" />
+          Usuário ativo
+        </span>
+      </label>
+
+      @if (isEditingSelf()) {
+        <p class="page-feedback" data-testid="self-protection-note">
+          Você não pode desativar nem rebaixar o seu próprio usuário administrador.
+        </p>
+      }
+
+      @if (formError()) {
+        <p class="page-feedback is-error" role="alert" data-testid="users-form-error">{{ formError() }}</p>
+      }
+
+      <div class="page-actions">
+        <button class="primary-button" type="submit" [disabled]="isSaving()">
+          {{ isSaving() ? 'Salvando...' : 'Salvar alterações' }}
+        </button>
+        <button class="secondary-button" type="button" (click)="closePanel()" [disabled]="isSaving()">Cancelar</button>
+      </div>
+    </form>
+  }
+
+  <article class="page-panel">
+    <header class="page-panel-head">
+      <div>
+        <strong>{{ filteredUsers().length }} usuário(s)</strong>
+        <span>E-mail e senha não podem ser alterados por esta tela.</span>
+      </div>
+
+      <label class="sp-field users-search">
+        <span class="sr-only">Buscar usuários</span>
+        <input
+          type="search"
+          placeholder="Buscar por nome ou e-mail"
+          [value]="searchTerm()"
+          (input)="onSearch($any($event.target).value)"
+        />
+      </label>
+    </header>
+
+    @if (isLoading() && !hasLoaded()) {
+      <div class="page-empty" role="status" data-testid="users-loading">
+        <strong>Carregando usuários...</strong>
+      </div>
+    } @else if (showEmptyState()) {
+      <div class="page-empty" role="status" data-testid="users-empty">
+        <strong>{{ searchTerm() ? 'Nenhum usuário encontrado para a busca.' : 'Nenhum usuário cadastrado.' }}</strong>
+      </div>
+    } @else if (filteredUsers().length) {
+      <div class="page-table-wrap">
+        <table class="page-table is-stackable">
+          <thead>
+            <tr>
+              <th scope="col">Usuário</th>
+              <th scope="col">Papel</th>
+              <th scope="col">Situação</th>
+              <th scope="col">Ações</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (user of filteredUsers(); track user.id) {
+              <tr>
+                <td data-label="Usuário">
+                  <span>
+                    <strong>{{ user.fullName }}@if (isSelf(user)) { (você) }</strong>
+                    <small>{{ user.email }}</small>
+                  </span>
+                </td>
+                <td data-label="Papel"><span class="role-pill">{{ roleLabel(user.role) }}</span></td>
+                <td data-label="Situação">
+                  <span class="sp-pill" [class]="user.active ? 'sp-pill status-approved' : 'sp-pill status-cancelled'">
+                    {{ user.active ? 'Ativo' : 'Inativo' }}
+                  </span>
+                </td>
+                <td data-label="Ações">
+                  <button
+                    class="secondary-button"
+                    type="button"
+                    [attr.aria-label]="'Editar ' + user.fullName"
+                    (click)="openEdit(user)"
+                  >
+                    Editar
+                  </button>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  </article>
+</section>

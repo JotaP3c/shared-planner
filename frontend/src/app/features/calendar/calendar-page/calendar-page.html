@@ -206,19 +206,18 @@
 
         <div class="pending-list">
           @for (event of pendingEvents(); track event.id) {
-            <article
-              class="pending-item"
-              role="button"
-              tabindex="0"
-              (click)="openEventDetails(event)"
-              (keydown.enter)="openEventDetails(event)"
-            >
+            <article class="pending-item">
               <div class="pending-row">
-                <span class="pending-avatar"><sp-icon name="users" [size]="18" /></span>
-                <div class="pending-body">
+                <span class="pending-avatar" aria-hidden="true"><sp-icon name="users" [size]="18" /></span>
+                <button
+                  class="pending-body pending-open"
+                  type="button"
+                  [attr.aria-label]="'Abrir detalhes de ' + event.title"
+                  (click)="openEventDetails(event)"
+                >
                   <strong>{{ event.title }}</strong>
                   <small>{{ formatDateTime(event.startsAt) }} · {{ event.createdByEmail }}</small>
-                </div>
+                </button>
                 @if (!isPendingRead(event.id)) {
                   <span class="unread-dot" aria-label="Não lido"></span>
                 }
@@ -295,6 +294,7 @@
             </div>
             <p class="finance-caption">
               Receita prevista em {{ summary.monthLabel }} · {{ summary.appointmentCount }} atendimento(s)
+              · soma dos {{ financeCalendars().length }} calendário(s) financeiros autorizados
             </p>
 
             <div class="finance-bars">
@@ -311,7 +311,7 @@
             </div>
 
             <a class="secondary-button finance-link" href="/finance" (click)="$event.preventDefault(); openFinancePage()">
-              <sp-icon name="chart" [size]="16" />Ver relatório detalhado
+              <sp-icon name="chart" [size]="16" />Abrir resumo financeiro
             </a>
           }
         </section>
@@ -323,6 +323,7 @@
     <section class="modal-backdrop" (click)="closeEventModal()">
       <article
         class="event-modal"
+        spDialogFocus
         role="dialog"
         aria-modal="true"
         aria-labelledby="event-modal-title"
@@ -424,7 +425,7 @@
                 Duração
                 <select [value]="currentDurationMinutes() ?? ''" (change)="onDurationChange($any($event.target).value)">
                   <option value="">Personalizada</option>
-                  @for (minutes of durationOptions; track minutes) {
+                  @for (minutes of availableDurations(); track minutes) {
                     <option [value]="minutes">{{ formatDuration(minutes) }}</option>
                   }
                 </select>
@@ -474,6 +475,7 @@
     <section class="modal-backdrop" (click)="closeEventDetails()">
       <article
         class="event-detail-panel"
+        spDialogFocus
         role="dialog"
         aria-modal="true"
         aria-labelledby="event-detail-title"

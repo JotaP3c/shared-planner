@@ -5,6 +5,7 @@ import { finalize } from 'rxjs';
 import { EventService } from '../../../core/api/event.service';
 import { AuthService } from '../../../core/auth/auth.service';
 import { EventResponse } from '../../../core/models/shared-planner.models';
+import { DataChangeService } from '../../../core/state/data-change.service';
 
 @Component({
   selector: 'app-pending-page',
@@ -16,9 +17,12 @@ export class PendingPage implements OnInit {
   private readonly eventService = inject(EventService);
   private readonly authService = inject(AuthService);
   private readonly router = inject(Router);
+  private readonly mutations = inject(DataChangeService);
   private loadRequestId = 0;
-  // Eventos decididos nesta sessão: um reload iniciado antes da decisão não os ressuscita.
-  private readonly resolvedEventIds = new Set<string>();
+  // Decisões recentes: evento -> última consulta iniciada ANTES da decisão. Uma resposta de
+  // consulta anterior à decisão não ressuscita o item; uma consulta iniciada depois é
+  // autoritativa (inclusive para pendência reaberta) e descarta a marca.
+  private readonly resolvedAtRequest = new Map<string, number>();
 
   readonly currentUser = this.authService.currentUser;
   readonly pendingEvents = signal<EventResponse[]>([]);
@@ -58,7 +62,15 @@ export class PendingPage implements OnInit {
             return;
           }
 
-          this.pendingEvents.set(events.filter(event => !this.resolvedEventIds.has(event.id)));
+          this.pendingEvents.set(events.filter(event => {
+            const decidedAfterRequest = this.resolvedAtRequest.get(event.id);
+            return decidedAfterRequest === undefined || requestId > decidedAfterRequest;
+          }));
+          for (const [eventId, marker] of this.resolvedAtRequest) {
+            if (requestId > marker) {
+              this.resolvedAtRequest.delete(eventId);
+            }
+          }
           this.hasLoaded.set(true);
         },
         error: () => {
@@ -66,7 +78,7 @@ export class PendingPage implements OnInit {
             return;
           }
 
-          this.loadError.set('Nao foi possivel carregar as pendencias.');
+          this.loadError.set('Não foi possível carregar as pendências.');
         },
       });
   }
@@ -155,7 +167,7 @@ export class PendingPage implements OnInit {
     }
 
     if (!this.canRespond(event)) {
-      this.errorMessage.set('Esta pendencia nao esta aguardando a sua aprovacao.');
+      this.errorMessage.set('Esta pendência não está aguardando a sua aprovação.');
       return;
     }
 
@@ -170,15 +182,16 @@ export class PendingPage implements OnInit {
       .pipe(finalize(() => this.setActionInProgress(event.id, false)))
       .subscribe({
         next: () => {
-          this.resolvedEventIds.add(event.id);
+          this.resolvedAtRequest.set(event.id, this.loadRequestId);
+          this.mutations.notify();
           this.pendingEvents.update(events =>
             events.filter(currentEvent => currentEvent.id !== event.id),
           );
         },
         error: () => {
           const message = action === 'approve'
-            ? 'Nao foi possivel aprovar este evento.'
-            : 'Nao foi possivel reprovar este evento.';
+            ? 'Não foi possível aprovar este evento.'
+            : 'Não foi possível reprovar este evento.';
 
           this.errorMessage.set(message);
         },

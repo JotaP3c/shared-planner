@@ -12,8 +12,12 @@
 | BR-PERSONAL-001 | EventService.create | events | modal/detalhe | AC-PERSONAL-001 | leitura/regressão API PASS; automação mutável a ampliar |
 | BR-SHARED-001–004 | approvalUser/ensureApprovalTarget; approve/reject/pending | event user FKs + membership | CalendarPage/PendingPage | AC-SHARED-001–005 | integração de alvo revogado + E2E amplo alvo |
 | BR-FIN-001–003 | FinanceService/EventRepository; `EventFinancialAccess` resolvido por request/calendar | events | FinancePage/AppShell | AC-FIN-001–005 | resumo/permissão/contrato, ausência de N+1, períodos/estados/nav PASS |
-| BR-PAY-001–003 | validatePayment; payment e update de evento | event payment cols | detalhe CLIENT com capacidade | AC-PAY-001–004 | integração de precisão, snapshots e update pós-pagamento PASS |
-| BR-AUDIT-001–002 | AuditService; audit endpoint | audit_logs | Audit TARGET | AC-AUDIT-001/002 | negação 403 PASS; sucesso, filtros, contrato e trilha por operação ainda a ampliar |
+| BR-PAY-001–003 | validatePayment; payment e update de evento | event payment cols | detalhe CLIENT com capacidade | AC-PAY-001–004 | integração de precisão, snapshots e update pós-pagamento PASS; 2026-11-11 `PaymentUpdateMatrixIntegrationTests` (18): 4 status, inválidos, método, datas, tipo, cancelado, autorização, sem efeito/auditoria em falha — H2 |
+| BR-AUDIT-001–002 | AuditService; audit endpoint | audit_logs | Audit TARGET | AC-AUDIT-001/002 | negação 403 PASS; sucesso, filtros, contrato e trilha por operação ainda a ampliar (Q-006) |
+| BR-USER-001/002 | UserService; `/api/users` GET/POST/PUT | users | UsersPage + UserService.list (2026-11-11) | BLG-FE-004 | `users-page.spec.ts` (13): estados, busca, 409, 403, autoproteção |
+| Tema (R-02) | — | — | ThemeService/index.html/LoginPage/SettingsPage | requirements R-02 | `theme.service.spec.ts`, `login-page.spec.ts`, `settings-page.spec.ts` |
+| Consistência (R-03/R-04) | — | — | DataChangeService, CalendarPage, PendingPage, AppShell | requirements R-03/R-04 | regressões de reabertura, sino, resumo e duração |
+| Acessibilidade de modais (R-07) | — | — | DialogFocusDirective | BLG-TD-006 | `dialog-focus.directive.spec.ts` |
 
 ## Infraestrutura
 

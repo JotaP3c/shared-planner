@@ -6,6 +6,7 @@ import { provideRouter } from '@angular/router';
 import { CalendarPage } from './calendar-page';
 import { AuthService } from '../../../core/auth/auth.service';
 import { EventResponse } from '../../../core/models/shared-planner.models';
+import { DataChangeService } from '../../../core/state/data-change.service';
 
 describe('CalendarPage', () => {
   let component: CalendarPage;
@@ -24,6 +25,46 @@ describe('CalendarPage', () => {
 
   it('should create', () => {
     expect(component).toBeTruthy();
+  });
+
+  it('never applies a duration different from the chosen one near midnight (BLG-UX-004)', () => {
+    component.eventForm.controls.startTime.setValue('23:00');
+    component.eventForm.controls.endTime.setValue('23:30');
+
+    expect(component.availableDurations()).toEqual([15, 30, 45]);
+
+    component.onDurationChange('120');
+    expect(component.eventForm.controls.endTime.value).toBe('23:30');
+    expect(component.eventFormError()).toContain('23:59');
+
+    component.onDurationChange('45');
+    expect(component.eventForm.controls.endTime.value).toBe('23:45');
+    expect(component.eventFormError()).toBe('');
+  });
+
+  it('reloads the monthly finance summary after a data change', () => {
+    const http = TestBed.inject(HttpTestingController);
+    TestBed.inject(AuthService).currentUser.set({
+      id: 'admin', fullName: 'Admin', email: 'admin@example.com', role: 'ADMIN', active: true, createdAt: '', updatedAt: '',
+    });
+    component.calendars.set([{
+      id: 'cal', name: 'Agenda', ownerEmail: 'admin@example.com', memberRole: 'ADMIN', canCreateEvents: true,
+    }]);
+    TestBed.tick();
+
+    const summary = {
+      calendarId: 'cal', startDate: '', endDate: '', expectedAmount: 100, receivedAmount: 0, pendingAmount: 100,
+      appointmentCount: 1, paidCount: 0, pendingCount: 1, partiallyPaidCount: 0, refundedCount: 0,
+    };
+    const first = http.match(request => request.url === '/api/finance/summary');
+    expect(first.length).toBe(2);
+    first.forEach(request => request.flush(summary));
+
+    TestBed.inject(DataChangeService).notify();
+    TestBed.tick();
+
+    const second = http.match(request => request.url === '/api/finance/summary');
+    expect(second.length).toBe(2);
   });
 
   it('should not offer edit actions for cancelled events', () => {
@@ -198,7 +239,7 @@ describe('CalendarPage async states and validation (BLG-BUG-004/005/008, BLG-FE-
     http.expectOne(eventsFor('cal-a')).flush('x', { status: 500, statusText: 'Server Error' });
     http.expectOne(eventsFor('cal-b')).flush('x', { status: 500, statusText: 'Server Error' });
 
-    expect(component.eventsLoadError()).toContain('Nao foi possivel carregar os eventos');
+    expect(component.eventsLoadError()).toContain('Não foi possível carregar os eventos');
     expect(component.isLoading()).toBe(false);
   });
 
@@ -236,7 +277,7 @@ describe('CalendarPage async states and validation (BLG-BUG-004/005/008, BLG-FE-
 
     http.expectOne('/api/events/pending-approvals').flush('x', { status: 500, statusText: 'Server Error' });
 
-    expect(component.pendingLoadError()).toContain('pendencias');
+    expect(component.pendingLoadError()).toContain('pendências');
     expect(component.isPendingLoading()).toBe(false);
   });
 

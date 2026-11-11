@@ -128,14 +128,66 @@
   align-items: center;
   justify-content: center;
 
-  img {
+  .login-art {
     width: 100%;
     max-width: 560px;
     height: auto;
-    border-radius: 28px;
-    // O PNG tem fundo próprio: as bordas são esfumaçadas para integrar ao painel.
-    -webkit-mask-image: radial-gradient(ellipse 72% 70% at 50% 50%, #000 58%, transparent 100%);
-    mask-image: radial-gradient(ellipse 72% 70% at 50% 50%, #000 58%, transparent 100%);
+  }
+}
+
+// Ilustração SVG: todas as cores vêm dos tokens, então acompanha claro/escuro.
+.login-page .login-art {
+  .art-glow { fill: color-mix(in srgb, var(--sp-primary) 10%, transparent); }
+  .art-card { fill: var(--sp-surface); stroke: var(--sp-border); stroke-width: 1.5; }
+  .art-card.raised { filter: drop-shadow(0 14px 22px rgba(15, 23, 42, 0.16)); }
+  .art-head { fill: var(--sp-surface-2); }
+  .art-dot { fill: var(--sp-primary); }
+  .art-line { fill: var(--sp-border-strong); }
+  .art-line.strong { fill: var(--sp-text-2); opacity: 0.55; }
+  .art-grid rect { fill: var(--sp-surface-2); stroke: var(--sp-border); }
+  .art-today { fill: none; stroke: var(--sp-primary); stroke-width: 2; }
+  .art-event.client, .art-bar.client { fill: var(--sp-client); }
+  .art-event.personal, .art-bar.personal { fill: var(--sp-personal); }
+  .art-event.shared, .art-bar.shared, .art-avatar.shared { fill: var(--sp-shared); }
+  .art-button { fill: var(--sp-surface-2); stroke: var(--sp-border); }
+  .art-button.primary { fill: var(--sp-primary); stroke: none; }
+}
+
+.login-page .login-card {
+  position: relative;
+}
+
+.login-page .login-theme {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  display: inline-flex;
+  gap: 2px;
+  padding: 3px;
+  border: 1px solid var(--sp-border);
+  border-radius: var(--sp-radius-pill);
+  background: var(--sp-surface-2);
+}
+
+.login-page .login-theme-option {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--sp-text-2);
+  cursor: pointer;
+
+  &:hover {
+    color: var(--sp-primary);
+  }
+
+  &.is-selected {
+    background: var(--sp-surface);
+    color: var(--sp-primary);
+    box-shadow: var(--sp-shadow-sm);
   }
 }
 
@@ -173,6 +225,10 @@
 .login-page .mobile-brand {
   display: none;
   margin-bottom: 24px;
+}
+
+.login-page .form-header {
+  padding-right: 96px;
 }
 
 .login-page .form-header {

@@ -194,7 +194,18 @@ textarea {
 .status-pending { background: var(--sp-pending-bg); color: var(--sp-pending-text); }
 .status-rejected { background: var(--sp-rejected-bg); color: var(--sp-rejected-text); }
 .status-approved { background: var(--sp-success-bg); color: var(--sp-success); }
-.status-cancelled { background: var(--sp-surface-2); color: var(--sp-text-2); }
+.status-cancelled { background: var(--sp-cancelled-bg); color: var(--sp-cancelled-text); }
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+  }
+}
 
 .dot {
   display: inline-block;

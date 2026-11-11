@@ -6,6 +6,7 @@ import { provideRouter } from '@angular/router';
 import { PendingPage } from './pending-page';
 import { AuthService } from '../../../core/auth/auth.service';
 import { EventResponse } from '../../../core/models/shared-planner.models';
+import { DataChangeService } from '../../../core/state/data-change.service';
 
 describe('PendingPage', () => {
   let component: PendingPage;
@@ -53,13 +54,13 @@ describe('PendingPage', () => {
   });
 
   it('shows loading, not the empty state, while the queue is loading (BLG-BUG-008)', () => {
-    expect(text()).toContain('Carregando pendencias');
-    expect(text()).not.toContain('Nenhuma pendencia encontrada');
+    expect(text()).toContain('Carregando pendências');
+    expect(text()).not.toContain('Nenhuma pendência encontrada');
 
     http.expectOne('/api/events/pending-approvals').flush([]);
     fixture.detectChanges();
 
-    expect(text()).toContain('Nenhuma pendencia encontrada');
+    expect(text()).toContain('Nenhuma pendência encontrada');
   });
 
   it('shows a load error with retry instead of an empty queue', () => {
@@ -67,7 +68,7 @@ describe('PendingPage', () => {
     fixture.detectChanges();
 
     expect(component.loadError()).toBeTruthy();
-    expect(text()).not.toContain('Nenhuma pendencia encontrada');
+    expect(text()).not.toContain('Nenhuma pendência encontrada');
     expect(fixture.nativeElement.querySelector('[data-testid="pending-load-error"] button')).not.toBeNull();
   });
 
@@ -97,5 +98,38 @@ describe('PendingPage', () => {
     reload.flush([pending('a')]);
 
     expect(component.pendingEvents()).toEqual([]);
+  });
+
+  it('shows a reopened item on a fresh reload after it was decided', () => {
+    http.expectOne('/api/events/pending-approvals').flush([pending('a')]);
+    component.approve(pending('a'));
+    http.expectOne('/api/events/a/approve').flush({ ...pending('a'), status: 'APPROVED' });
+    expect(component.pendingEvents()).toEqual([]);
+
+    component.loadPendingEvents();
+    http.expectOne('/api/events/pending-approvals').flush([pending('a')]);
+
+    expect(component.pendingEvents().map(item => item.id)).toEqual(['a']);
+  });
+
+  it('notifies data changes after a decision so counters and summaries refresh', () => {
+    const changes = TestBed.inject(DataChangeService);
+    http.expectOne('/api/events/pending-approvals').flush([pending('a')]);
+    const before = changes.version();
+
+    component.approve(pending('a'));
+    http.expectOne('/api/events/a/approve').flush({ ...pending('a'), status: 'APPROVED' });
+
+    expect(changes.version()).toBe(before + 1);
+  });
+
+  it('does not offer actions to someone who is not the requested approver', () => {
+    http.expectOne('/api/events/pending-approvals').flush([
+      { ...pending('a'), approvalRequestedFromEmail: 'other@example.com' },
+    ]);
+    fixture.detectChanges();
+
+    expect(component.canRespond(component.pendingEvents()[0])).toBe(false);
+    expect(fixture.nativeElement.querySelector('.save-button')).toBeNull();
   });
 });

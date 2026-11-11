@@ -5,6 +5,7 @@ import { provideRouter } from '@angular/router';
 
 import { AppShell } from './app-shell';
 import { AuthService } from '../../auth/auth.service';
+import { DataChangeService } from '../../state/data-change.service';
 
 describe('AppShell', () => {
   let component: AppShell;
@@ -87,6 +88,22 @@ describe('AppShell', () => {
     fixture.detectChanges();
 
     expect(fixture.nativeElement.querySelector('[data-testid="audit-navigation"]')).not.toBeNull();
+  });
+
+  it('refreshes the bell counter after a data change on the same screen', () => {
+    const http = TestBed.inject(HttpTestingController);
+    TestBed.inject(AuthService).currentUser.set({
+      id: 'user', fullName: 'User', email: 'user@example.com', role: 'USER', active: true, createdAt: '', updatedAt: '',
+    });
+
+    TestBed.inject(DataChangeService).notify();
+    TestBed.tick();
+
+    http.expectOne('/api/events/pending-approvals').flush([
+      { id: 'a', approvalRequestedFromEmail: 'USER@example.com' },
+      { id: 'b', approvalRequestedFromEmail: 'other@example.com' },
+    ]);
+    expect(component.pendingApprovalCount()).toBe(1);
   });
 
   describe('global search (BLG-BUG-007)', () => {

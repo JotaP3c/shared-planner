@@ -223,6 +223,28 @@ export class FinancePage implements OnInit {
     this.loadSummary();
   }
 
+  /** Fatias do gráfico calculadas só com as contagens reais do summary (BR-FIN-001). */
+  statusSlices(finance: FinanceSummaryResponse): Array<{ key: string; label: string; count: number; percent: number }> {
+    const total = finance.appointmentCount || 0;
+    const slices = [
+      { key: 'paid', label: 'Pagos', count: finance.paidCount },
+      { key: 'partial', label: 'Parcialmente pagos', count: finance.partiallyPaidCount },
+      { key: 'pending', label: 'Pendentes', count: finance.pendingCount },
+      { key: 'refunded', label: 'Reembolsados', count: finance.refundedCount },
+    ];
+
+    return slices.map(slice => ({
+      ...slice,
+      percent: total > 0 ? (slice.count / total) * 100 : 0,
+    }));
+  }
+
+  statusChartLabel(finance: FinanceSummaryResponse): string {
+    return this.statusSlices(finance)
+      .map(slice => `${slice.label}: ${slice.count}`)
+      .join(', ');
+  }
+
   formatCurrency(value: number): string {
     return new Intl.NumberFormat('pt-BR', {
       style: 'currency',

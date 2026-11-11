@@ -103,6 +103,12 @@ describe('FinancePage', () => {
     expect(element.querySelector('[data-testid="pending-count"]')?.textContent?.trim()).toBe('2');
     expect(element.querySelector('[data-testid="partially-paid-count"]')?.textContent?.trim()).toBe('1');
     expect(element.querySelector('[data-testid="refunded-count"]')?.textContent?.trim()).toBe('1');
+
+    // Gráfico derivado só das contagens reais: 4/8 pagos = 50%.
+    const chart = element.querySelector('[data-testid="payment-status-chart"]');
+    expect(chart).not.toBeNull();
+    expect(chart?.querySelector('[role="img"]')?.getAttribute('aria-label')).toContain('Pagos: 4');
+    expect((chart?.querySelector('.slice.paid') as HTMLElement).style.width).toBe('50%');
   });
 
   it('applies global ADMIN and global FINANCE membership rules before requesting finance', async () => {
@@ -236,6 +242,8 @@ describe('FinancePage', () => {
 
     expect(fixture.nativeElement.querySelector('[data-testid="finance-empty"]')).not.toBeNull();
     expect(fixture.nativeElement.querySelector('[data-testid="expected-amount"]')).not.toBeNull();
+    // Período vazio não gera gráfico fictício.
+    expect(fixture.nativeElement.querySelector('[data-testid="payment-status-chart"]')).toBeNull();
   });
 
   function expectSummaryRequest(calendarId: string, startDate: string, endDate: string) {

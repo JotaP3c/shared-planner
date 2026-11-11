@@ -30,6 +30,23 @@ Contexto: auditoria guarda snapshots com dados pessoais/financeiros indefinidame
 
 Contexto: o enum e as queries conhecem `CANCELLED`. Decisão aplicada: cancelamento normal preserva a linha como `CANCELLED`; eventual purge administrativo continua fora do escopo. Evidência: BR-EVT-005, AC-EVT-001 e teste de integração. Status: RESOLVED.
 
+## Atualização 2026-11-11 — decisões ainda sem resposta do dono
+
+Nenhuma questão abaixo foi decidida pela consolidação/remodelagem; o comportamento atual
+foi preservado e, quando relevante, fixado por teste.
+
+| Item | Contexto | Opções | Recomendação | Impacto de adiar |
+|---|---|---|---|---|
+| Q-001..Q-003 | ver acima | ver acima | ver acima | regras de autoria/ADMIN seguem as atuais |
+| Q-004 | edição SHARED | ver acima | criador edita; mudança material reabre | Pendências respeita a política atual; reabertura agora aparece corretamente |
+| Q-005 | quem altera pagamento | A) autoria/edição (atual); B) capacidade financeira; C) ambas | B com exceção explícita do profissional | `PaymentUpdateMatrixIntegrationTests` documenta: FINANCE e VIEWER recebem 403, EDITOR só no próprio evento |
+| Q-006 | retenção/minimização de auditoria | prazo fixo; minimizar snapshots; mascarar | política antes de produção | página Audit continua placeholder |
+| BR-PAY-003 histórico | PAID → PENDING libera troca de tipo/valor? | A) estado atual (comportamento hoje); B) qualquer histórico de pagamento bloqueia; C) retificação financeira auditada | B ou C | teste registra que PAID→PENDING zera o recebido e volta a PENDING |
+| BLG-SEC-007 | sessão JWT em localStorage | manter; cookie HttpOnly + CSRF; tokens curtos + refresh | cookie HttpOnly com revisão conjunta backend/SSR/CSRF | risco XSS → roubo de token permanece |
+| BLG-BR-007 | Settings | só aparência (entregue); perfil editável; notificações | manter mínimo até haver API | sem edição de perfil |
+| BLG-UX-004 | eventos multidia | não suportar (atual); data de término separada | só com requisito | atalho não oferece durações além de 23:59 |
+| E2E/CI (proposto) | sem ferramenta de E2E | Playwright; Cypress | Playwright com dados isolados | fluxos completos só validados manualmente |
+
 ## Futuras possibilidades (não requisitos)
 
 Recorrência, bloqueio de conflito, notificações, integrações externas, parcelamento, múltiplas moedas, timezone, comissão e divisão de receita permanecem fora do escopo até decisão explícita.

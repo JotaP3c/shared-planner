@@ -56,7 +56,11 @@ Estado após validação multi-repositório: `S0 = 0` e `S1 = 0`. Os dois S1, o 
 | BLG-BUG-006 | P2 | Página de membros mistura loading e respostas entre calendários. | Seleção limpa/identifica estado, resposta antiga não atualiza calendário novo e erro não mantém lista enganosa. | FIXED no monorepo em 2026-11-10 — `members-page.spec.ts`; sync pendente |
 | BLG-BUG-007 | P3 | Busca pode exibir resposta do termo anterior antes do próximo debounce. | Toda mudança invalida request anterior; resultado sempre corresponde ao termo atual. | FIXED no monorepo em 2026-11-10 — `app-shell.spec.ts`; sync pendente |
 | BLG-BUG-008 | P3 | Pending mostra empty durante loading e usa um único actionEventId para ações concorrentes. | Estados são mutuamente exclusivos; ações ficam bloqueadas por item até conclusão e erros são preservados. | FIXED no monorepo em 2026-11-10 — `pending-page.spec.ts`, `calendar-page.spec.ts`; sync pendente |
-| BLG-BUG-009 | P1 | Reabrir SHARED sem novo e-mail herdava criador/aprovador já removido ou inativo, deixando a pendência impossível de decidir (BR-SHARED-001/004). | Update rejeita com 400 quando o aprovador herdado não é ativo e membro atual; caso válido preservado. | FIXED no monorepo em 2026-11-10 — `SharedEventApproverIntegrationTests` (vermelho→verde); sync pendente |
+| BLG-BUG-009 | P1 | Reabrir SHARED sem novo e-mail herdava criador/aprovador já removido ou inativo, deixando a pendência impossível de decidir (BR-SHARED-001/004). | Update rejeita com 400 quando o aprovador herdado não é ativo e membro atual; caso válido preservado. | FIXED 2026-11-10 — `SharedEventApproverIntegrationTests`; presente nos remotos standalone e sincronizado localmente em 2026-11-11 |
+| BLG-BUG-010 (proposto) | P1 | Pendência SHARED decidida e depois reaberta ficava oculta até recarregar a página (`resolvedEventIds` vitalício). | Consulta iniciada após a decisão é autoritativa; resposta anterior não ressuscita item. | FIXED 2026-11-11 — `pending-page.spec.ts` |
+| BLG-BUG-011 (proposto) | P2 | Card financeiro do calendário e contador do sino não refletiam criação/edição/cancelamento/pagamento/aprovação. | `DataChangeService` invalida resumo e contador. | FIXED 2026-11-11 — `calendar-page.spec.ts`, `app-shell.spec.ts` |
+| BLG-BUG-012 (proposto) | P2 | Atalho de duração truncava o término em 23:59 exibindo duração diferente da aplicada. | Durações que ultrapassam o dia não são oferecidas nem aplicadas. | FIXED 2026-11-11 — `calendar-page.spec.ts` |
+| BLG-BUG-013 (proposto) | P2 | Tema: PNG opaco no login quebrava o tema escuro; script pré-pintura divergia do serviço em valor inválido; sem sync entre abas. | Resolvedor único, SVG com tokens, seletor no login, listener `storage`. | FIXED 2026-11-11 — `theme.service.spec.ts`, `login-page.spec.ts` |
 
 ## BUSINESS RULE
 
@@ -90,18 +94,18 @@ Estado após validação multi-repositório: `S0 = 0` e `S1 = 0`. Os dois S1, o 
 | BLG-FE-001 | P1 | Limitar Bearer a requests /api confiáveis e tratar 401/403. | 401 limpa sessão uma vez; 403/500 preservam sessão; chamada externa nunca recebe token; Authorization explícito é preservado. | DONE e sincronizado |
 | BLG-FE-002 | P1 | Guards e navegação por papel/capacidade. | Finance reflete capacidade e acesso direto tem UX correta; `/admin/users` exige ADMIN global e `/audit` ADMIN global ou ADMIN de calendário (`role.guard.ts`), com menu coerente. | DONE no monorepo em 2026-11-10 — sync pendente |
 | BLG-FE-003 | P2 | Implementar Finance como primeira feature após os gates. | Resumo/receitas, períodos, estados, autorização, acessibilidade e testes; sem despesas/relatórios inventados. | DONE e sincronizado |
-| BLG-FE-004 | P2 | Implementar Admin Users. | List/create/edit/active/role, validação, loading, empty, erro, sucesso, autoproteção e testes. | OPEN |
+| BLG-FE-004 | P2 | Implementar Admin Users. | List/create/edit/active/role, validação, loading, empty, erro, sucesso, autoproteção e testes. | DONE 2026-11-11 — `users-page.spec.ts` (13). Gaps backend propostos: `CreateUserRequest.fullName` sem `@Size(max=120)` (Update tem) e duplicidade concorrente depende da constraint única do banco → retorno 500 em vez de 409 sob corrida [INFERIDO]; não alterados (backend fora do escopo autorizado). |
 | BLG-FE-005 | P2 | Implementar Audit. | Lista autorizada, filtros aprovados, loading/empty/error, snapshots tratados com minimização e testes. | OPEN |
-| BLG-FE-006 | P2 | Corrigir estados assíncronos de calendar/pending/members/search. | Satisfazer BLG-BUG-004 a BLG-BUG-008. | OPEN |
+| BLG-FE-006 | P2 | Corrigir estados assíncronos de calendar/pending/members/search. | Satisfazer BLG-BUG-004 a BLG-BUG-008. | DONE (2026-11-10, sincronizado 2026-11-11); complemento 2026-11-11: reabertura SHARED visível, resumo/sino invalidados após mutação |
 | BLG-FE-007 | P2 | Completar validação de eventos. | CLIENT exige workDescription; trim do título; e-mail SHARED válido; erros de campo e backend coerentes. | DONE no monorepo em 2026-11-10 — `calendar-page.spec.ts`; sync pendente |
 | BLG-FE-008 | P3 | Implementar criação de calendário para ADMIN ou remover expectativa da UI. | Fluxo segue BR-CAL-002, autorização backend e testes. | OPEN |
-| BLG-FE-009 | P3 | Settings somente após BLG-BR-007. | Nenhuma implementação sem spec aprovada. | NEEDS_DECISION |
+| BLG-FE-009 | P3 | Settings somente após BLG-BR-007. | Nenhuma implementação sem spec aprovada. 2026-11-11: o dono pediu Configurações com preferências de tema e identidade (anexo 2, fase 11); implementado apenas aparência + dados somente leitura, sem edição de perfil. | PARTIAL — demais opções NEEDS_DECISION |
 
 ## TEST
 
 | ID | Prioridade | Suíte | Casos mínimos | Estado |
 |---|---:|---|---|---|
-| BLG-TEST-001 | P0 | Regressão de integridade de pagamento. | Redução de amount/troca de tipo cobertas; falta matriz de `updatePayment` em todos os status, rollback/auditoria e constraints reais. | PARTIAL |
+| BLG-TEST-001 | P0 | Regressão de integridade de pagamento. | Redução de amount/troca de tipo cobertas; 2026-11-11: matriz de `updatePayment` (PENDING/PARTIALLY_PAID/PAID/REFUNDED, inválidos, precisão, método, datas, PERSONAL/SHARED, cancelado, VIEWER/FINANCE/EDITOR não autor/não membro, estado e auditoria preservados em falha) em `PaymentUpdateMatrixIntegrationTests`. Faltam constraints reais em PostgreSQL isolado e concorrência. | DONE em H2; PG/concorrência OPEN |
 | BLG-TEST-002 | P1 | Negativos de SEC-FIND-001. | VIEWER/EDITOR sem campos; papéis/autoria aprovados com contrato financeiro; UI redigida. | DONE e sincronizado |
 | BLG-TEST-003 | P1 | Negativos de SEC-FIND-002. | Alvo removido deixa de listar e recebe negação em approve/reject; status permanece pendente. | DONE e sincronizado |
 | BLG-TEST-004 | P1 | Autenticação e sessão. | Ausente, adulterado, expirado, issuer incorreto, inativo, 401/403/500 cobertos; logout/rate limit/matriz alg continuam. | PARTIAL |
@@ -119,9 +123,9 @@ Estado após validação multi-repositório: `S0 = 0` e `S1 = 0`. Os dois S1, o 
 | BLG-TD-001 | P2 | Triagem controlada das dependências npm. | DONE nos dois contextos: Angular 21.2.21, `npm ci`, audits 0 e regressão; manter recorrente e nunca executar audit fix --force automaticamente. |
 | BLG-TD-002 | P3 | Automatizar paridade dos repositórios em CI/check local. | Divergência backend/frontend falha antes de release; .git, build e secrets permanecem excluídos. |
 | BLG-TD-003 | P3 | Centralizar mapeamento de erros e capacidades no frontend. | Menos duplicação sem transformar frontend em autoridade. |
-| BLG-TD-004 | P4 | Reduzir warnings de budget SCSS. | PARTIAL 2026-11-11: shell, calendário e login migrados para `src/styles/`; resta `finance-page.scss` (5 kB). |
-| BLG-TD-005 | P4 | Melhorar legibilidade de MembersPage e normalizar textos pt-BR. | Código não fica comprimido em linhas únicas e UI usa acentuação consistente. |
-| BLG-TD-006 | P4 | Rever metadados HTML e acessibilidade básica. | lang pt-BR, títulos, foco de modal e anúncios de loading/erro validados. |
+| BLG-TD-004 | P4 | Reduzir warnings de budget SCSS. | DONE 2026-11-11: `finance-page.scss` reescrito com tokens e camada `_pages.scss`; build sem avisos de budget. |
+| BLG-TD-005 | P4 | Melhorar legibilidade de MembersPage e normalizar textos pt-BR. | DONE 2026-11-11: template reformatado, papéis em PT-BR, mensagens acentuadas em calendário, shell, pendências e membros. |
+| BLG-TD-006 | P4 | Rever metadados HTML e acessibilidade básica. | DONE parcial 2026-11-11: `spDialogFocus` (foco inicial, Tab/Shift+Tab, retorno), `role=alert/status`, card sem interativo aninhado, movimento reduzido. Contraste e leitor de tela: validação manual pendente. |
 | BLG-TD-007 | P1 | Evitar N+1 na redação financeira de listas/pending. | DONE e sincronizado: `EventFinancialAccess` é resolvido uma vez por request/calendar e cacheado por `calendarId`; teste unitário e integração preservam autoria/capacidade. |
 
 ## UX
@@ -131,7 +135,7 @@ Estado após validação multi-repositório: `S0 = 0` e `S1 = 0`. Os dois S1, o 
 | BLG-UX-001 | P2 | Estados loading, empty, erro parcial, retry e acesso negado. | Cada página distingue os estados e não apresenta falha como ausência de dados. |
 | BLG-UX-002 | P2 | Explicar permissões sem substituir segurança backend. | Ações indisponíveis ficam ocultas/desabilitadas com motivo; 403 é compreensível. |
 | BLG-UX-003 | P3 | Remover ou marcar recursos fictícios. | DONE 2026-11-11: Google, cadastro, reset e rememberMe removidos; convite virou "Adicionar membro" (→ `/members`); tema implementado de verdade. |
-| BLG-UX-004 | P3 | Avaliar eventos que atravessam dias. | Decidir requisito; se aceito, formulário representa datas distintas e possui teste. |
+| BLG-UX-004 | P3 | Avaliar eventos que atravessam dias. | Decidir requisito; se aceito, formulário representa datas distintas e possui teste. 2026-11-11: o atalho de duração não oferece nem aplica durações além de 23:59 (sem truncamento silencioso); requisito multidia continua NEEDS_DECISION. |
 | BLG-UX-005 | P3 | Feedback de sucesso e confirmação consistente. | Create/edit/payment/member/approval comunicam conclusão e impedem submissão duplicada. |
 
 ## Plano de execução

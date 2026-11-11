@@ -1,14 +1,131 @@
-<section class="members-page">
-  <header class="page-header"><div><span>ADMINISTRAÇÃO</span><h1>Membros dos calendários</h1><p>Consulte participantes e gerencie permissões.</p></div><label>Calendário<select [value]="selectedCalendarId()" (change)="selectCalendar($any($event.target).value)">@for (calendar of calendars(); track calendar.id) { <option [value]="calendar.id">{{ calendar.name }}</option> }</select></label></header>
-  @if (errorMessage()) { <p class="message error">{{ errorMessage() }}</p> }
-  @if (successMessage()) { <p class="message success">{{ successMessage() }}</p> }
-  @if (canManage()) { <form class="add-member" (submit)="$event.preventDefault(); addMember()"><label>E-mail<input type="email" required [value]="memberEmail()" (input)="memberEmail.set($any($event.target).value)" placeholder="usuario@email.com" /></label><label>Papel<select [value]="memberRole()" (change)="memberRole.set($any($event.target).value)">@for (role of roles; track role) { <option [value]="role">{{ role }}</option> }</select></label><button type="submit" [disabled]="isSaving()">{{ isSaving() ? 'Salvando...' : 'Adicionar membro' }}</button></form> }
-  <div class="members-card">@if (isLoading()) { <p class="empty">Carregando...</p> } @else {
-    <table><thead><tr><th>Usuário</th><th>Papel</th><th>Entrada</th><th>Ações</th></tr></thead><tbody>
-      @for (member of members(); track member.id) { <tr><td><strong>{{ member.userFullName }}</strong><small>{{ member.userEmail }}</small></td><td>
-        @if (canManage() && !isOwner(member)) { <select [value]="member.role" [disabled]="isMemberBusy(member.id)" (change)="updateRole(member, $any($event.target).value)">@for (role of roles; track role) { <option [value]="role">{{ role }}</option> }</select> } @else { <span class="role">{{ member.role }} @if (isOwner(member)) { · OWNER }</span> }
-      </td><td>{{ member.createdAt ? (member.createdAt | date:'short') : '—' }}</td><td>@if (canManage() && !isOwner(member)) { <button class="remove" type="button" [disabled]="isMemberBusy(member.id)" (click)="removeMember(member)">Remover</button> } @else { — }</td></tr> }
-      @empty { <tr><td colspan="4" class="empty">{{ errorMessage() ? 'Não foi possível exibir os membros.' : 'Nenhum membro encontrado.' }}</td></tr> }
-    </tbody></table> }
+<section class="page members-page">
+  <header class="page-header">
+    <div>
+      <span class="eyebrow">Administração</span>
+      <h1>Membros dos calendários</h1>
+      <p>Consulte participantes e gerencie permissões.</p>
+    </div>
+
+    <div class="page-actions">
+      <label class="sp-field">
+        Calendário
+        <select
+          [value]="selectedCalendarId()"
+          (change)="selectCalendar($any($event.target).value)"
+        >
+          @for (calendar of calendars(); track calendar.id) {
+            <option [value]="calendar.id">{{ calendar.name }}</option>
+          }
+        </select>
+      </label>
+    </div>
+  </header>
+
+  @if (errorMessage()) {
+    <p class="page-feedback is-error" role="alert">{{ errorMessage() }}</p>
+  }
+
+  @if (successMessage()) {
+    <p class="page-feedback is-success" role="status">{{ successMessage() }}</p>
+  }
+
+  @if (canManage()) {
+    <form class="page-form" (submit)="$event.preventDefault(); addMember()">
+      <label class="sp-field">
+        E-mail
+        <input
+          type="email"
+          required
+          autocomplete="off"
+          placeholder="usuario@email.com"
+          [value]="memberEmail()"
+          (input)="memberEmail.set($any($event.target).value)"
+        />
+      </label>
+
+      <label class="sp-field">
+        Papel
+        <select [value]="memberRole()" (change)="memberRole.set($any($event.target).value)">
+          @for (role of roles; track role) {
+            <option [value]="role">{{ roleLabel(role) }}</option>
+          }
+        </select>
+      </label>
+
+      <button class="primary-button" type="submit" [disabled]="isSaving()">
+        {{ isSaving() ? 'Salvando...' : 'Adicionar membro' }}
+      </button>
+    </form>
+  }
+
+  <div class="page-table-wrap">
+    @if (isLoading()) {
+      <p class="page-empty" role="status">Carregando membros...</p>
+    } @else {
+      <table class="page-table is-stackable">
+        <thead>
+          <tr>
+            <th scope="col">Usuário</th>
+            <th scope="col">Papel</th>
+            <th scope="col">Entrada</th>
+            <th scope="col">Ações</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (member of members(); track member.id) {
+            <tr>
+              <td data-label="Usuário">
+                <span>
+                  <strong>{{ member.userFullName }}</strong>
+                  <small>{{ member.userEmail }}</small>
+                </span>
+              </td>
+              <td data-label="Papel">
+                @if (canManage() && !isOwner(member)) {
+                  <select
+                    [attr.aria-label]="'Papel de ' + member.userFullName"
+                    [value]="member.role"
+                    [disabled]="isMemberBusy(member.id)"
+                    (change)="updateRole(member, $any($event.target).value)"
+                  >
+                    @for (role of roles; track role) {
+                      <option [value]="role">{{ roleLabel(role) }}</option>
+                    }
+                  </select>
+                } @else {
+                  <span class="role-pill">
+                    {{ roleLabel(member.role) }}@if (isOwner(member)) { · Proprietário }
+                  </span>
+                }
+              </td>
+              <td data-label="Entrada">{{ member.createdAt ? (member.createdAt | date:'dd/MM/yyyy HH:mm') : '—' }}</td>
+              <td data-label="Ações">
+                @if (canManage() && !isOwner(member)) {
+                  <button
+                    class="danger-button"
+                    type="button"
+                    [attr.aria-label]="'Remover ' + member.userFullName"
+                    [disabled]="isMemberBusy(member.id)"
+                    (click)="removeMember(member)"
+                  >
+                    Remover
+                  </button>
+                } @else {
+                  —
+                }
+              </td>
+            </tr>
+          } @empty {
+            <tr>
+              <td colspan="4">
+                <div class="page-empty">
+                  {{ errorMessage() ? 'Não foi possível exibir os membros.' : 'Nenhum membro encontrado.' }}
+                </div>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    }
   </div>
 </section>

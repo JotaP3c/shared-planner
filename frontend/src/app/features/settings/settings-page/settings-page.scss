@@ -1,0 +1,51 @@
+:host {
+  display: block;
+}
+
+.theme-options {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+}
+
+.theme-option {
+  display: grid;
+  gap: 4px;
+  padding: 14px 16px;
+  border: 1px solid var(--sp-border);
+  border-radius: var(--sp-radius);
+  background: var(--sp-surface-2);
+  color: var(--sp-text);
+  text-align: left;
+  cursor: pointer;
+
+  small {
+    color: var(--sp-text-2);
+  }
+
+  &.is-selected {
+    border-color: var(--sp-primary);
+    background: var(--sp-primary-soft);
+    box-shadow: var(--sp-focus);
+  }
+}
+
+.account-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px;
+  margin: 0;
+
+  dt {
+    color: var(--sp-text-2);
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+  }
+
+  dd {
+    margin: 4px 0 0;
+    font-weight: 600;
+    overflow-wrap: anywhere;
+  }
+}

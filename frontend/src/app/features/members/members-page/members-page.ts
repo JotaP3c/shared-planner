@@ -107,6 +107,17 @@ export class MembersPage implements OnInit {
       });
   }
 
+  roleLabel(role: CalendarMemberRole): string {
+    const labels: Record<CalendarMemberRole, string> = {
+      ADMIN: 'Administrador',
+      EDITOR: 'Editor',
+      FINANCE: 'Financeiro',
+      VIEWER: 'Leitor',
+    };
+
+    return labels[role] ?? role;
+  }
+
   isMemberBusy(memberId: string): boolean {
     return this.actionMemberIds().has(memberId);
   }

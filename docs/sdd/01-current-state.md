@@ -1,5 +1,28 @@
 # 01 — Current State (AS-IS)
 
+## Retrato atual — 2026-11-11 (consolidação + redesign)
+
+Este bloco substitui, como estado vigente, as contagens e caminhos abaixo; o texto de
+2026-08-22 permanece como **snapshot histórico**. Detalhes em
+[frontend-redesign/](frontend-redesign/tasks.md) e [20](20-validation-report.md).
+
+- Caminhos reais nesta máquina: `C:\git\shared-planner`, `C:\git\shared-planner-backend`,
+  `C:\git\shared-planner-frontend` (anotações antigas citam `C:\Kiro\...`).
+- Docker não está no PATH desta máquina; PostgreSQL real, Compose e E2E **não** foram
+  revalidados nesta rodada. Testes backend usam H2 (MODE=PostgreSQL, Flyway desligado).
+- Frontend: Angular framework 21.2.26 e tooling/SSR 21.2.29 (antes 21.2.21). Build SSR
+  pré-renderiza **1** rota (`/login`); as demais são `RenderMode.Client` (o texto antigo cita 9).
+- Avisos de budget: **0** (eram 4 em agosto e 1 — `finance-page.scss` 5,03 kB — no onboarding).
+- Novas capacidades: Admin Users (BLG-FE-004), Configurações de aparência + identidade
+  somente leitura, gráfico real de distribuição de pagamentos no Financeiro, seletor de tema
+  no login, foco gerenciado nos modais, invalidação de resumo/contador após mutações.
+- Auditoria continua placeholder (Q-006). AC-EVT-001 não está mais bloqueado por Q-007
+  (resolvida); o comentário antigo que o mantinha bloqueado está obsoleto.
+- BR-PAY-003: a interpretação histórica (PAID → PENDING liberar troca de tipo/valor) segue
+  **DECISÃO NECESSÁRIA**; o comportamento atual está fixado por teste (ver 33/BLG-TEST-001).
+- Correções antes marcadas "sync pendente" (BLG-BUG-004..009, BLG-FE-002/007) estão nos
+  remotos standalone e foram sincronizadas localmente nesta rodada.
+
 Atualizado em 2026-08-22 após o incremento de segurança e Finance e sua validação multi-repositório. A baseline anterior permanece registrada como evidência histórica; o código atual está sincronizado, testado e commitado localmente nos três repositórios. Nenhum push foi realizado.
 
 ## Arquitetura confirmada

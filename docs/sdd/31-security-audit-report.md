@@ -620,6 +620,33 @@ Mass assignment: nenhum controller aceita entidade JPA diretamente. Requests sã
 
 **Status:** NEEDS_DECISION
 
+### Reabertura — dependências frontend (2026-11-11)
+
+O finding de dependências encerrado em agosto foi **reaberto**: com acesso ao registro, o
+onboarding de 11/11 obteve 38 achados no audit completo e 6 no de produção. Os audits "0"
+vistos dentro do sandbox não refletiam o registro (resultado não reproduzível); não usar o
+relatório de agosto como prova de S0/S1 zerados.
+
+| Pacote (versão antes) | Cadeia | Advisories | Pré-condição / aplicabilidade | Correção aplicada |
+|---|---|---|---|---|
+| @angular/platform-server 21.2.21 | direto (SSR) | GHSA-v3p8-whq6-r5jg, GHSA-j3r3-mxqp-r2p4 (XSS em raw-content), GHSA-f6mr-pjwc-34m4 (SSRF/credencial), GHSA-f67j-2jqw-jpq7 (DoS DOCTYPE), GHSA-w739-gvwx-grc3 (open redirect) | SSR ativo no servidor Node; só `/login` é pré-renderizada e as demais rotas são client-side, o que reduz mas não elimina a superfície (o servidor ainda processa todas as URLs) → **aplicável** | 21.2.26 |
+| @angular/router 21.2.21 | direto | GHSA-ff3f-86qr-9cv3, GHSA-62vg-58rm-qff7, GHSA-57xq-rjx2-v5xh (DoS em SSR) | roteamento executa no servidor para cada request → **aplicável** | 21.2.26 |
+| @angular/ssr 21.2.21 | direto | GHSA-7g7c-h8rr-7p6q (path traversal CommonEngine em Windows) | o projeto usa `AngularNodeAppEngine`, não CommonEngine; deploy em container Linux → **baixa aplicabilidade** | 21.2.29 |
+| body-parser 2.3.0 | express 5.2.1 | GHSA-27r3-jxmh-p828 (DoS corpo comprimido) | `server.ts` não registra `express.json()`/`urlencoded()`; o proxy `/api` faz pipe do corpo bruto → **não aplicável hoje** [VERIFICADO por leitura], corrigido preventivamente | 2.4.0 |
+| proxy-addr 2.0.7 (crítico) | express 5.2.1 | GHSA-jqcg-44mw-7w3h (IP spoofing via IPv4-mapped IPv6 em trust subnet) | só explorável com `trust proxy` configurado com sub-redes; `server.ts` não configura `trust proxy` → **não aplicável hoje**, corrigido preventivamente | 2.0.8 |
+| qs 6.15.3 | express/body-parser | GHSA-x5fp-wj9c-mxmx, GHSA-4mjr-xmp4-gh2g, GHSA-6pq8-jhm2-2vcw (DoS) | Express 5 usa por padrão o query parser "simple" (não `qs`) e o servidor não altera `query parser` nem usa `stringify` → **baixa aplicabilidade** [INFERIDO a partir do default do Express 5] | 6.17.1 |
+
+Atualização deliberada dentro da linha 21.2 (`~21.2.26` framework, `~21.2.29`
+build/cli/ssr), sem major e sem `npm audit fix`. As entradas `@angular/*` foram removidas
+do lockfile e re-resolvidas juntas (o resolvedor recusava a troca in-place por conflito de
+peers); demais pins do lockfile preservados. Resultado: audit de produção **0**; audit
+completo 27 (22 moderados, 5 altos) restritos a ferramentas de desenvolvimento (cadeia
+`pacote`/`npm-registry-fetch` do `@angular/cli`, cujo "fix" proposto é rebaixar o CLI para
+17.3.17 — não aplicável; vitest/vite, browserslist, source-map-js, brace-expansion,
+fast-uri, hono). Não entram no bundle nem no servidor SSR. Testes (86/86), build/prerender
+e `npm ci` revalidados. Regressão HTTP do servidor/proxy SSR em runtime **não** foi
+executada nesta rodada (BLG-SEC-016 continua aberto).
+
 ## 6. Controles positivos
 
 - BCrypt é usado para persistência de senha.

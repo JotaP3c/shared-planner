@@ -1,4 +1,4 @@
-import { Component, DestroyRef, computed, inject, OnDestroy, OnInit, signal } from '@angular/core';
+import { Component, DestroyRef, computed, effect, inject, OnDestroy, OnInit, signal, untracked } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { Subscription, catchError, filter, finalize, of, switchMap } from 'rxjs';
@@ -7,6 +7,7 @@ import { EventService } from '../../api/event.service';
 import { AuthService } from '../../auth/auth.service';
 import { SearchService } from '../../api/search.service';
 import { CalendarResponse, EventSearchResponse, EventType } from '../../models/shared-planner.models';
+import { DataChangeService } from '../../state/data-change.service';
 import { ThemePreference, ThemeService } from '../../theme/theme.service';
 import { Icon } from '../../../shared/ui/icon/icon';
 
@@ -24,6 +25,7 @@ export class AppShell implements OnInit, OnDestroy {
   private readonly router = inject(Router);
   private readonly themeService = inject(ThemeService);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly dataChanges = inject(DataChangeService);
   private pendingCountSubscription: Subscription | null = null;
   private searchDebounceId: ReturnType<typeof setTimeout> | null = null;
   private searchRequestId = 0;
@@ -111,6 +113,18 @@ export class AppShell implements OnInit, OnDestroy {
 
   readonly openNavGroups = signal<Set<string>>(new Set(['admin']));
   readonly showProfileMenu = signal(false);
+
+  constructor() {
+    // Aprovar/reprovar/criar/editar evento muda o contador do sino sem exigir navegação.
+    let lastSeenVersion = this.dataChanges.version();
+    effect(() => {
+      const version = this.dataChanges.version();
+      if (version !== lastSeenVersion) {
+        lastSeenVersion = version;
+        untracked(() => this.refreshPendingApprovalCount());
+      }
+    });
+  }
 
   openSidebar(): void {
     this.isSidebarOpen.set(true);
@@ -317,7 +331,7 @@ export class AppShell implements OnInit, OnDestroy {
         }
 
         this.searchResults.set([]);
-        this.searchError.set('Nao foi possivel buscar eventos agora.');
+        this.searchError.set('Não foi possível buscar eventos agora.');
         this.isSearchLoading.set(false);
       },
     });

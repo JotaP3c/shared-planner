@@ -11,6 +11,10 @@ export class UserService {
   private readonly http = inject(HttpClient);
   private readonly apiUrl = '/api/users';
 
+  list() {
+    return this.http.get<UserResponse[]>(this.apiUrl);
+  }
+
   create(request: CreateUserRequest) {
     return this.http.post<UserResponse>(this.apiUrl, request);
   }

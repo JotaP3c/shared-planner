@@ -1,22 +1,22 @@
-<section class="pending-page">
-  <header class="pending-hero">
+<section class="page pending-page">
+  <header class="page-header">
     <div>
-      <span>Fila de aprovacoes</span>
-      <h1>Pendencias</h1>
+      <span class="eyebrow">Fila de aprovações</span>
+      <h1>Pendências</h1>
       <p>Acompanhe os eventos compartilhados que aguardam resposta.</p>
     </div>
 
-    <button type="button" (click)="loadPendingEvents()" [disabled]="isLoading()">
+    <button class="secondary-button" type="button" (click)="loadPendingEvents()" [disabled]="isLoading()">
       {{ isLoading() ? 'Atualizando...' : 'Atualizar' }}
     </button>
   </header>
 
   @if (errorMessage()) {
-    <p class="pending-error" role="alert">{{ errorMessage() }}</p>
+    <p class="page-feedback is-error" role="alert">{{ errorMessage() }}</p>
   }
 
   @if (loadError()) {
-    <p class="pending-error" role="alert" data-testid="pending-load-error">
+    <p class="page-feedback is-error" role="alert" data-testid="pending-load-error">
       {{ loadError() }}
       <button class="ghost-button" type="button" (click)="loadPendingEvents()" [disabled]="isLoading()">
         Tentar novamente
@@ -24,25 +24,25 @@
     </p>
   }
 
-  <article class="pending-board">
-    <header>
+  <article class="page-panel">
+    <header class="page-panel-head">
       <div>
         <strong>{{ pendingCount() }} item(ns)</strong>
-        <span>Somente o usuario solicitado pode aprovar ou reprovar.</span>
+        <span>Somente o usuário solicitado pode aprovar ou reprovar.</span>
       </div>
     </header>
 
-    <div class="pending-list">
+    <div class="pending-queue">
       @for (event of pendingEvents(); track event.id) {
-        <section class="pending-card">
-          <div class="pending-avatar">
+        <section class="pending-card" [attr.aria-label]="eventTitle(event)">
+          <div class="pending-avatar" aria-hidden="true">
             {{ emailInitials(event.createdByEmail) }}
           </div>
 
           <div class="pending-content">
             <div class="pending-title-row">
               <div>
-                <span class="event-kind">{{ eventTypeLabel(event) }}</span>
+                <span class="sp-pill" [class]="'sp-pill type-' + event.eventType.toLowerCase()">{{ eventTypeLabel(event) }}</span>
                 <h2>{{ eventTitle(event) }}</h2>
               </div>
 
@@ -56,13 +56,13 @@
               </div>
 
               <div>
-                <dt>Aprovacao solicitada para</dt>
+                <dt>Aprovação solicitada para</dt>
                 <dd>{{ event.approvalRequestedFromEmail || '-' }}</dd>
               </div>
 
               @if (event.description) {
                 <div class="wide">
-                  <dt>Descricao</dt>
+                  <dt>Descrição</dt>
                   <dd>{{ event.description }}</dd>
                 </div>
               }
@@ -70,7 +70,7 @@
 
             <footer>
               <button class="ghost-button" type="button" (click)="openInCalendar(event)">
-                Abrir no calendario
+                Abrir no calendário
               </button>
 
               @if (canRespond(event)) {
@@ -97,13 +97,13 @@
         </section>
       } @empty {
         @if (isLoading()) {
-          <div class="pending-empty" role="status" data-testid="pending-loading">
-            <strong>Carregando pendencias...</strong>
+          <div class="page-empty" role="status" data-testid="pending-loading">
+            <strong>Carregando pendências...</strong>
           </div>
         } @else if (showEmptyState()) {
-          <div class="pending-empty" data-testid="pending-empty">
-            <strong>Nenhuma pendencia encontrada.</strong>
-            <p>Quando um evento compartilhado depender de aprovacao, ele aparecera aqui.</p>
+          <div class="page-empty" role="status" data-testid="pending-empty">
+            <strong>Nenhuma pendência encontrada.</strong>
+            <p>Quando um evento compartilhado depender de aprovação, ele aparecerá aqui.</p>
           </div>
         }
       }

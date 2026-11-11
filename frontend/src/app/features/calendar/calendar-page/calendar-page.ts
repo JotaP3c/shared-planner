@@ -16,6 +16,8 @@ import { FinanceService } from '../../../core/api/finance.service';
 import { financeAuthorizedCalendars } from '../../../core/auth/finance-access';
 import { Icon, IconName } from '../../../shared/ui/icon/icon';
 import { SearchService } from '../../../core/api/search.service';
+import { DataChangeService } from '../../../core/state/data-change.service';
+import { DialogFocusDirective } from '../../../shared/a11y/dialog-focus.directive';
 import { AuthService } from '../../../core/auth/auth.service';
 import {
   CalendarResponse,
@@ -42,7 +44,7 @@ interface MonthlyFinanceSummary {
 
 @Component({
   selector: 'app-calendar-page',
-  imports: [FullCalendarModule, ReactiveFormsModule, Icon],
+  imports: [FullCalendarModule, ReactiveFormsModule, Icon, DialogFocusDirective],
   templateUrl: './calendar-page.html',
   styleUrl: './calendar-page.scss',
 })
@@ -54,7 +56,11 @@ export class CalendarPage implements OnInit, AfterViewInit {
   private readonly calendarService = inject(CalendarService);
   private readonly eventService = inject(EventService);
   private readonly financeService = inject(FinanceService);
+  private readonly dataChanges = inject(DataChangeService);
   private financeSubscription: Subscription | null = null;
+  /** Relógio local (atualiza a cada minuto) para os "Próximos eventos" acompanharem o tempo. */
+  readonly clock = signal(Date.now());
+  private clockTimerId: ReturnType<typeof setInterval> | null = null;
   private financeRequestKey = '';
   private readonly searchService = inject(SearchService);
   private readonly authService = inject(AuthService);
@@ -222,7 +228,7 @@ export class CalendarPage implements OnInit, AfterViewInit {
 
   /** Próximos eventos do período carregado (dados reais de /api/events), sem cancelados/rejeitados. */
   readonly upcomingEvents = computed(() => {
-    const now = Date.now();
+    const now = this.clock();
 
     return this.filteredEvents()
       .filter(event => event.status !== 'CANCELLED' && event.status !== 'REJECTED')
@@ -265,7 +271,7 @@ export class CalendarPage implements OnInit, AfterViewInit {
     const end = this.visibleEnd();
 
     if (!start || !end) {
-      return 'Periodo carregando';
+      return 'Período carregando';
     }
 
     const finalDate = new Date(end);
@@ -364,10 +370,21 @@ export class CalendarPage implements OnInit, AfterViewInit {
 
     effect(() => {
       const calendarIds = this.financeCalendars().map(calendar => calendar.id);
-      untracked(() => this.loadFinanceSummary(calendarIds));
+      // Mutações (evento, cancelamento, pagamento, aprovação) invalidam o resumo mensal.
+      const version = this.dataChanges.version();
+      untracked(() => this.loadFinanceSummary(calendarIds, version));
     });
 
-    this.destroyRef.onDestroy(() => this.financeSubscription?.unsubscribe());
+    if (typeof window !== 'undefined') {
+      this.clockTimerId = setInterval(() => this.clock.set(Date.now()), 60_000);
+    }
+
+    this.destroyRef.onDestroy(() => {
+      this.financeSubscription?.unsubscribe();
+      if (this.clockTimerId) {
+        clearInterval(this.clockTimerId);
+      }
+    });
   }
 
   // ---- Redesign: filtros por tipo, período, duração e painéis ----------------------
@@ -438,9 +455,31 @@ export class CalendarPage implements OnInit, AfterViewInit {
     }
 
     const [hours, mins] = startTime.split(':').map(Number);
-    const total = Math.min(hours * 60 + mins + minutes, 23 * 60 + 59);
+    const total = hours * 60 + mins + minutes;
+
+    // Eventos que atravessam a meia-noite dependem de requisito próprio (BLG-UX-004):
+    // não aplicamos uma duração diferente da escolhida.
+    if (total > 23 * 60 + 59) {
+      this.eventFormError.set('A duração escolhida ultrapassa 23:59. Ajuste o horário de término manualmente.');
+      return;
+    }
+
+    this.eventFormError.set('');
     const pad = (part: number) => String(part).padStart(2, '0');
     this.eventForm.controls.endTime.setValue(`${pad(Math.floor(total / 60))}:${pad(total % 60)}`);
+  }
+
+  /** Durações que terminam até 23:59 no mesmo dia, dado o horário de início atual. */
+  availableDurations(): number[] {
+    const startTime = this.eventForm.controls.startTime.value;
+
+    if (!startTime) {
+      return this.durationOptions;
+    }
+
+    const [hours, mins] = startTime.split(':').map(Number);
+    const startMinutes = hours * 60 + mins;
+    return this.durationOptions.filter(minutes => startMinutes + minutes <= 23 * 60 + 59);
   }
 
   formatDuration(minutes: number): string {
@@ -478,9 +517,9 @@ export class CalendarPage implements OnInit, AfterViewInit {
   }
 
   /** Mês civil atual vs. anterior, somando os calendários autorizados (sem valores fixos). */
-  private loadFinanceSummary(calendarIds: string[]): void {
+  private loadFinanceSummary(calendarIds: string[], version = this.dataChanges.version()): void {
     const today = new Date();
-    const key = `${calendarIds.join(',')}|${today.getFullYear()}-${today.getMonth()}`;
+    const key = `${calendarIds.join(',')}|${today.getFullYear()}-${today.getMonth()}|${version}`;
 
     if (key === this.financeRequestKey) {
       return;
@@ -699,7 +738,7 @@ export class CalendarPage implements OnInit, AfterViewInit {
     const calendarId = this.defaultEventCalendarId();
 
     if (!calendarId) {
-      this.errorMessage.set('Voce nao tem permissao para criar eventos nos calendarios selecionados.');
+      this.errorMessage.set('Você não tem permissão para criar eventos nos calendários selecionados.');
       return;
     }
 
@@ -803,7 +842,7 @@ export class CalendarPage implements OnInit, AfterViewInit {
     }
 
     if (!this.canCreateInCalendar(calendarId)) {
-      this.eventFormError.set('Voce nao tem permissao para criar eventos neste calendario.');
+      this.eventFormError.set('Você não tem permissão para criar eventos neste calendário.');
       return;
     }
 
@@ -899,10 +938,11 @@ export class CalendarPage implements OnInit, AfterViewInit {
           this.eventBeingEdited.set(null);
           this.loadEvents();
           this.loadPendingApprovals();
+          this.dataChanges.notify();
         },
         error: (error) => {
           this.eventFormError.set(
-            this.extractErrorMessage(error, 'Nao foi possivel salvar o evento. Verifique os dados e tente novamente.'),
+            this.extractErrorMessage(error, 'Não foi possível salvar o evento. Verifique os dados e tente novamente.'),
           );
         },
       });
@@ -932,10 +972,11 @@ export class CalendarPage implements OnInit, AfterViewInit {
           this.selectedEvent.set(null);
           this.loadEvents();
           this.loadPendingApprovals();
+          this.dataChanges.notify();
         },
         error: (error) => {
           this.eventDetailError.set(
-            this.extractErrorMessage(error, 'Nao foi possivel cancelar/desmarcar este evento.'),
+            this.extractErrorMessage(error, 'Não foi possível cancelar/desmarcar este evento.'),
           );
         },
       });
@@ -1044,17 +1085,18 @@ export class CalendarPage implements OnInit, AfterViewInit {
           this.selectedEvent.set(updatedEvent);
           this.resetPaymentForm(updatedEvent);
           this.isPaymentFormOpen.set(false);
+          this.dataChanges.notify();
         },
         error: error => {
           this.paymentFormError.set(
-            this.extractErrorMessage(error, 'Nao foi possivel atualizar o pagamento deste evento.'),
+            this.extractErrorMessage(error, 'Não foi possível atualizar o pagamento deste evento.'),
           );
         },
       });
   }
 
   calendarName(calendarId: string): string {
-    return this.calendars().find(calendar => calendar.id === calendarId)?.name ?? 'Calendario';
+    return this.calendars().find(calendar => calendar.id === calendarId)?.name ?? 'Calendário';
   }
 
   eventTypeLabel(eventType: EventType): string {
@@ -1064,7 +1106,7 @@ export class CalendarPage implements OnInit, AfterViewInit {
   eventStatusLabel(status: string): string {
     const labels: Record<string, string> = {
       SCHEDULED: 'Agendado',
-      PENDING_APPROVAL: 'Pendente de aprovacao',
+      PENDING_APPROVAL: 'Pendente de aprovação',
       APPROVED: 'Aprovado',
       REJECTED: 'Reprovado',
       CANCELLED: 'Cancelado',
@@ -1075,7 +1117,7 @@ export class CalendarPage implements OnInit, AfterViewInit {
 
   paymentStatusLabel(status: PaymentStatus | null | undefined): string {
     if (!status) {
-      return 'Nao informado';
+      return 'Não informado';
     }
 
     return this.paymentStatusOptions.find(option => option.value === status)?.label ?? status;
@@ -1083,7 +1125,7 @@ export class CalendarPage implements OnInit, AfterViewInit {
 
   paymentMethodLabel(method: PaymentMethod | null | undefined): string {
     if (!method) {
-      return 'Nao informado';
+      return 'Não informado';
     }
 
     return this.paymentMethodOptions.find(option => option.value === method)?.label ?? method;
@@ -1347,16 +1389,16 @@ export class CalendarPage implements OnInit, AfterViewInit {
 
     if (request.paymentStatus === 'PENDING') {
       if (receivedAmount > 0) {
-        return 'Pagamento pendente nao pode ter valor recebido.';
+        return 'Pagamento pendente não pode ter valor recebido.';
       }
 
       if (request.paidAt) {
-        return 'Pagamento pendente nao pode ter data de pagamento.';
+        return 'Pagamento pendente não pode ter data de pagamento.';
       }
     }
 
     if (request.paymentStatus === 'REFUNDED' && receivedAmount > 0) {
-      return 'Pagamento estornado nao pode manter valor recebido.';
+      return 'Pagamento estornado não pode manter valor recebido.';
     }
 
     return null;
@@ -1384,7 +1426,7 @@ export class CalendarPage implements OnInit, AfterViewInit {
     }
 
     if (httpError.status === 403) {
-      return 'Voce nao tem permissao para executar esta acao neste calendario.';
+      return 'Você não tem permissão para executar esta ação neste calendário.';
     }
 
     if (httpError.status === 400) {
@@ -1392,7 +1434,7 @@ export class CalendarPage implements OnInit, AfterViewInit {
     }
 
     if (httpError.status === 404) {
-      return 'Calendario ou usuario informado nao foi encontrado.';
+      return 'Calendário ou usuário informado não foi encontrado.';
     }
 
     return fallbackMessage;
@@ -1409,7 +1451,7 @@ export class CalendarPage implements OnInit, AfterViewInit {
         this.openSearchTarget();
       },
       error: () => {
-        this.errorMessage.set('Nao foi possivel carregar os calendarios.');
+        this.errorMessage.set('Não foi possível carregar os calendários.');
       },
     });
   }
@@ -1469,12 +1511,12 @@ export class CalendarPage implements OnInit, AfterViewInit {
       this.isLoading.set(false);
 
       if (failedIds.length === results.length) {
-        this.eventsLoadError.set('Nao foi possivel carregar os eventos. A agenda exibida pode estar incompleta.');
+        this.eventsLoadError.set('Não foi possível carregar os eventos. A agenda exibida pode estar incompleta.');
       } else if (failedIds.length) {
         const names = failedIds
           .map(id => this.calendars().find(calendar => calendar.id === id)?.name ?? id)
           .join(', ');
-        this.eventsLoadError.set(`Nao foi possivel carregar os eventos de: ${names}. Os demais calendarios foram carregados.`);
+        this.eventsLoadError.set(`Não foi possível carregar os eventos de: ${names}. Os demais calendários foram carregados.`);
       }
     });
   }
@@ -1501,7 +1543,7 @@ export class CalendarPage implements OnInit, AfterViewInit {
         }
 
         // Mantém a última lista conhecida e sinaliza a falha em vez de afirmar "sem pendências".
-        this.pendingLoadError.set('Nao foi possivel carregar as pendencias.');
+        this.pendingLoadError.set('Não foi possível carregar as pendências.');
         this.isPendingLoading.set(false);
       },
     });
@@ -1567,11 +1609,12 @@ export class CalendarPage implements OnInit, AfterViewInit {
           }
 
           this.loadPendingApprovals();
+          this.dataChanges.notify();
         },
         error: error => {
           const fallback = action === 'approve'
-            ? 'Nao foi possivel aprovar este evento.'
-            : 'Nao foi possivel reprovar este evento.';
+            ? 'Não foi possível aprovar este evento.'
+            : 'Não foi possível reprovar este evento.';
 
           const message = this.extractErrorMessage(error, fallback);
 
@@ -1635,7 +1678,7 @@ export class CalendarPage implements OnInit, AfterViewInit {
         this.loadEvents();
       },
       error: () => {
-        this.errorMessage.set('Nao foi possivel abrir o evento encontrado.');
+        this.errorMessage.set('Não foi possível abrir o evento encontrado.');
       },
     });
   }

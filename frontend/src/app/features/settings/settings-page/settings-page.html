@@ -1,1 +1,65 @@
-<p>settings-page works!</p>
+<section class="page settings-page" aria-labelledby="settings-title">
+  <header class="page-header">
+    <div>
+      <span class="eyebrow">Preferências</span>
+      <h1 id="settings-title">Configurações</h1>
+      <p>Ajuste a aparência e consulte os dados da sua conta.</p>
+    </div>
+  </header>
+
+  <article class="page-panel" aria-labelledby="appearance-title">
+    <header class="page-panel-head">
+      <div>
+        <strong id="appearance-title">Aparência</strong>
+        <span>Tema atual: {{ resolvedTheme() === 'dark' ? 'escuro' : 'claro' }}</span>
+      </div>
+    </header>
+
+    <div class="theme-options" role="radiogroup" aria-labelledby="appearance-title">
+      @for (option of themeOptions; track option.value) {
+        <button
+          type="button"
+          role="radio"
+          class="theme-option"
+          [class.is-selected]="preference() === option.value"
+          [attr.aria-checked]="preference() === option.value"
+          [attr.data-testid]="'theme-' + option.value"
+          (click)="setTheme(option.value)"
+        >
+          <strong>{{ option.label }}</strong>
+          <small>{{ option.hint }}</small>
+        </button>
+      }
+    </div>
+  </article>
+
+  <article class="page-panel" aria-labelledby="account-title">
+    <header class="page-panel-head">
+      <div>
+        <strong id="account-title">Conta</strong>
+        <span>Dados somente leitura. A edição de perfil não está disponível.</span>
+      </div>
+    </header>
+
+    @if (currentUser(); as user) {
+      <dl class="account-list" data-testid="account-info">
+        <div>
+          <dt>Nome</dt>
+          <dd>{{ user.fullName }}</dd>
+        </div>
+        <div>
+          <dt>E-mail</dt>
+          <dd>{{ user.email }}</dd>
+        </div>
+        <div>
+          <dt>Papel</dt>
+          <dd>{{ roleLabel() }}</dd>
+        </div>
+      </dl>
+    } @else {
+      <div class="page-empty" role="status">
+        <strong>Dados da conta indisponíveis.</strong>
+      </div>
+    }
+  </article>
+</section>

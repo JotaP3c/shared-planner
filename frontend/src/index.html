@@ -12,9 +12,11 @@
     (function () {
       try {
         var stored = localStorage.getItem('sharedPlanner.theme');
-        var dark = stored === 'dark' || ((!stored || stored === 'system')
-          && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
+        // Mesma regra de resolveTheme(): valor ausente/inválido equivale a "system".
+        var dark = stored === 'dark' || (stored !== 'light'
+          && !!window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
         document.documentElement.dataset.theme = dark ? 'dark' : 'light';
+        document.documentElement.style.colorScheme = dark ? 'dark' : 'light';
       } catch (e) {}
     })();
   </script>

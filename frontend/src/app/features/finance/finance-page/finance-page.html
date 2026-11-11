@@ -1,7 +1,7 @@
-<section class="finance-page" aria-labelledby="finance-title">
-  <header class="finance-hero">
+<section class="page finance-page" aria-labelledby="finance-title">
+  <header class="page-header">
     <div>
-      <span>Financeiro</span>
+      <span class="eyebrow">Financeiro</span>
       <h1 id="finance-title">Resumo de receitas</h1>
       <p>Acompanhe valores e pagamentos dos atendimentos de cada calendário.</p>
     </div>
@@ -27,7 +27,7 @@
       <span class="state-icon" aria-hidden="true">!</span>
       <strong>Não foi possível abrir o financeiro</strong>
       <p>{{ calendarErrorMessage() }}</p>
-      <button type="button" (click)="loadCalendars()">Tentar novamente</button>
+      <button class="secondary-button" type="button" (click)="loadCalendars()">Tentar novamente</button>
     </section>
   } @else if (noAccess()) {
     <section class="state-card" data-testid="finance-no-access">
@@ -39,7 +39,7 @@
       </p>
     </section>
   } @else if (authorizedCalendars().length) {
-    <form class="finance-filters" (submit)="$event.preventDefault(); applyFilters()">
+    <form class="page-panel finance-filters" (submit)="$event.preventDefault(); applyFilters()">
       <div class="filter-heading">
         <div>
           <span>Filtros</span>
@@ -49,7 +49,7 @@
       </div>
 
       <div class="filter-grid">
-        <label>
+        <label class="sp-field">
           Calendário
           <select
             aria-label="Calendário financeiro"
@@ -63,7 +63,7 @@
           </select>
         </label>
 
-        <label>
+        <label class="sp-field">
           Período
           <select
             aria-label="Período financeiro"
@@ -77,7 +77,7 @@
         </label>
 
         @if (selectedPeriod() === 'CUSTOM') {
-          <label>
+          <label class="sp-field">
             Data inicial
             <input
               type="date"
@@ -87,7 +87,7 @@
             />
           </label>
 
-          <label>
+          <label class="sp-field">
             Data final
             <input
               type="date"
@@ -97,7 +97,7 @@
             />
           </label>
         } @else {
-          <label>
+          <label class="sp-field">
             Data de referência
             <input
               type="date"
@@ -120,13 +120,10 @@
     </form>
 
     @if (errorMessage()) {
-      <section class="inline-error" role="alert">
-        <div>
-          <strong>Não foi possível atualizar o resumo.</strong>
-          <p>{{ errorMessage() }}</p>
-        </div>
-        <button type="button" (click)="refresh()">Tentar novamente</button>
-      </section>
+      <p class="page-feedback is-error" role="alert">
+        <strong>Não foi possível atualizar o resumo.</strong> {{ errorMessage() }}
+        <button class="ghost-button" type="button" (click)="refresh()">Tentar novamente</button>
+      </p>
     }
 
     @if (isLoadingSummary()) {
@@ -135,7 +132,7 @@
         <strong>Calculando resumo...</strong>
       </section>
     } @else if (summary(); as finance) {
-      <section class="summary-section" aria-labelledby="values-title">
+      <section class="page-panel summary-section" aria-labelledby="values-title">
         <header>
           <div>
             <span>Visão geral</span>
@@ -186,6 +183,24 @@
             <strong data-testid="refunded-count">{{ finance.refundedCount }}</strong>
           </article>
         </div>
+
+        @if (finance.appointmentCount > 0) {
+          <figure class="status-chart" data-testid="payment-status-chart">
+            <figcaption>Distribuição por situação de pagamento</figcaption>
+            <div class="status-bar" role="img" [attr.aria-label]="statusChartLabel(finance)">
+              @for (slice of statusSlices(finance); track slice.key) {
+                @if (slice.count > 0) {
+                  <span [class]="'slice ' + slice.key" [style.width.%]="slice.percent"></span>
+                }
+              }
+            </div>
+            <ul class="status-legend">
+              @for (slice of statusSlices(finance); track slice.key) {
+                <li><i [class]="'swatch ' + slice.key" aria-hidden="true"></i>{{ slice.label }}: {{ slice.count }}</li>
+              }
+            </ul>
+          </figure>
+        }
 
         @if (isEmpty()) {
           <div class="empty-summary" data-testid="finance-empty">

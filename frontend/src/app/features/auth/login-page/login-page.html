@@ -38,8 +38,53 @@
         </li>
       </ul>
 
+      <!-- Ilustração própria em SVG: usa os tokens do tema, sem textos ou valores fictícios. -->
       <div class="illustration" aria-hidden="true">
-        <img src="assets/login-illustration.png" alt="" width="640" height="480" />
+        <svg class="login-art" viewBox="0 0 560 440" focusable="false" data-testid="login-illustration">
+          <rect class="art-glow" x="40" y="30" width="480" height="380" rx="190" />
+          <!-- Janela de calendário -->
+          <rect class="art-card" x="70" y="70" width="330" height="270" rx="22" />
+          <rect class="art-head" x="70" y="70" width="330" height="54" rx="22" />
+          <rect class="art-head" x="70" y="100" width="330" height="24" />
+          <circle class="art-dot" cx="100" cy="97" r="7" />
+          <rect class="art-line strong" x="118" y="91" width="96" height="12" rx="6" />
+          <g class="art-grid">
+            <rect x="92" y="142" width="54" height="42" rx="9" />
+            <rect x="154" y="142" width="54" height="42" rx="9" />
+            <rect x="216" y="142" width="54" height="42" rx="9" />
+            <rect x="278" y="142" width="54" height="42" rx="9" />
+            <rect x="340" y="142" width="40" height="42" rx="9" />
+            <rect x="92" y="192" width="54" height="42" rx="9" />
+            <rect x="154" y="192" width="54" height="42" rx="9" />
+            <rect x="216" y="192" width="54" height="42" rx="9" />
+            <rect x="278" y="192" width="54" height="42" rx="9" />
+            <rect x="340" y="192" width="40" height="42" rx="9" />
+            <rect x="92" y="242" width="54" height="42" rx="9" />
+            <rect x="154" y="242" width="54" height="42" rx="9" />
+            <rect x="216" y="242" width="54" height="42" rx="9" />
+            <rect x="278" y="242" width="54" height="42" rx="9" />
+            <rect x="340" y="242" width="40" height="42" rx="9" />
+          </g>
+          <rect class="art-event client" x="98" y="166" width="42" height="10" rx="5" />
+          <rect class="art-event personal" x="222" y="216" width="42" height="10" rx="5" />
+          <rect class="art-event shared" x="160" y="266" width="42" height="10" rx="5" />
+          <rect class="art-event client" x="284" y="266" width="42" height="10" rx="5" />
+          <rect class="art-today" x="216" y="142" width="54" height="42" rx="9" />
+          <!-- Cartão de aprovação compartilhada -->
+          <rect class="art-card raised" x="300" y="250" width="200" height="104" rx="18" />
+          <circle class="art-avatar shared" cx="334" cy="284" r="16" />
+          <rect class="art-line strong" x="360" y="274" width="104" height="10" rx="5" />
+          <rect class="art-line" x="360" y="292" width="70" height="8" rx="4" />
+          <rect class="art-button primary" x="320" y="316" width="76" height="24" rx="12" />
+          <rect class="art-button" x="404" y="316" width="76" height="24" rx="12" />
+          <!-- Cartão de resumo (barras sem valores) -->
+          <rect class="art-card raised" x="380" y="70" width="140" height="120" rx="18" />
+          <rect class="art-line strong" x="400" y="92" width="64" height="10" rx="5" />
+          <rect class="art-bar client" x="404" y="150" width="16" height="24" rx="5" />
+          <rect class="art-bar personal" x="430" y="130" width="16" height="44" rx="5" />
+          <rect class="art-bar client" x="456" y="116" width="16" height="58" rx="5" />
+          <rect class="art-bar shared" x="482" y="138" width="16" height="36" rx="5" />
+        </svg>
       </div>
 
       <p class="security-note">
@@ -50,6 +95,24 @@
 
     <section class="form-side">
       <div class="login-card">
+        <div class="login-theme" role="radiogroup" aria-label="Tema da interface">
+          @for (option of themeOptions; track option.value) {
+            <button
+              type="button"
+              role="radio"
+              class="login-theme-option"
+              [class.is-selected]="themePreference() === option.value"
+              [attr.aria-checked]="themePreference() === option.value"
+              [attr.aria-label]="'Tema ' + option.label"
+              [attr.title]="'Tema ' + option.label"
+              [attr.data-testid]="'login-theme-' + option.value"
+              (click)="setTheme(option.value)"
+            >
+              <sp-icon [name]="option.icon" [size]="16" />
+            </button>
+          }
+        </div>
+
         <header class="mobile-brand" aria-hidden="true">
           <span class="brand-mark"><sp-icon name="calendar-check" [size]="22" /></span>
           <strong>Shared Planner</strong>
@@ -75,7 +138,7 @@
             />
           </div>
           @if (emailError) {
-            <p class="field-error" id="login-email-error">{{ emailError }}</p>
+            <p class="field-error" id="login-email-error" role="alert">{{ emailError }}</p>
           }
 
           <label class="login-field" for="login-password">Senha</label>
@@ -101,11 +164,11 @@
             </button>
           </div>
           @if (passwordError) {
-            <p class="field-error" id="login-password-error">{{ passwordError }}</p>
+            <p class="field-error" id="login-password-error" role="alert">{{ passwordError }}</p>
           }
 
           @if (errorMessage) {
-            <p class="error" role="alert"><sp-icon name="alert" [size]="16" />{{ errorMessage }}</p>
+            <p class="error" role="alert" data-testid="login-error"><sp-icon name="alert" [size]="16" />{{ errorMessage }}</p>
           }
 
           <button class="primary-button submit-button" type="submit" [disabled]="isSubmitting">

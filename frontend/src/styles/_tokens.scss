@@ -18,7 +18,7 @@
   --sp-border-strong: #cbd5e1;
 
   // Texto
-  --sp-text: #172554;
+  --sp-text: #0f172a;
   --sp-text-2: #64748b;
   --sp-text-muted: #94a3b8;
   --sp-text-on-primary: #ffffff;
@@ -51,6 +51,9 @@
   // Feedback
   --sp-success: #16a34a;
   --sp-success-bg: #e8f8ee;
+  --sp-cancelled: #94a3b8;
+  --sp-cancelled-bg: #f1f5f9;
+  --sp-cancelled-text: #475569;
   --sp-danger: #dc2626;
   --sp-danger-bg: #fdecec;
   --sp-warning-bg: #fff7e6;
@@ -78,19 +81,20 @@
   --sp-primary-soft: rgba(59, 130, 246, 0.14);
   --sp-primary-ring: rgba(96, 165, 250, 0.32);
 
-  --sp-bg: #0b1120;
-  --sp-bg-accent: #0f172a;
-  --sp-surface: #111a2e;
-  --sp-surface-2: #17223a;
-  --sp-surface-hover: #1a2742;
-  --sp-border: #23314f;
+  // Paleta navy das referências (docs/reffs) e do SDD frontend-redesign.
+  --sp-bg: #080f20;
+  --sp-bg-accent: #0b1530;
+  --sp-surface: #111c35;
+  --sp-surface-2: #172440;
+  --sp-surface-hover: #1b2a4a;
+  --sp-border: #22314f;
   --sp-border-strong: #33456b;
 
-  --sp-text: #e2e8f0;
-  --sp-text-2: #9fb0cc;
-  --sp-text-muted: #6b7c9c;
+  --sp-text: #f8fafc;
+  --sp-text-2: #a8b8d5;
+  --sp-text-muted: #7083a6;
 
-  --sp-sidebar-bg: linear-gradient(180deg, #0a1328 0%, #070e1f 100%);
+  --sp-sidebar-bg: linear-gradient(180deg, #0b1530 0%, #080f20 100%);
 
   --sp-client-bg: rgba(22, 163, 74, 0.16);
   --sp-client-text: #86efac;
@@ -103,8 +107,12 @@
   --sp-rejected-bg: rgba(220, 38, 38, 0.18);
   --sp-rejected-text: #fca5a5;
 
+  --sp-success: #4ade80;
   --sp-success-bg: rgba(22, 163, 74, 0.16);
+  --sp-danger: #f87171;
   --sp-danger-bg: rgba(220, 38, 38, 0.16);
+  --sp-cancelled-bg: rgba(148, 163, 184, 0.14);
+  --sp-cancelled-text: #a8b8d5;
   --sp-warning-bg: rgba(217, 119, 6, 0.14);
 
   --sp-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);

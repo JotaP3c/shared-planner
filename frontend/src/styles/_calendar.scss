@@ -401,9 +401,9 @@
   border: 1px solid var(--sp-border);
   border-radius: var(--sp-radius);
   background: var(--sp-surface);
-  cursor: pointer;
 
-  &:hover {
+  &:hover,
+  &:focus-within {
     border-color: var(--sp-border-strong);
   }
 }
@@ -429,6 +429,15 @@
   display: grid;
   flex: 1;
   min-width: 0;
+
+  &.pending-open {
+    padding: 0;
+    border: 0;
+    background: none;
+    color: inherit;
+    text-align: left;
+    cursor: pointer;
+  }
 
   strong {
     overflow: hidden;

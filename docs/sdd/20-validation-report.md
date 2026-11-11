@@ -52,6 +52,31 @@ GAP-001/002/003, GAP-005 e GAP-009 continuam dependentes de decisões de produto
 
 Foram validados JWT ausente/adulterado/expirado/issuer incorreto/usuário inativo, BOLA e papéis, ausência de senha/hash, owner, revogação SHARED, redação financeira por contexto resolvido uma vez por request/calendar, precisão e integridade pós-pagamento, resumo Finance, períodos civis, estados de UI e interceptor 401/403/same-origin. A regressão HTTP na stack confirmou health, login, autorização 401/403, resumo financeiro e redação para VIEWER. A rota protegida `/finance` sem sessão retorna o redirecionamento SSR esperado para `/login`. Q-004/Q-005 continuam abertas; não houve uma suíte E2E completa em navegador.
 
+## Consolidação + remodelagem — 2026-11-11
+
+Execução real nesta máquina (Windows, Java 17.0.12, Node 22.12.0, npm 10.9.0). Os números
+de agosto acima são snapshot histórico.
+
+| Área | Monorepo | Standalone |
+|---|---|---|
+| Git antes | `main` 4082047 = origin | backend 1a94752 (−1), frontend e18c68f (−2) |
+| Git ff | — | `merge --ff-only`: backend 8eed886, frontend 0de9f2b (= origin/main) |
+| Paridade antes | — | FAIL: backend 2, frontend 34 diferenças |
+| Paridade depois | `check-repository-sync.ps1` | **PASS** backend 86/86, frontend 92/92 |
+| Backend `mvnw test` | **PASS 37/37** (19 + 18 BLG-TEST-001) | ver tabela "standalone" abaixo |
+| Frontend `ng test --no-watch` | **PASS 86/86 em 15 arquivos** (antes 53/13) | idem |
+| Frontend `ng build` (SSR) | **PASS**, 1 rota pré-renderizada, **0** avisos de budget | idem |
+| `npm ci` | — | PASS (505 pacotes) no frontend standalone |
+| Audit produção | **0** (antes 6: 1 crítico, 3 altos, 2 moderados) | idem |
+| Audit completo | 27 (22 moderados, 5 altos), só dev/tooling (antes 38) | idem |
+
+Limitações desta rodada: PostgreSQL real, Docker/Compose e E2E em navegador **não**
+executados (Docker ausente do PATH; banco local não pode ser alterado). Não houve inspeção
+visual renderizada comparando com `docs/reffs` — a fidelidade visual foi conduzida por
+leitura das referências e dos tokens, não por captura de tela. Lint não está configurado.
+Os audits "zero" observados dentro do sandbox do onboarding contradiziam a execução externa;
+nesta rodada os audits rodaram com acesso ao registro e os números acima são os reais.
+
 ## Escopo da validação em andamento
 
 Este documento preserva a evidência funcional. A validação histórica de contexts standalone do Compose, DBeaver e infraestrutura está detalhada em [29](29-infrastructure-validation-report.md); a evidência atual de segurança está em [31](31-security-audit-report.md).

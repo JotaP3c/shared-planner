@@ -27,6 +27,22 @@
 - Validação: backend 19/19 e frontend 53/53 em 13 arquivos (integrado e standalones); build SSR com 9 rotas e 4 warnings de budget conhecidos; paridade backend 85/85 e frontend 78/78.
 - Q-004, Q-005 e a leitura de BR-PAY-003 (PAID → PENDING → troca de tipo/valor) continuam abertas.
 
+## Incremento 2026-11-11 (tarde) — consolidação SDD + remodelagem
+
+Continuação da execução interrompida do agente anterior (que só havia criado os 3 docs de
+`frontend-redesign/`). Entregue no monorepo e sincronizado nos standalones:
+
+- BLG-TEST-001: `PaymentUpdateMatrixIntegrationTests` (18 casos, H2).
+- Dependências: Angular 21.2.21 → 21.2.26 (framework) / 21.2.29 (build, cli, ssr);
+  transitivos body-parser 2.4.0, proxy-addr 2.0.8, qs 6.17.1. Audit produção 0.
+- BLG-FE-004 Admin Users completo; Settings com aparência e identidade somente leitura.
+- Login: SVG próprio com tokens, seletor de tema; resolvedor único do tema; sync entre abas.
+- Calendário: invalidação do resumo, relógio dos próximos eventos, duração sem truncamento,
+  card de pendência sem interativo aninhado, foco gerenciado nos modais, texto PT-BR.
+- Pendências: reabertura legítima visível; notificação de mudança; tokens.
+- Membros/Financeiro: tokens, template legível, papéis em PT-BR, gráfico real, budget sem aviso.
+- Testes: frontend 53 → 86 (15 arquivos); backend 19 → 37.
+
 ## Incremento 2026-11-11 — redesign de UI/UX do frontend
 
 - Design system em `src/styles/` (tokens claro/escuro, base, shell, calendário, FullCalendar, modais, login); componentes abaixo do budget de 8 kB (avisos de budget caíram de 4 para 1).
@@ -72,9 +88,17 @@ Q-001–Q-006: decisões de autoria, responsável, ADMIN, SHARED, pagamento e re
 
 ## Known Technical Debt
 
-- O build SSR passa com quatro warnings conhecidos de budget SCSS.
+- Snapshot 2026-08-22: o build SSR passava com quatro warnings de budget SCSS. Em
+  2026-11-11 o build passa sem avisos de budget.
+- Audit completo (dev) 2026-11-11: 27 achados (22 moderados, 5 altos) somente em tooling de
+  desenvolvimento; não entram no bundle nem no servidor SSR (ver 31).
 - Dependências integradas foram atualizadas de forma deliberada para Angular 21.2.21, sem `npm audit fix`/major; `npm ci` PASS com 505 pacotes e audits runtime/completo retornam 0 vulnerabilidades.
 
 ## Next Recommended Step
+
+Atualização 2026-11-11: Admin Users foi entregue. Próximos passos recomendados: decidir
+Q-005/Q-004/Q-006 e BR-PAY-003; validar invariantes em PostgreSQL isolado; adicionar E2E
+(requer nova ferramenta — decisão do dono) e CI de testes/build/paridade; hardening S2/S3
+mediante autorização de backend/infra. O parágrafo abaixo é histórico.
 
 Implementar a página administrativa de Users como próxima unidade vertical. Em seguida, manter S0/S1 zerados enquanto Audit, os S2/S3 e estados assíncronos restantes são tratados; Q-004/Q-005 continuam exigindo decisão explícita.

@@ -314,7 +314,14 @@ class ApiSecurityIntegrationTests {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"email\":\"owner-invariant@example.com\",\"role\":\"EDITOR\"}")
                         .header(HttpHeaders.AUTHORIZATION, bearer(ownerToken)))
-                .andExpect(status().isBadRequest());
+                // POST não é mais upsert: vínculo existente → 409 e o papel não muda.
+                .andExpect(status().isConflict());
+
+        org.assertj.core.api.Assertions.assertThat(memberRepository
+                        .findByCalendarIdAndUserId(calendar.getId(), owner.getId())
+                        .orElseThrow()
+                        .getRole())
+                .isEqualTo(CalendarMemberRole.ADMIN);
     }
 
     @Test

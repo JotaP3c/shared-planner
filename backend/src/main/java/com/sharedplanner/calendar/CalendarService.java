@@ -7,6 +7,7 @@ import com.sharedplanner.config.AuthorizationService;
 import com.sharedplanner.user.User;
 import com.sharedplanner.user.UserRepository;
 import com.sharedplanner.user.UserRole;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
@@ -14,6 +15,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
+import java.util.Locale;
 import java.util.UUID;
 
 @Service
@@ -88,16 +90,28 @@ public class CalendarService {
         SharedCalendar calendar = calendarRepository.findById(calendarId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Calendar not found"));
 
-        User newMember = userRepository.findByEmailIgnoreCaseAndActiveTrue(request.email())
+        // Adicionar membro concede acesso a uma conta EXISTENTE; nunca cria contas.
+        String email = request.email() == null ? "" : request.email().trim().toLowerCase(Locale.ROOT);
+
+        User newMember = userRepository.findByEmailIgnoreCase(email)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
 
-        CalendarMemberRole role = memberRole(request.role());
+        if (!Boolean.TRUE.equals(newMember.getActive())) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "User is inactive");
+        }
 
-        memberRepository.findByCalendarIdAndUserId(calendarId, newMember.getId())
-                .ifPresentOrElse(
-                        member -> updateMemberRole(member, role, currentUser),
-                        () -> addNewMember(calendar, newMember, role, currentUser)
-                );
+        if (memberRepository.findByCalendarIdAndUserId(calendarId, newMember.getId()).isPresent()) {
+            // Troca de papel é feita por PUT /members/{memberId}; o POST não sobrescreve vínculos.
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "User is already a member of this calendar");
+        }
+
+        try {
+            addNewMember(calendar, newMember, memberRole(request.role()), currentUser);
+            memberRepository.flush();
+        } catch (DataIntegrityViolationException exception) {
+            // Corrida entre duas adições simultâneas: a constraint única decide.
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "User is already a member of this calendar");
+        }
     }
 
     @Transactional(readOnly = true)
@@ -167,24 +181,6 @@ public class CalendarService {
         );
 
         memberRepository.delete(member);
-    }
-
-    private void updateMemberRole(CalendarMember member, CalendarMemberRole role, User currentUser) {
-        String oldValue = memberSnapshot(member);
-
-        ensureOwnerRemainsAdmin(member, role);
-        member.changeRole(role, currentUser);
-
-        auditService.log(
-                AuditEntityType.CALENDAR_MEMBER,
-                member.getId(),
-                member.getCalendar().getId(),
-                AuditAction.MEMBER_ROLE_UPDATED,
-                "Calendar member role updated: " + member.getUser().getEmail(),
-                oldValue,
-                memberSnapshot(member),
-                currentUser
-        );
     }
 
     private void addNewMember(SharedCalendar calendar, User newMember, CalendarMemberRole role, User currentUser) {

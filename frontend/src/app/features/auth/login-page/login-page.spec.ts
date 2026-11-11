@@ -41,6 +41,9 @@ describe('LoginPage', () => {
     const text = element().textContent ?? '';
 
     expect(text).not.toMatch(/Google|Esqueci|Cadastr|Lembrar/i);
+    // INC-01: a nota "Acesso protegido por autenticação com token" foi removida.
+    expect(text).not.toContain('autenticação com token');
+    expect(element().querySelector('.security-note')).toBeNull();
     expect(element().querySelector('img[src*="login-illustration"]')).toBeNull();
     expect(element().querySelector('[data-testid="login-illustration"]')).not.toBeNull();
   });

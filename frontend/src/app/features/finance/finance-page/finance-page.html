@@ -53,12 +53,12 @@
           Calendário
           <select
             aria-label="Calendário financeiro"
-            [value]="selectedCalendarId()"
+            data-testid="finance-calendar-select"
             [disabled]="isLoadingSummary()"
             (change)="selectCalendar($any($event.target).value)"
           >
             @for (calendar of authorizedCalendars(); track calendar.id) {
-              <option [value]="calendar.id">{{ calendar.name }}</option>
+              <option [value]="calendar.id" [selected]="calendar.id === selectedCalendarId()">{{ calendar.name }}</option>
             }
           </select>
         </label>
@@ -67,11 +67,11 @@
           Período
           <select
             aria-label="Período financeiro"
-            [value]="selectedPeriod()"
+            data-testid="finance-period-select"
             (change)="selectPeriod($any($event.target).value)"
           >
             @for (period of periodOptions; track period.value) {
-              <option [value]="period.value">{{ period.label }}</option>
+              <option [value]="period.value" [selected]="period.value === selectedPeriod()">{{ period.label }}</option>
             }
           </select>
         </label>

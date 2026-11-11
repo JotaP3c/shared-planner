@@ -207,8 +207,21 @@
 }
 
 // ---- Detalhe do evento ------------------------------------------------------
+// Cabeçalho e rodapé fixos; somente o corpo rola (scroll interno).
 .event-detail-panel {
-  width: min(640px, 100%);
+  display: flex;
+  flex-direction: column;
+  width: min(720px, 100%);
+  overflow: hidden;
+
+  > .event-detail-header,
+  > .event-detail-actions {
+    flex: 0 0 auto;
+  }
+
+  > .event-detail-body {
+    flex: 1 1 auto;
+  }
 }
 
 .event-detail-panel .event-detail-header {
@@ -272,43 +285,199 @@
   }
 }
 
+.event-detail-panel .event-detail-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+
+  span {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+  }
+}
+
 .event-detail-panel .event-detail-body {
   display: grid;
-  gap: 16px;
+  align-content: start;
+  gap: 14px;
+  min-height: 0;
   padding: 18px 22px;
+  overflow-y: auto;
 }
 
-.event-detail-panel .event-detail-grid {
+// Seções internas discretas: título com ícone, fatos em grade, sem cartão por campo.
+.event-detail-panel .detail-section {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
-  margin: 0;
+  gap: 12px;
+  padding: 14px 16px;
+  border: 1px solid var(--sp-border);
+  border-radius: var(--sp-radius);
+  background: var(--sp-surface);
 }
 
-.event-detail-panel .detail-card {
-  padding: 10px 12px;
-  border: 1px solid var(--sp-border);
-  border-radius: 10px;
-  background: var(--sp-surface-2);
+.event-detail-panel .detail-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+
+  h3 {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0;
+    color: var(--sp-text);
+    font-size: 13px;
+    font-weight: 800;
+    letter-spacing: 0.02em;
+
+    sp-icon {
+      color: var(--sp-primary);
+    }
+  }
+}
+
+.event-detail-panel .detail-facts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 10px 16px;
+  margin: 0;
 
   dt {
     color: var(--sp-text-2);
     font-size: 11px;
     font-weight: 700;
-    text-transform: uppercase;
     letter-spacing: 0.03em;
+    text-transform: uppercase;
   }
 
   dd {
     margin: 3px 0 0;
     font-size: 14px;
-    font-weight: 650;
+    font-weight: 600;
     overflow-wrap: anywhere;
   }
 
-  &.detail-wide {
+  .detail-wide {
     grid-column: 1 / -1;
   }
+}
+
+.event-detail-panel .money-row {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+
+  > div {
+    padding: 10px 12px;
+    border-radius: 10px;
+    background: var(--sp-surface-2);
+  }
+
+  span {
+    display: block;
+    color: var(--sp-text-2);
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+  }
+
+  strong {
+    display: block;
+    margin-top: 4px;
+    font-size: 17px;
+  }
+}
+
+.event-detail-panel .confirmation-actions,
+.event-detail-panel .unschedule-form > footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.event-detail-panel .unschedule-form {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border: 1px dashed var(--sp-border-strong);
+  border-radius: 10px;
+  background: var(--sp-surface-2);
+
+  > footer {
+    justify-content: flex-end;
+  }
+
+  .req {
+    color: var(--sp-danger);
+  }
+}
+
+.event-detail-panel .reason-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.event-detail-panel .reason-option {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 12px;
+  border: 1px solid var(--sp-border);
+  border-radius: var(--sp-radius-pill);
+  background: var(--sp-surface);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+
+  &.is-selected {
+    border-color: var(--sp-primary);
+    background: var(--sp-primary-soft);
+    color: var(--sp-primary);
+  }
+
+  &:focus-within {
+    box-shadow: var(--sp-focus);
+  }
+}
+
+.event-detail-panel .reschedule-fields {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.event-detail-panel .field-hint {
+  margin: 0;
+  color: var(--sp-text-2);
+  font-size: 12px;
+}
+
+.event-detail-panel .history-toggle {
+  justify-self: start;
+}
+
+.event-detail-panel .confirmation-history {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0 0 0 16px;
+
+  li {
+    display: grid;
+    gap: 2px;
+    font-size: 13px;
+  }
+
+  small {
+    color: var(--sp-text-2);
+  }
+}
+
+.event-detail-panel .detail-destructive {
+  margin-right: auto;
 }
 
 .event-detail-panel .detail-error {
@@ -421,9 +590,13 @@
     }
   }
 
+  .event-detail-panel .money-row,
+  .event-detail-panel .reschedule-fields {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
   .event-modal .form-row.two,
   .event-modal .form-row.four,
-  .event-detail-panel .event-detail-grid,
   .event-detail-panel .payment-fields {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }

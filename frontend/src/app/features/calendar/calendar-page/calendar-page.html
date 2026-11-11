@@ -505,7 +505,10 @@
               </div>
               <div>
                 <h2 id="event-detail-title">{{ displayTitle(event) }}</h2>
-                <p>{{ calendarName(event.calendarId) }}</p>
+                <p class="event-detail-meta">
+                  <span><sp-icon name="calendar" [size]="14" />{{ calendarName(event.calendarId) }}</span>
+                  <span><sp-icon name="user" [size]="14" />{{ responsibleLabel(event) }}</span>
+                </p>
               </div>
             </div>
           </div>
@@ -516,90 +519,111 @@
         </header>
 
         <div class="event-detail-body">
-          <dl class="event-detail-grid">
-            <div class="detail-card detail-start">
-              <dt>Início</dt>
-              <dd>{{ formatDateTime(event.startsAt) }}</dd>
-            </div>
-
-            <div class="detail-card detail-end">
-              <dt>Término</dt>
-              <dd>{{ formatDateTime(event.endsAt) }}</dd>
-            </div>
-
-            <div class="detail-card detail-created">
-              <dt>Criado por</dt>
-              <dd>{{ event.createdByEmail }}</dd>
-            </div>
-
-            @if (event.clientName) {
-              <div class="detail-card detail-client">
-                <dt>Cliente</dt>
-                <dd>{{ event.clientName }}</dd>
+          <!-- Agendamento -->
+          <section class="detail-section" aria-labelledby="detail-schedule-title">
+            <header class="detail-section-header">
+              <h3 id="detail-schedule-title"><sp-icon name="clock" [size]="16" />Agendamento</h3>
+            </header>
+            <dl class="detail-facts">
+              <div class="detail-start">
+                <dt>Data</dt>
+                <dd>{{ formatDayLong(event.startsAt) }}</dd>
               </div>
-            }
-
-            @if (event.personName) {
-              <div class="detail-card detail-person">
-                <dt>Pessoa</dt>
-                <dd>{{ event.personName }}</dd>
+              <div>
+                <dt>Horário</dt>
+                <dd>{{ formatTimeRange(event) }}</dd>
               </div>
-            }
-
-            @if (hasFinancialDetails(event)) {
-              @if (event.amount !== null && event.amount !== undefined) {
-                <div class="detail-card detail-amount">
-                  <dt>Valor</dt>
-                  <dd>{{ formatMoney(event.amount) }}</dd>
+              <div class="detail-end">
+                <dt>Duração</dt>
+                <dd>{{ durationLabel(event) }}</dd>
+              </div>
+              @if (event.clientName) {
+                <div class="detail-client">
+                  <dt>Cliente</dt>
+                  <dd>{{ event.clientName }}</dd>
                 </div>
               }
+              @if (event.personName) {
+                <div class="detail-person">
+                  <dt>Pessoa</dt>
+                  <dd>{{ event.personName }}</dd>
+                </div>
+              }
+              @if (event.approvalRequestedFromEmail) {
+                <div class="detail-approval">
+                  <dt>Aprovação de</dt>
+                  <dd>{{ event.approvalRequestedFromEmail }}</dd>
+                </div>
+              }
+              <div class="detail-created">
+                <dt>Criado por</dt>
+                <dd>{{ event.createdByEmail }}</dd>
+              </div>
+              @if (event.workDescription) {
+                <div class="detail-work detail-wide">
+                  <dt>Serviço</dt>
+                  <dd>{{ event.workDescription }}</dd>
+                </div>
+              }
+              @if (event.description) {
+                <div class="detail-description detail-wide">
+                  <dt>Descrição</dt>
+                  <dd>{{ event.description }}</dd>
+                </div>
+              }
+            </dl>
+          </section>
 
-              @if (event.eventType === 'CLIENT') {
-                <div class="detail-card detail-payment">
-                  <dt>Pagamento</dt>
+          <!-- Financeiro (somente com capacidade financeira) -->
+          @if (hasFinancialDetails(event) && event.eventType === 'CLIENT') {
+            <section class="detail-section" aria-labelledby="detail-finance-title" data-testid="detail-finance">
+              <header class="detail-section-header">
+                <h3 id="detail-finance-title"><sp-icon name="wallet" [size]="16" />Financeiro</h3>
+                <span [class]="'sp-pill payment-' + (event.paymentStatus || 'PENDING').toLowerCase()">
+                  {{ paymentStatusLabel(event.paymentStatus) }}
+                </span>
+              </header>
+              <div class="money-row">
+                <div class="detail-amount">
+                  <span>Valor total</span>
+                  <strong>{{ formatMoney(event.amount) }}</strong>
+                </div>
+                <div class="detail-received">
+                  <span>Recebido</span>
+                  <strong>{{ formatMoney(event.receivedAmount) }}</strong>
+                </div>
+                <div>
+                  <span>Pendente</span>
+                  <strong>{{ formatMoney(pendingAmount(event)) }}</strong>
+                </div>
+              </div>
+              <dl class="detail-facts">
+                <div class="detail-payment">
+                  <dt>Status do pagamento</dt>
                   <dd>{{ paymentStatusLabel(event.paymentStatus) }}</dd>
                 </div>
-
-                <div class="detail-card detail-received">
-                  <dt>Recebido</dt>
-                  <dd>{{ formatMoney(event.receivedAmount) }}</dd>
-                </div>
-
-                <div class="detail-card detail-method">
-                  <dt>Forma</dt>
+                <div class="detail-method">
+                  <dt>Forma de pagamento</dt>
                   <dd>{{ paymentMethodLabel(event.paymentMethod) }}</dd>
                 </div>
-
                 @if (event.paidAt) {
-                  <div class="detail-card detail-paid">
+                  <div class="detail-paid">
                     <dt>Pago em</dt>
                     <dd>{{ formatDateTime(event.paidAt) }}</dd>
                   </div>
                 }
-              }
-            }
+              </dl>
+            </section>
+          }
 
-            @if (event.approvalRequestedFromEmail) {
-              <div class="detail-card detail-approval">
-                <dt>Aprovação de</dt>
-                <dd>{{ event.approvalRequestedFromEmail }}</dd>
-              </div>
-            }
-
-            @if (event.description) {
-              <div class="detail-card detail-description detail-wide">
-                <dt>Descrição</dt>
-                <dd>{{ event.description }}</dd>
-              </div>
-            }
-
-            @if (event.workDescription) {
-              <div class="detail-card detail-work detail-wide">
-                <dt>Serviço</dt>
-                <dd>{{ event.workDescription }}</dd>
-              </div>
-            }
-          </dl>
+          <!-- Confirmação do atendimento (CLIENT): independente do pagamento -->
+          @if (event.eventType === 'CLIENT') {
+            <app-appointment-confirmation
+              [event]="event"
+              [canManage]="canEditEvent(event)"
+              (updated)="onAppointmentUpdated($event)"
+            />
+          }
 
           @if (event.eventType === 'CLIENT' && hasFinancialDetails(event) && isPaymentFormOpen()) {
             <form class="payment-form" [formGroup]="paymentForm" (ngSubmit)="submitPaymentForm()">
@@ -685,31 +709,33 @@
           }
 
           @if (canEditEvent(event)) {
-            @if (event.eventType === 'CLIENT' && hasFinancialDetails(event)) {
-              <button
-                class="ghost-button"
-                type="button"
-                [disabled]="isUpdatingApproval() || isUpdatingPayment()"
-                (click)="togglePaymentForm(event)"
-              >
-                <sp-icon class="action-icon payment-action-icon" name="credit-card" [size]="16" />
-                Pagamento
-              </button>
-            }
-
-            <button class="ghost-button" type="button" [disabled]="isUpdatingApproval()" (click)="openEditEventModal(event)">
-              <sp-icon class="action-icon edit-action-icon" name="edit" [size]="16" />
-              Editar evento
-            </button>
-
+            <!-- Ação destrutiva separada à esquerda; secundárias à direita. -->
             <button
-              class="danger-button"
+              class="danger-button detail-destructive"
               type="button"
               [disabled]="isDeletingEvent() || isUpdatingApproval()"
               (click)="deleteSelectedEvent()"
             >
               <sp-icon class="action-icon delete-action-icon" name="trash" [size]="16" />
               {{ isDeletingEvent() ? 'Cancelando...' : 'Cancelar evento' }}
+            </button>
+
+            @if (event.eventType === 'CLIENT' && hasFinancialDetails(event)) {
+              <button
+                class="secondary-button"
+                type="button"
+                [attr.aria-expanded]="isPaymentFormOpen()"
+                [disabled]="isUpdatingApproval() || isUpdatingPayment()"
+                (click)="togglePaymentForm(event)"
+              >
+                <sp-icon class="action-icon payment-action-icon" name="credit-card" [size]="16" />
+                Registrar pagamento
+              </button>
+            }
+
+            <button class="secondary-button" type="button" [disabled]="isUpdatingApproval()" (click)="openEditEventModal(event)">
+              <sp-icon class="action-icon edit-action-icon" name="edit" [size]="16" />
+              Editar evento
             </button>
           }
         </footer>

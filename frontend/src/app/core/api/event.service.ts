@@ -1,6 +1,8 @@
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import {
+  ConfirmationHistoryResponse,
+  UnscheduleAppointmentRequest,
   ClientRevenueSummaryResponse,
   CreateEventRequest,
   EventResponse,
@@ -77,5 +79,17 @@ export class EventService {
 
   reject(eventId: string) {
     return this.http.post<EventResponse>(`${this.apiUrl}/${eventId}/reject`, {});
+  }
+
+  confirmAppointment(eventId: string) {
+    return this.http.post<EventResponse>(`${this.apiUrl}/${eventId}/confirm`, {});
+  }
+
+  unscheduleAppointment(eventId: string, request: UnscheduleAppointmentRequest) {
+    return this.http.post<EventResponse>(`${this.apiUrl}/${eventId}/unschedule`, request);
+  }
+
+  confirmationHistory(eventId: string) {
+    return this.http.get<ConfirmationHistoryResponse[]>(`${this.apiUrl}/${eventId}/confirmation-history`);
   }
 }

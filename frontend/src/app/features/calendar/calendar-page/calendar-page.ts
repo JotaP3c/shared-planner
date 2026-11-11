@@ -18,6 +18,7 @@ import { Icon, IconName } from '../../../shared/ui/icon/icon';
 import { SearchService } from '../../../core/api/search.service';
 import { DataChangeService } from '../../../core/state/data-change.service';
 import { DialogFocusDirective } from '../../../shared/a11y/dialog-focus.directive';
+import { AppointmentConfirmation } from '../appointment-confirmation/appointment-confirmation';
 import { AuthService } from '../../../core/auth/auth.service';
 import {
   CalendarResponse,
@@ -44,7 +45,7 @@ interface MonthlyFinanceSummary {
 
 @Component({
   selector: 'app-calendar-page',
-  imports: [FullCalendarModule, ReactiveFormsModule, Icon, DialogFocusDirective],
+  imports: [FullCalendarModule, ReactiveFormsModule, Icon, DialogFocusDirective, AppointmentConfirmation],
   templateUrl: './calendar-page.html',
   styleUrl: './calendar-page.scss',
 })
@@ -1182,6 +1183,46 @@ export class CalendarPage implements OnInit, AfterViewInit {
       dateStyle: 'short',
       timeStyle: 'short',
     });
+  }
+
+  /** Responsável exibido no cabeçalho: pessoa (PERSONAL) ou quem criou o evento. */
+  responsibleLabel(event: EventResponse): string {
+    return event.personName ? `Responsável: ${event.personName}` : `Responsável: ${event.createdByEmail}`;
+  }
+
+  formatDayLong(value: string): string {
+    return new Date(value).toLocaleDateString('pt-BR', {
+      weekday: 'long',
+      day: '2-digit',
+      month: 'long',
+      year: 'numeric',
+    });
+  }
+
+  durationLabel(event: EventResponse): string {
+    const minutes = Math.round((new Date(event.endsAt).getTime() - new Date(event.startsAt).getTime()) / 60000);
+    return minutes > 0 ? this.formatDuration(minutes) : '—';
+  }
+
+  pendingAmount(event: EventResponse): number | null {
+    if (event.amount == null) {
+      return null;
+    }
+
+    return Math.max(0, Number(event.amount) - Number(event.receivedAmount ?? 0));
+  }
+
+  /** Confirmação/desmarcação/remarcação concluída: atualiza modal, calendário e indicadores. */
+  onAppointmentUpdated(updated: EventResponse): void {
+    const moved = this.selectedEvent()?.startsAt !== updated.startsAt;
+    this.updateEventInState(updated);
+    this.selectedEvent.set(updated);
+    this.dataChanges.notify();
+
+    // Remarcação pode levar o atendimento para fora do período exibido.
+    if (moved) {
+      this.loadEvents();
+    }
   }
 
   formatMoney(value: number | null | undefined): string {

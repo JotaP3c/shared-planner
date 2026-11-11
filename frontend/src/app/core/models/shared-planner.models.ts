@@ -43,7 +43,10 @@ export type AuditAction =
   | 'CANCELLED'
   | 'PAYMENT_UPDATED'
   | 'MEMBER_ADDED'
-  | 'MEMBER_ROLE_UPDATED';
+  | 'MEMBER_ROLE_UPDATED'
+  | 'APPOINTMENT_CONFIRMED'
+  | 'APPOINTMENT_UNSCHEDULED'
+  | 'APPOINTMENT_RESCHEDULED';
 
 export interface CalendarResponse {
   id: string;
@@ -89,6 +92,43 @@ export interface EventResponse {
   paidAt?: string | null;
   startsAt: string;
   endsAt: string;
+  /** Somente CLIENT. Confirmação do cliente ≠ pagamento ≠ status do evento. */
+  confirmationStatus?: AppointmentConfirmationStatus | null;
+  confirmationChangedAt?: string | null;
+  confirmationChangedByEmail?: string | null;
+  rescheduleCount?: number | null;
+  unscheduleReason?: UnscheduleReason | null;
+  unscheduleNotes?: string | null;
+}
+
+export type AppointmentConfirmationStatus =
+  | 'PENDING_CONFIRMATION'
+  | 'CONFIRMED'
+  | 'CANCELLED'
+  | 'RESCHEDULED';
+
+export type UnscheduleReason = 'RESCHEDULE' | 'GAVE_UP' | 'OTHER';
+
+export interface UnscheduleAppointmentRequest {
+  reason: UnscheduleReason;
+  notes?: string | null;
+  newStartsAt?: string | null;
+  newEndsAt?: string | null;
+}
+
+export interface ConfirmationHistoryResponse {
+  id: string;
+  eventId: string;
+  previousStatus: AppointmentConfirmationStatus | null;
+  newStatus: AppointmentConfirmationStatus;
+  reason: UnscheduleReason | null;
+  notes: string | null;
+  previousStartsAt: string | null;
+  previousEndsAt: string | null;
+  newStartsAt: string | null;
+  newEndsAt: string | null;
+  performedByEmail: string;
+  performedAt: string;
 }
 
 export interface EventSearchResponse {

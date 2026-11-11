@@ -196,6 +196,16 @@ textarea {
 .status-approved { background: var(--sp-success-bg); color: var(--sp-success); }
 .status-cancelled { background: var(--sp-cancelled-bg); color: var(--sp-cancelled-text); }
 
+// Confirmação do atendimento e pagamento (dimensões independentes).
+.confirmation-pending_confirmation { background: var(--sp-pending-bg); color: var(--sp-pending-text); }
+.confirmation-confirmed { background: var(--sp-success-bg); color: var(--sp-success); }
+.confirmation-cancelled { background: var(--sp-cancelled-bg); color: var(--sp-cancelled-text); }
+.confirmation-rescheduled { background: var(--sp-shared-bg); color: var(--sp-shared-text); }
+.payment-pending { background: var(--sp-pending-bg); color: var(--sp-pending-text); }
+.payment-partially_paid { background: var(--sp-personal-bg); color: var(--sp-personal-text); }
+.payment-paid { background: var(--sp-success-bg); color: var(--sp-success); }
+.payment-refunded { background: var(--sp-cancelled-bg); color: var(--sp-cancelled-text); }
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

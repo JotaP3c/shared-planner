@@ -27,6 +27,27 @@ describe('CalendarPage', () => {
     expect(component).toBeTruthy();
   });
 
+  it('renders the event detail in sections with the appointment confirmation for CLIENT', () => {
+    TestBed.inject(AuthService).currentUser.set({
+      id: 'admin', fullName: 'Admin', email: 'admin@example.com', role: 'ADMIN', active: true, createdAt: '', updatedAt: '',
+    });
+    component.selectedEvent.set({
+      id: 'e1', calendarId: 'cal', createdByEmail: 'admin@example.com', approvalRequestedFromEmail: null,
+      approvedByEmail: null, eventType: 'CLIENT', status: 'SCHEDULED', title: 'joao teste', clientName: 'joao teste',
+      personName: null, description: 'joao teste', workDescription: 'Corte', amount: 50, paymentStatus: 'PAID',
+      paymentMethod: 'PIX', receivedAmount: 50, paidAt: '2026-11-11T14:25:00',
+      startsAt: '2026-11-11T15:00:00', endsAt: '2026-11-11T15:45:00', confirmationStatus: 'CONFIRMED',
+    });
+    fixture.detectChanges();
+
+    const panel = fixture.nativeElement.querySelector('.event-detail-panel') as HTMLElement;
+    expect(panel.querySelector('[data-testid="detail-finance"]')?.textContent).toContain('Pendente');
+    expect(panel.textContent).toContain('45 min');
+    expect(panel.querySelector('app-appointment-confirmation [data-testid="confirmation-status"]')?.textContent)
+      .toContain('Confirmado');
+    expect(panel.textContent).toContain('Registrar pagamento');
+  });
+
   it('never applies a duration different from the chosen one near midnight (BLG-UX-004)', () => {
     component.eventForm.controls.startTime.setValue('23:00');
     component.eventForm.controls.endTime.setValue('23:30');

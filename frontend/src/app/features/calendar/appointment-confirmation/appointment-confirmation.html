@@ -1,0 +1,150 @@
+<section class="detail-section confirmation-section" aria-labelledby="confirmation-section-title">
+  <header class="detail-section-header">
+    <h3 id="confirmation-section-title"><sp-icon name="check" [size]="16" />Confirmação do atendimento</h3>
+    <span [class]="'sp-pill confirmation-' + status().toLowerCase()" data-testid="confirmation-status">
+      {{ statusLabel() }}
+    </span>
+  </header>
+
+  <dl class="detail-facts">
+    <div>
+      <dt>{{ changedLabel() }}</dt>
+      <dd>{{ formatDateTime(event().confirmationChangedAt) }}</dd>
+    </div>
+    <div>
+      <dt>Responsável</dt>
+      <dd>{{ event().confirmationChangedByEmail || '—' }}</dd>
+    </div>
+    @if (status() === 'CANCELLED' || status() === 'RESCHEDULED') {
+      <div>
+        <dt>Motivo</dt>
+        <dd>{{ reasonLabel(event().unscheduleReason) }}</dd>
+      </div>
+    }
+    @if (event().unscheduleNotes) {
+      <div class="detail-wide">
+        <dt>Observações</dt>
+        <dd>{{ event().unscheduleNotes }}</dd>
+      </div>
+    }
+    @if ((event().rescheduleCount ?? 0) > 0) {
+      <div>
+        <dt>Remarcações</dt>
+        <dd>{{ event().rescheduleCount }}</dd>
+      </div>
+    }
+  </dl>
+
+  @if (successMessage()) {
+    <p class="page-feedback is-success" role="status">{{ successMessage() }}</p>
+  }
+
+  @if (errorMessage() && !isUnscheduleFormOpen()) {
+    <p class="detail-error" role="alert" data-testid="confirmation-error">{{ errorMessage() }}</p>
+  }
+
+  @if (canConfirm() || canUnschedule()) {
+    <div class="confirmation-actions">
+      @if (canConfirm()) {
+        <button class="save-button" type="button" data-testid="confirm-appointment" [disabled]="isSaving()" (click)="confirm()">
+          <sp-icon name="check" [size]="16" />
+          {{ isSaving() ? 'Salvando...' : 'Confirmar agendamento' }}
+        </button>
+      }
+      @if (canUnschedule() && !isUnscheduleFormOpen()) {
+        <button class="secondary-button" type="button" data-testid="open-unschedule" [disabled]="isSaving()"
+                (click)="openUnscheduleForm()">
+          <sp-icon name="x" [size]="16" />
+          Desmarcar agendamento
+        </button>
+      }
+    </div>
+  }
+
+  @if (isUnscheduleFormOpen()) {
+    <form class="unschedule-form" [formGroup]="unscheduleForm" (ngSubmit)="submitUnschedule()" novalidate
+          aria-labelledby="unschedule-title" data-testid="unschedule-form">
+      <strong id="unschedule-title">Motivo da desmarcação <span class="req">*</span></strong>
+
+      <div class="reason-options" role="radiogroup" aria-labelledby="unschedule-title">
+        @for (reason of reasons; track reason.value) {
+          <label class="reason-option" [class.is-selected]="selectedReason() === reason.value">
+            <input type="radio" name="unschedule-reason" [value]="reason.value"
+                   [checked]="selectedReason() === reason.value"
+                   [attr.data-testid]="'reason-' + reason.value"
+                   (change)="selectReason(reason.value)" />
+            {{ reason.label }}
+          </label>
+        }
+      </div>
+
+      @if (selectedReason() === 'RESCHEDULE') {
+        <div class="reschedule-fields">
+          <label class="sp-field">
+            Nova data
+            <input type="date" formControlName="newDate" data-testid="reschedule-date" />
+          </label>
+          <label class="sp-field">
+            Início
+            <input type="time" formControlName="newStartTime" data-testid="reschedule-start" />
+          </label>
+          <label class="sp-field">
+            Término
+            <input type="time" formControlName="newEndTime" data-testid="reschedule-end" />
+          </label>
+        </div>
+        <p class="field-hint">A remarcação altera a data deste mesmo atendimento. Valor e pagamentos não são duplicados.</p>
+      }
+
+      @if (selectedReason()) {
+        <label class="sp-field">
+          <span>
+            {{ selectedReason() === 'OTHER' ? 'Justificativa' : 'Observações (opcional)' }}
+            @if (selectedReason() === 'OTHER') { <span class="req">*</span> }
+          </span>
+          <textarea formControlName="notes" rows="2" maxlength="500" data-testid="unschedule-notes"></textarea>
+        </label>
+      }
+
+      @if (errorMessage()) {
+        <p class="detail-error" role="alert" data-testid="unschedule-error">{{ errorMessage() }}</p>
+      }
+
+      <footer>
+        <button class="ghost-button" type="button" [disabled]="isSaving()" (click)="closeUnscheduleForm()">Voltar</button>
+        <button class="danger-button" type="submit" data-testid="submit-unschedule" [disabled]="isSaving()">
+          {{ isSaving() ? 'Salvando...' : selectedReason() === 'RESCHEDULE' ? 'Remarcar' : 'Desmarcar' }}
+        </button>
+      </footer>
+    </form>
+  }
+
+  <button class="link-button history-toggle" type="button" [attr.aria-expanded]="isHistoryOpen()"
+          (click)="toggleHistory()">
+    {{ isHistoryOpen() ? 'Ocultar histórico' : 'Ver histórico de confirmação' }}
+  </button>
+
+  @if (isHistoryOpen()) {
+    @if (isHistoryLoading()) {
+      <p class="field-hint" role="status">Carregando histórico...</p>
+    } @else if (historyError()) {
+      <p class="detail-error" role="alert">{{ historyError() }}</p>
+    } @else if (history()?.length) {
+      <ol class="confirmation-history" data-testid="confirmation-history">
+        @for (item of history(); track item.id) {
+          <li>
+            <strong>{{ statusText(item.previousStatus) }} → {{ statusText(item.newStatus) }}</strong>
+            <small>{{ formatDateTime(item.performedAt) }} · {{ item.performedByEmail }}</small>
+            @if (item.reason) { <small>Motivo: {{ reasonLabel(item.reason) }}</small> }
+            @if (item.newStartsAt) {
+              <small>De {{ formatDateTime(item.previousStartsAt) }} para {{ formatDateTime(item.newStartsAt) }}</small>
+            }
+            @if (item.notes) { <small>{{ item.notes }}</small> }
+          </li>
+        }
+      </ol>
+    } @else {
+      <p class="field-hint">Nenhuma alteração de confirmação registrada.</p>
+    }
+  }
+</section>

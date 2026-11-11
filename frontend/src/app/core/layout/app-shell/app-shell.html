@@ -1,4 +1,4 @@
-<div class="app-shell" [class.sidebar-open]="isSidebarOpen()">
+<div class="app-shell" [class.sidebar-open]="isSidebarOpen()" [class.sidebar-collapsed]="sidebarCollapsed()">
   @if (isSidebarOpen()) {
     <div class="sidebar-backdrop" (click)="closeSidebar()" aria-hidden="true"></div>
   }
@@ -8,14 +8,29 @@
       <div class="brand-mark" aria-hidden="true">
         <sp-icon name="calendar-check" [size]="24" />
       </div>
-      <strong>Shared<br />Planner</strong>
+      <strong class="brand-name">Shared<br />Planner</strong>
       <button class="sidebar-close" type="button" aria-label="Fechar menu" (click)="closeSidebar()">
         <sp-icon name="x" [size]="18" />
       </button>
     </header>
 
+    <button
+      class="sidebar-collapse"
+      type="button"
+      data-testid="sidebar-collapse"
+      aria-controls="app-sidebar"
+      [attr.aria-expanded]="!sidebarCollapsed()"
+      [attr.aria-label]="sidebarCollapsed() ? 'Expandir menu lateral' : 'Recolher menu lateral'"
+      [title]="sidebarCollapsed() ? 'Expandir menu' : 'Recolher menu'"
+      (click)="toggleSidebarCollapsed()"
+    >
+      <sp-icon [name]="sidebarCollapsed() ? 'chevron-right' : 'chevron-left'" [size]="16" />
+      <span>Recolher menu</span>
+    </button>
+
     <nav class="navigation" aria-label="Módulos">
-      <a class="nav-link" routerLink="/calendar" routerLinkActive="active">
+      <a class="nav-link" routerLink="/calendar" routerLinkActive="active"
+         [attr.title]="sidebarCollapsed() ? 'Calendário' : null" aria-label="Calendário">
         <sp-icon name="calendar" />
         <span>Calendário</span>
       </a>
@@ -25,7 +40,9 @@
           type="button"
           class="nav-link nav-group-toggle"
           [class.open]="isNavGroupOpen('admin')"
-          [attr.aria-expanded]="isNavGroupOpen('admin')"
+          [attr.aria-expanded]="isNavGroupOpen('admin') && !sidebarCollapsed()"
+          [attr.title]="sidebarCollapsed() ? 'Administração' : null"
+          aria-label="Administração"
           (click)="toggleNavGroup('admin')"
         >
           <sp-icon name="users" />
@@ -33,7 +50,7 @@
           <sp-icon class="nav-caret" name="chevron-down" [size]="16" />
         </button>
 
-        @if (isNavGroupOpen('admin')) {
+        @if (isNavGroupOpen('admin') && !sidebarCollapsed()) {
           <div class="nav-subitems">
             <a routerLink="/pending" routerLinkActive="active">
               Pendências
@@ -58,7 +75,9 @@
             type="button"
             class="nav-link nav-group-toggle"
             [class.open]="isNavGroupOpen('finance')"
-            [attr.aria-expanded]="isNavGroupOpen('finance')"
+            [attr.aria-expanded]="isNavGroupOpen('finance') && !sidebarCollapsed()"
+            [attr.title]="sidebarCollapsed() ? 'Financeiro' : null"
+            aria-label="Financeiro"
             (click)="toggleNavGroup('finance')"
           >
             <sp-icon name="wallet" />
@@ -66,7 +85,7 @@
             <sp-icon class="nav-caret" name="chevron-down" [size]="16" />
           </button>
 
-          @if (isNavGroupOpen('finance')) {
+          @if (isNavGroupOpen('finance') && !sidebarCollapsed()) {
             <div class="nav-subitems">
               <a routerLink="/finance" routerLinkActive="active">Resumo de receitas</a>
             </div>
@@ -74,7 +93,8 @@
         </section>
       }
 
-      <a class="nav-link" routerLink="/settings" routerLinkActive="active">
+      <a class="nav-link" routerLink="/settings" routerLinkActive="active"
+         [attr.title]="sidebarCollapsed() ? 'Configurações' : null" aria-label="Configurações">
         <sp-icon name="settings" />
         <span>Configurações</span>
       </a>

@@ -8,6 +8,7 @@ import { AuthService } from '../../auth/auth.service';
 import { SearchService } from '../../api/search.service';
 import { CalendarResponse, EventSearchResponse, EventType } from '../../models/shared-planner.models';
 import { DataChangeService } from '../../state/data-change.service';
+import { LayoutPreferencesService } from '../layout-preferences.service';
 import { ThemePreference, ThemeService } from '../../theme/theme.service';
 import { Icon } from '../../../shared/ui/icon/icon';
 
@@ -26,6 +27,7 @@ export class AppShell implements OnInit, OnDestroy {
   private readonly themeService = inject(ThemeService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly dataChanges = inject(DataChangeService);
+  private readonly layout = inject(LayoutPreferencesService);
   private pendingCountSubscription: Subscription | null = null;
   private searchDebounceId: ReturnType<typeof setTimeout> | null = null;
   private searchRequestId = 0;
@@ -111,6 +113,7 @@ export class AppShell implements OnInit, OnDestroy {
   readonly themePreference = this.themeService.preference;
   readonly resolvedTheme = this.themeService.resolved;
 
+  readonly sidebarCollapsed = this.layout.sidebarCollapsed;
   readonly openNavGroups = signal<Set<string>>(new Set(['admin']));
   readonly showProfileMenu = signal(false);
 
@@ -146,7 +149,19 @@ export class AppShell implements OnInit, OnDestroy {
     return eventType.toLowerCase();
   }
 
+  toggleSidebarCollapsed(): void {
+    this.layout.toggleSidebar();
+  }
+
   toggleNavGroup(group: string): void {
+    // Recolhida, a sidebar mostra só ícones: abrir um grupo expande a navegação para
+    // que os submenus continuem acessíveis.
+    if (this.sidebarCollapsed()) {
+      this.layout.setSidebarCollapsed(false);
+      this.openNavGroups.set(new Set([...this.openNavGroups(), group]));
+      return;
+    }
+
     const groups = new Set(this.openNavGroups());
 
     if (groups.has(group)) {

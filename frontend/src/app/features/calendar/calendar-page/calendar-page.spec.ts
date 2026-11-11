@@ -27,6 +27,27 @@ describe('CalendarPage', () => {
     expect(component).toBeTruthy();
   });
 
+  it('collapses the right panel independently and lets the calendar take the space (INC-06)', () => {
+    localStorage.removeItem('sharedPlanner.layout');
+    fixture.detectChanges();
+    const element: HTMLElement = fixture.nativeElement;
+    expect(element.querySelector('[data-testid="finance-summary-card"], .side-card')).not.toBeNull();
+
+    (element.querySelector('[data-testid="side-panel-toggle"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+
+    expect(element.querySelector('.calendar-layout')?.classList).toContain('side-collapsed');
+    expect(element.querySelector('.side-card')).toBeNull();
+    const toggle = element.querySelector('[data-testid="side-panel-toggle"]') as HTMLButtonElement;
+    expect(toggle.getAttribute('aria-expanded')).toBe('false');
+    expect(toggle.getAttribute('aria-label')).toBe('Mostrar painel de resumo');
+
+    toggle.click();
+    fixture.detectChanges();
+    expect(element.querySelector('.side-card')).not.toBeNull();
+    localStorage.removeItem('sharedPlanner.layout');
+  });
+
   it('renders the event detail in sections with the appointment confirmation for CLIENT', () => {
     TestBed.inject(AuthService).currentUser.set({
       id: 'admin', fullName: 'Admin', email: 'admin@example.com', role: 'ADMIN', active: true, createdAt: '', updatedAt: '',

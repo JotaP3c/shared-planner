@@ -595,19 +595,84 @@
 }
 
 // ---- Responsivo -------------------------------------------------------------
+// ---- Painel direito recolhível (INC-06) --------------------------------------
+.calendar-page .side-panel-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 34px;
+  padding: 0 12px;
+  border: 1px solid var(--sp-border);
+  border-radius: 10px;
+  background: var(--sp-surface);
+  color: var(--sp-text-2);
+  font-size: 12px;
+  font-weight: 650;
+  cursor: pointer;
+
+  &:hover {
+    border-color: var(--sp-border-strong);
+    color: var(--sp-primary);
+  }
+}
+
+.calendar-page .calendar-side > .side-panel-toggle {
+  justify-self: end;
+}
+
+.calendar-page .calendar-layout.side-collapsed {
+  grid-template-columns: minmax(0, 1fr) 48px;
+
+  .calendar-side {
+    position: sticky;
+    top: 0;
+  }
+
+  .side-panel-toggle {
+    flex-direction: column;
+    width: 48px;
+    min-height: 120px;
+    padding: 10px 0;
+
+    span {
+      writing-mode: vertical-rl;
+      transform: rotate(180deg);
+    }
+  }
+}
+
 @media (max-width: 1280px) {
-  .calendar-page .calendar-layout {
+  .calendar-page .calendar-layout:not(.side-collapsed) {
     grid-template-columns: minmax(0, 1fr) 300px;
   }
 }
 
 @media (max-width: 1100px) {
-  .calendar-page .calendar-layout {
+  .calendar-page .calendar-layout,
+  .calendar-page .calendar-layout.side-collapsed {
     grid-template-columns: minmax(0, 1fr);
   }
 
   .calendar-page .calendar-side {
     grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  }
+
+  .calendar-page .side-panel-toggle {
+    grid-column: 1 / -1;
+    justify-self: end;
+  }
+
+  .calendar-page .calendar-layout.side-collapsed .side-panel-toggle {
+    flex-direction: row;
+    width: auto;
+    min-height: 34px;
+    padding: 0 12px;
+
+    span {
+      writing-mode: horizontal-tb;
+      transform: none;
+    }
   }
 }
 

@@ -19,6 +19,7 @@ import { SearchService } from '../../../core/api/search.service';
 import { DataChangeService } from '../../../core/state/data-change.service';
 import { DialogFocusDirective } from '../../../shared/a11y/dialog-focus.directive';
 import { AppointmentConfirmation } from '../appointment-confirmation/appointment-confirmation';
+import { LayoutPreferencesService } from '../../../core/layout/layout-preferences.service';
 import { AuthService } from '../../../core/auth/auth.service';
 import {
   CalendarResponse,
@@ -62,6 +63,7 @@ export class CalendarPage implements OnInit, AfterViewInit {
   /** Relógio local (atualiza a cada minuto) para os "Próximos eventos" acompanharem o tempo. */
   readonly clock = signal(Date.now());
   private clockTimerId: ReturnType<typeof setInterval> | null = null;
+  private resizeTimerId: ReturnType<typeof setTimeout> | null = null;
   private financeRequestKey = '';
   private readonly searchService = inject(SearchService);
   private readonly authService = inject(AuthService);
@@ -133,6 +135,9 @@ export class CalendarPage implements OnInit, AfterViewInit {
   readonly openFilterMenu = signal<'calendars' | 'events' | null>(null);
   readonly currentCalendarView = signal<CalendarViewName>('dayGridMonth');
   readonly isPendingPanelCollapsed = signal(false);
+  private readonly layout = inject(LayoutPreferencesService);
+  /** INC-06: painel direito recolhível (persistido); o calendário usa o espaço liberado. */
+  readonly sidePanelCollapsed = this.layout.sidePanelCollapsed;
   /** Título do período visível (ex.: "Novembro de 2026"), vindo do FullCalendar. */
   readonly periodTitle = signal('');
 
@@ -380,8 +385,32 @@ export class CalendarPage implements OnInit, AfterViewInit {
       this.clockTimerId = setInterval(() => this.clock.set(Date.now()), 60_000);
     }
 
+    // Recolher/expandir sidebar ou painel muda a largura do container sem resize da
+    // janela: o FullCalendar precisa recalcular as colunas após a transição CSS.
+    effect(() => {
+      this.layout.sidebarCollapsed();
+      this.layout.sidePanelCollapsed();
+      untracked(() => {
+        if (typeof window === 'undefined') {
+          return;
+        }
+
+        if (this.resizeTimerId) {
+          clearTimeout(this.resizeTimerId);
+        }
+
+        this.resizeTimerId = setTimeout(() => {
+          this.resizeTimerId = null;
+          this.calendarComponent?.getApi()?.updateSize();
+        }, 240);
+      });
+    });
+
     this.destroyRef.onDestroy(() => {
       this.financeSubscription?.unsubscribe();
+      if (this.resizeTimerId) {
+        clearTimeout(this.resizeTimerId);
+      }
       if (this.clockTimerId) {
         clearInterval(this.clockTimerId);
       }
@@ -389,6 +418,10 @@ export class CalendarPage implements OnInit, AfterViewInit {
   }
 
   // ---- Redesign: filtros por tipo, período, duração e painéis ----------------------
+
+  toggleSidePanel(): void {
+    this.layout.toggleSidePanel();
+  }
 
   onTypeChip(eventType: EventType): void {
     // Com todos ativos, o chip isola o tipo; nos demais casos alterna, nunca deixando zero tipos.

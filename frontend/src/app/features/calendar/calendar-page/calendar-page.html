@@ -17,7 +17,7 @@
     </p>
   }
 
-  <div class="calendar-layout">
+  <div class="calendar-layout" [class.side-collapsed]="sidePanelCollapsed()">
     <article class="calendar-card sp-card">
       <header class="calendar-header">
         <div class="calendar-title">
@@ -157,7 +157,22 @@
       </footer>
     </article>
 
-    <aside class="calendar-side" aria-label="Resumo">
+    <aside class="calendar-side" id="calendar-side-panel" aria-label="Resumo">
+      <button
+        class="side-panel-toggle"
+        type="button"
+        data-testid="side-panel-toggle"
+        aria-controls="calendar-side-panel"
+        [attr.aria-expanded]="!sidePanelCollapsed()"
+        [attr.aria-label]="sidePanelCollapsed() ? 'Mostrar painel de resumo' : 'Recolher painel de resumo'"
+        [title]="sidePanelCollapsed() ? 'Mostrar painel' : 'Recolher painel'"
+        (click)="toggleSidePanel()"
+      >
+        <sp-icon [name]="sidePanelCollapsed() ? 'chevron-left' : 'chevron-right'" [size]="16" />
+        <span>{{ sidePanelCollapsed() ? 'Resumo' : 'Recolher painel' }}</span>
+      </button>
+
+      @if (!sidePanelCollapsed()) {
       <!-- Próximos eventos -->
       <section class="side-card sp-card" aria-labelledby="upcoming-title">
         <header class="side-card-header">
@@ -315,6 +330,7 @@
             </a>
           }
         </section>
+      }
       }
     </aside>
   </div>

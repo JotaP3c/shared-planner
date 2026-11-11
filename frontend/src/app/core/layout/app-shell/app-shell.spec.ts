@@ -90,6 +90,28 @@ describe('AppShell', () => {
     expect(fixture.nativeElement.querySelector('[data-testid="audit-navigation"]')).not.toBeNull();
   });
 
+  it('collapses the sidebar to icons, keeps navigation reachable and persists the choice (INC-06)', () => {
+    localStorage.removeItem('sharedPlanner.layout');
+    const element: HTMLElement = fixture.nativeElement;
+    const toggle = element.querySelector('[data-testid="sidebar-collapse"]') as HTMLButtonElement;
+    expect(toggle.getAttribute('aria-expanded')).toBe('true');
+
+    toggle.click();
+    fixture.detectChanges();
+
+    expect(element.querySelector('.app-shell')?.classList).toContain('sidebar-collapsed');
+    expect(toggle.getAttribute('aria-expanded')).toBe('false');
+    expect(element.querySelector('a[aria-label="Calendário"]')?.getAttribute('title')).toBe('Calendário');
+    expect(JSON.parse(localStorage.getItem('sharedPlanner.layout') ?? '{}').sidebarCollapsed).toBe(true);
+
+    // Abrir um grupo com a sidebar recolhida expande a navegação (submenus acessíveis).
+    component.toggleNavGroup('admin');
+    fixture.detectChanges();
+    expect(component.sidebarCollapsed()).toBe(false);
+    expect(element.textContent).toContain('Membros');
+    localStorage.removeItem('sharedPlanner.layout');
+  });
+
   it('refreshes the bell counter after a data change on the same screen', () => {
     const http = TestBed.inject(HttpTestingController);
     TestBed.inject(AuthService).currentUser.set({

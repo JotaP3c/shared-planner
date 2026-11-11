@@ -51,11 +51,12 @@ Estado após validação multi-repositório: `S0 = 0` e `S1 = 0`. Os dois S1, o 
 | BLG-BUG-001 | P0 | Editar tipo/amount de evento podia preservar pagamento incoerente. | Serviço rejeita/reconcilia mudanças incompatíveis e regressão cobre redução/troca de tipo; matriz completa de status e constraints DB segue em BLG-TEST-001/SEC-015. | FIXED e sincronizado; cobertura complementar OPEN |
 | BLG-BUG-002 | P1 | Owner podia ser rebaixado por POST/PUT de membro. | Toda API preserva owner como ADMIN; POST e PUT retornam 400 e não alteram vínculo. | CLOSED e sincronizado |
 | BLG-BUG-003 | P1 | Ex-membro referenciado como alvo podia aprovar/rejeitar SHARED. | Membership atual é revalidada; remoção invalida fila/ação sem apagar histórico. | CLOSED e sincronizado |
-| BLG-BUG-004 | P1 | Calendário converte falhas de eventos/pendências em listas vazias. | Falha total é erro visível; falha parcial é identificada sem afirmar agenda vazia; retry preserva filtro. | OPEN |
-| BLG-BUG-005 | P2 | Respostas antigas de calendário podem sobrescrever período/filtro recente e liberar loading cedo. | switchMap/cancelamento ou request-id garante latest-wins; loading representa requests ativos; teste assíncrono. | OPEN |
-| BLG-BUG-006 | P2 | Página de membros mistura loading e respostas entre calendários. | Seleção limpa/identifica estado, resposta antiga não atualiza calendário novo e erro não mantém lista enganosa. | OPEN |
-| BLG-BUG-007 | P3 | Busca pode exibir resposta do termo anterior antes do próximo debounce. | Toda mudança invalida request anterior; resultado sempre corresponde ao termo atual. | OPEN |
-| BLG-BUG-008 | P3 | Pending mostra empty durante loading e usa um único actionEventId para ações concorrentes. | Estados são mutuamente exclusivos; ações ficam bloqueadas por item até conclusão e erros são preservados. | OPEN |
+| BLG-BUG-004 | P1 | Calendário converte falhas de eventos/pendências em listas vazias. | Falha total é erro visível; falha parcial é identificada sem afirmar agenda vazia; retry preserva filtro. | FIXED no monorepo em 2026-11-10 — `calendar-page.spec.ts`; sync pendente |
+| BLG-BUG-005 | P2 | Respostas antigas de calendário podem sobrescrever período/filtro recente e liberar loading cedo. | switchMap/cancelamento ou request-id garante latest-wins; loading representa requests ativos; teste assíncrono. | FIXED no monorepo em 2026-11-10 — `calendar-page.spec.ts`; sync pendente |
+| BLG-BUG-006 | P2 | Página de membros mistura loading e respostas entre calendários. | Seleção limpa/identifica estado, resposta antiga não atualiza calendário novo e erro não mantém lista enganosa. | FIXED no monorepo em 2026-11-10 — `members-page.spec.ts`; sync pendente |
+| BLG-BUG-007 | P3 | Busca pode exibir resposta do termo anterior antes do próximo debounce. | Toda mudança invalida request anterior; resultado sempre corresponde ao termo atual. | FIXED no monorepo em 2026-11-10 — `app-shell.spec.ts`; sync pendente |
+| BLG-BUG-008 | P3 | Pending mostra empty durante loading e usa um único actionEventId para ações concorrentes. | Estados são mutuamente exclusivos; ações ficam bloqueadas por item até conclusão e erros são preservados. | FIXED no monorepo em 2026-11-10 — `pending-page.spec.ts`, `calendar-page.spec.ts`; sync pendente |
+| BLG-BUG-009 | P1 | Reabrir SHARED sem novo e-mail herdava criador/aprovador já removido ou inativo, deixando a pendência impossível de decidir (BR-SHARED-001/004). | Update rejeita com 400 quando o aprovador herdado não é ativo e membro atual; caso válido preservado. | FIXED no monorepo em 2026-11-10 — `SharedEventApproverIntegrationTests` (vermelho→verde); sync pendente |
 
 ## BUSINESS RULE
 
@@ -87,12 +88,12 @@ Estado após validação multi-repositório: `S0 = 0` e `S1 = 0`. Os dois S1, o 
 | ID | Prioridade | Entrega | Critério de saída | Estado |
 |---|---:|---|---|---|
 | BLG-FE-001 | P1 | Limitar Bearer a requests /api confiáveis e tratar 401/403. | 401 limpa sessão uma vez; 403/500 preservam sessão; chamada externa nunca recebe token; Authorization explícito é preservado. | DONE e sincronizado |
-| BLG-FE-002 | P1 | Guards e navegação por papel/capacidade. | Finance reflete capacidade e acesso direto tem UX correta; Users/Audit ainda exigem revisão própria. | PARTIAL |
+| BLG-FE-002 | P1 | Guards e navegação por papel/capacidade. | Finance reflete capacidade e acesso direto tem UX correta; `/admin/users` exige ADMIN global e `/audit` ADMIN global ou ADMIN de calendário (`role.guard.ts`), com menu coerente. | DONE no monorepo em 2026-11-10 — sync pendente |
 | BLG-FE-003 | P2 | Implementar Finance como primeira feature após os gates. | Resumo/receitas, períodos, estados, autorização, acessibilidade e testes; sem despesas/relatórios inventados. | DONE e sincronizado |
 | BLG-FE-004 | P2 | Implementar Admin Users. | List/create/edit/active/role, validação, loading, empty, erro, sucesso, autoproteção e testes. | OPEN |
 | BLG-FE-005 | P2 | Implementar Audit. | Lista autorizada, filtros aprovados, loading/empty/error, snapshots tratados com minimização e testes. | OPEN |
 | BLG-FE-006 | P2 | Corrigir estados assíncronos de calendar/pending/members/search. | Satisfazer BLG-BUG-004 a BLG-BUG-008. | OPEN |
-| BLG-FE-007 | P2 | Completar validação de eventos. | CLIENT exige workDescription; trim do título; e-mail SHARED válido; erros de campo e backend coerentes. | OPEN |
+| BLG-FE-007 | P2 | Completar validação de eventos. | CLIENT exige workDescription; trim do título; e-mail SHARED válido; erros de campo e backend coerentes. | DONE no monorepo em 2026-11-10 — `calendar-page.spec.ts`; sync pendente |
 | BLG-FE-008 | P3 | Implementar criação de calendário para ADMIN ou remover expectativa da UI. | Fluxo segue BR-CAL-002, autorização backend e testes. | OPEN |
 | BLG-FE-009 | P3 | Settings somente após BLG-BR-007. | Nenhuma implementação sem spec aprovada. | NEEDS_DECISION |
 

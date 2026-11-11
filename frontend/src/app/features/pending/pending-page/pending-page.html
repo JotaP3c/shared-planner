@@ -12,7 +12,16 @@
   </header>
 
   @if (errorMessage()) {
-    <p class="pending-error">{{ errorMessage() }}</p>
+    <p class="pending-error" role="alert">{{ errorMessage() }}</p>
+  }
+
+  @if (loadError()) {
+    <p class="pending-error" role="alert" data-testid="pending-load-error">
+      {{ loadError() }}
+      <button class="ghost-button" type="button" (click)="loadPendingEvents()" [disabled]="isLoading()">
+        Tentar novamente
+      </button>
+    </p>
   }
 
   <article class="pending-board">
@@ -68,7 +77,7 @@
                 <button
                   class="save-button"
                   type="button"
-                  [disabled]="actionEventId() === event.id"
+                  [disabled]="isActionInProgress(event.id)"
                   (click)="approve(event)"
                 >
                   Aprovar
@@ -77,7 +86,7 @@
                 <button
                   class="danger-button"
                   type="button"
-                  [disabled]="actionEventId() === event.id"
+                  [disabled]="isActionInProgress(event.id)"
                   (click)="reject(event)"
                 >
                   Reprovar
@@ -87,10 +96,16 @@
           </div>
         </section>
       } @empty {
-        <div class="pending-empty">
-          <strong>Nenhuma pendencia encontrada.</strong>
-          <p>Quando um evento compartilhado depender de aprovacao, ele aparecera aqui.</p>
-        </div>
+        @if (isLoading()) {
+          <div class="pending-empty" role="status" data-testid="pending-loading">
+            <strong>Carregando pendencias...</strong>
+          </div>
+        } @else if (showEmptyState()) {
+          <div class="pending-empty" data-testid="pending-empty">
+            <strong>Nenhuma pendencia encontrada.</strong>
+            <p>Quando um evento compartilhado depender de aprovacao, ele aparecera aqui.</p>
+          </div>
+        }
       }
     </div>
   </article>

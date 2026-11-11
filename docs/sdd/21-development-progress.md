@@ -18,6 +18,15 @@
 - Portas Compose em loopback por padrão; interceptor Bearer restrito a `/api` same-origin e sessão diferenciada em 401/403/500.
 - Finance implementado com cinco opções de período e oito métricas (três valores e cinco contagens), estados completos, refresh, responsividade, acessibilidade e navegação honesta por capacidade.
 
+## Incremento 2026-11-10 — estados assíncronos, guards e aprovador SHARED
+
+- BLG-BUG-004..008: calendário, pendências, membros e busca global com latest-wins, loading por requisição ativa, erro distinto de vazio e ações por item.
+- BLG-FE-002: `systemAdminGuard` (`/admin/users`) e `auditAccessGuard` (`/audit`), com menu de Auditoria coerente.
+- BLG-FE-007: validação de título após trim, `workDescription` em CLIENT e e-mail SHARED válido.
+- BLG-BUG-009: reabrir SHARED rejeita aprovador herdado inativo ou que deixou o calendário.
+- Validação: backend 19/19 e frontend 53/53 em 13 arquivos (integrado e standalones); build SSR com 9 rotas e 4 warnings de budget conhecidos; paridade backend 85/85 e frontend 78/78.
+- Q-004, Q-005 e a leitura de BR-PAY-003 (PAID → PENDING → troca de tipo/valor) continuam abertas.
+
 ## Multi-repository stabilization
 
 | Etapa | Status |

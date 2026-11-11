@@ -1,6 +1,6 @@
 import { Component, computed, inject, OnDestroy, OnInit, signal } from '@angular/core';
 import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
-import { catchError, finalize, of, switchMap } from 'rxjs';
+import { Subscription, catchError, finalize, of, switchMap } from 'rxjs';
 import { CalendarService } from '../../api/calendar.service';
 import { EventService } from '../../api/event.service';
 import { AuthService } from '../../auth/auth.service';
@@ -21,6 +21,7 @@ export class AppShell implements OnInit, OnDestroy {
   private readonly router = inject(Router);
   private searchDebounceId: ReturnType<typeof setTimeout> | null = null;
   private searchRequestId = 0;
+  private searchSubscription: Subscription | null = null;
 
   readonly currentUser = this.authService.currentUser;
   readonly searchTerm = this.searchService.term;
@@ -71,6 +72,22 @@ export class AppShell implements OnInit, OnDestroy {
     );
   });
 
+  // BR-AUDIT-002: ADMIN global ou ADMIN de algum calendário. Mesma regra do auditAccessGuard.
+  readonly canAccessAudit = computed(() => {
+    if (!this.financeAccessResolved()) {
+      return false;
+    }
+
+    const user = this.currentUser();
+
+    if (!user) {
+      return false;
+    }
+
+    return user.role === 'ADMIN'
+      || this.financeCalendars().some(calendar => calendar.memberRole === 'ADMIN');
+  });
+
   readonly openNavGroups = signal<Set<string>>(new Set(['admin']));
   readonly showProfileMenu = signal(false);
 
@@ -110,12 +127,20 @@ export class AppShell implements OnInit, OnDestroy {
 
     if (term.length < 2) {
       this.searchRequestId++;
+      this.searchSubscription?.unsubscribe();
+      this.searchSubscription = null;
       this.searchResults.set([]);
       this.isSearchLoading.set(false);
       this.isSearchPanelOpen.set(false);
       return;
     }
 
+    // BLG-BUG-007: qualquer mudança de termo invalida e cancela a busca anterior,
+    // para que o painel nunca exiba resultado de um termo que não é o atual.
+    this.searchRequestId++;
+    this.searchSubscription?.unsubscribe();
+    this.searchSubscription = null;
+    this.searchResults.set([]);
     this.isSearchPanelOpen.set(true);
     this.isSearchLoading.set(true);
 
@@ -137,6 +162,8 @@ export class AppShell implements OnInit, OnDestroy {
     }
 
     this.searchRequestId++;
+    this.searchSubscription?.unsubscribe();
+    this.searchSubscription = null;
     this.searchService.clear();
     this.searchResults.set([]);
     this.searchError.set('');
@@ -190,6 +217,8 @@ export class AppShell implements OnInit, OnDestroy {
     if (this.searchDebounceId) {
       clearTimeout(this.searchDebounceId);
     }
+
+    this.searchSubscription?.unsubscribe();
   }
 
   logout(): void {
@@ -199,7 +228,8 @@ export class AppShell implements OnInit, OnDestroy {
   private runGlobalSearch(term: string): void {
     const requestId = ++this.searchRequestId;
 
-    this.eventService.search(term).subscribe({
+    this.searchSubscription?.unsubscribe();
+    this.searchSubscription = this.eventService.search(term).subscribe({
       next: results => {
         if (requestId !== this.searchRequestId) {
           return;

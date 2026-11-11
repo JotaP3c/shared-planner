@@ -5,7 +5,16 @@
   [class.view-day]="currentCalendarView() === 'timeGridDay'"
 >
   @if (errorMessage()) {
-    <p class="error-message">{{ errorMessage() }}</p>
+    <p class="error-message" role="alert">{{ errorMessage() }}</p>
+  }
+
+  @if (eventsLoadError()) {
+    <p class="error-message" role="alert" data-testid="events-load-error">
+      {{ eventsLoadError() }}
+      <button class="secondary-button" type="button" (click)="retryLoadEvents()" [disabled]="isLoading()">
+        Tentar novamente
+      </button>
+    </p>
   }
 
   <div class="calendar-content">
@@ -239,7 +248,7 @@
                   <button
                     class="pending-action-button approve"
                     type="button"
-                    [disabled]="pendingActionEventId() === event.id"
+                    [disabled]="isPendingActionInProgress(event.id)"
                     (click)="approvePendingEvent(event, $event)"
                   >
                     Aprovar
@@ -248,7 +257,7 @@
                   <button
                     class="pending-action-button reject"
                     type="button"
-                    [disabled]="pendingActionEventId() === event.id"
+                    [disabled]="isPendingActionInProgress(event.id)"
                     (click)="rejectPendingEvent(event, $event)"
                   >
                     Reprovar
@@ -262,14 +271,25 @@
             }
           </article>
         } @empty {
-          <div class="pending-empty-state">
-            <div class="pending-empty-illustration" aria-hidden="true">
-              <span></span>
+          @if (isPendingLoading()) {
+            <p class="pending-status" role="status" data-testid="pending-panel-loading">Carregando pendências...</p>
+          } @else if (!pendingLoadError()) {
+            <div class="pending-empty-state" data-testid="pending-panel-empty">
+              <div class="pending-empty-illustration" aria-hidden="true">
+                <span></span>
+              </div>
+              <p>
+              Nenhuma pendência encontrada para o período atual.
+              </p>
             </div>
-            <p>
-            Nenhuma pendência encontrada para o período atual.
-            </p>
-          </div>
+          }
+        }
+
+        @if (pendingLoadError()) {
+          <p class="error-message" role="alert" data-testid="pending-panel-error">
+            {{ pendingLoadError() }}
+            <button class="secondary-button" type="button" (click)="retryLoadPendingApprovals()">Tentar novamente</button>
+          </p>
         }
       </div>
 

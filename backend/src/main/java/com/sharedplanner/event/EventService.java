@@ -488,15 +488,32 @@ public class EventService {
         }
 
         if (!event.getCreatedBy().getEmail().equalsIgnoreCase(currentUserEmail)) {
-            return event.getCreatedBy();
+            return requireEligibleInheritedApprover(event.getCreatedBy(), event.getCalendar().getId());
         }
 
         if (event.getApprovalRequestedFrom() != null
                 && !event.getApprovalRequestedFrom().getEmail().equalsIgnoreCase(currentUserEmail)) {
-            return event.getApprovalRequestedFrom();
+            return requireEligibleInheritedApprover(event.getApprovalRequestedFrom(), event.getCalendar().getId());
         }
 
         throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Shared events require approvalRequestedFromEmail");
+    }
+
+    /**
+     * BR-SHARED-001/004: o aprovador herdado ao reabrir um SHARED precisa continuar
+     * ativo e membro atual do calendário; caso contrário o evento ficaria preso em
+     * PENDING_APPROVAL para alguém que nunca poderá decidir.
+     */
+    private User requireEligibleInheritedApprover(User candidate, UUID calendarId) {
+        if (!Boolean.TRUE.equals(candidate.getActive())
+                || !memberRepository.existsByCalendarIdAndUserId(calendarId, candidate.getId())) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Shared event approver is no longer an active calendar member; inform approvalRequestedFromEmail"
+            );
+        }
+
+        return candidate;
     }
 
     private void validatePeriod(LocalDateTime startsAt, LocalDateTime endsAt) {

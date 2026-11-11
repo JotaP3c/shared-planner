@@ -31,7 +31,9 @@
             @if (isAdmin()) {
               <a routerLink="/admin/users" routerLinkActive="active">Usuários</a>
             }
-            <a routerLink="/audit" routerLinkActive="active">Auditoria</a>
+            @if (canAccessAudit()) {
+              <a routerLink="/audit" routerLinkActive="active" data-testid="audit-navigation">Auditoria</a>
+            }
           </div>
         }
       </section>

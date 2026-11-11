@@ -16,29 +16,63 @@ export class PendingPage implements OnInit {
   private readonly eventService = inject(EventService);
   private readonly authService = inject(AuthService);
   private readonly router = inject(Router);
+  private loadRequestId = 0;
+  // Eventos decididos nesta sessão: um reload iniciado antes da decisão não os ressuscita.
+  private readonly resolvedEventIds = new Set<string>();
 
   readonly currentUser = this.authService.currentUser;
   readonly pendingEvents = signal<EventResponse[]>([]);
   readonly isLoading = signal(false);
+  readonly hasLoaded = signal(false);
+  /** Falha ao carregar a fila: não deve ser confundida com fila vazia. */
+  readonly loadError = signal('');
+  /** Falha de uma ação (aprovar/reprovar). */
   readonly errorMessage = signal('');
-  readonly actionEventId = signal<string | null>(null);
+  /** BLG-BUG-008: ações concorrentes são rastreadas por item. */
+  readonly actionEventIds = signal<ReadonlySet<string>>(new Set());
   readonly pendingCount = computed(() => this.pendingEvents().length);
+  readonly showEmptyState = computed(() =>
+    this.hasLoaded() && !this.isLoading() && !this.loadError() && this.pendingEvents().length === 0,
+  );
 
   ngOnInit(): void {
     this.loadPendingEvents();
   }
 
   loadPendingEvents(): void {
-    this.errorMessage.set('');
+    const requestId = ++this.loadRequestId;
+
+    this.loadError.set('');
     this.isLoading.set(true);
 
     this.eventService
       .listPendingApprovals()
-      .pipe(finalize(() => this.isLoading.set(false)))
+      .pipe(finalize(() => {
+        if (requestId === this.loadRequestId) {
+          this.isLoading.set(false);
+        }
+      }))
       .subscribe({
-        next: events => this.pendingEvents.set(events),
-        error: () => this.errorMessage.set('Nao foi possivel carregar as pendencias.'),
+        next: events => {
+          if (requestId !== this.loadRequestId) {
+            return;
+          }
+
+          this.pendingEvents.set(events.filter(event => !this.resolvedEventIds.has(event.id)));
+          this.hasLoaded.set(true);
+        },
+        error: () => {
+          if (requestId !== this.loadRequestId) {
+            return;
+          }
+
+          this.loadError.set('Nao foi possivel carregar as pendencias.');
+        },
       });
+  }
+
+  isActionInProgress(eventId: string): boolean {
+    return this.actionEventIds().has(eventId);
   }
 
   openInCalendar(event: EventResponse): void {
@@ -56,6 +90,10 @@ export class PendingPage implements OnInit {
   }
 
   reject(event: EventResponse): void {
+    if (this.isActionInProgress(event.id)) {
+      return;
+    }
+
     const confirmed = window.confirm(`Deseja reprovar o evento "${event.title}"?`);
 
     if (!confirmed) {
@@ -112,22 +150,27 @@ export class PendingPage implements OnInit {
   }
 
   private respond(event: EventResponse, action: 'approve' | 'reject'): void {
+    if (this.isActionInProgress(event.id)) {
+      return;
+    }
+
     if (!this.canRespond(event)) {
       this.errorMessage.set('Esta pendencia nao esta aguardando a sua aprovacao.');
       return;
     }
 
     this.errorMessage.set('');
-    this.actionEventId.set(event.id);
+    this.setActionInProgress(event.id, true);
 
     const request = action === 'approve'
       ? this.eventService.approve(event.id)
       : this.eventService.reject(event.id);
 
     request
-      .pipe(finalize(() => this.actionEventId.set(null)))
+      .pipe(finalize(() => this.setActionInProgress(event.id, false)))
       .subscribe({
         next: () => {
+          this.resolvedEventIds.add(event.id);
           this.pendingEvents.update(events =>
             events.filter(currentEvent => currentEvent.id !== event.id),
           );
@@ -140,5 +183,19 @@ export class PendingPage implements OnInit {
           this.errorMessage.set(message);
         },
       });
+  }
+
+  private setActionInProgress(eventId: string, inProgress: boolean): void {
+    this.actionEventIds.update(current => {
+      const next = new Set(current);
+
+      if (inProgress) {
+        next.add(eventId);
+      } else {
+        next.delete(eventId);
+      }
+
+      return next;
+    });
   }
 }

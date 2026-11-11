@@ -8,7 +8,7 @@ import ptBrLocale from '@fullcalendar/core/locales/pt-br';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import interactionPlugin from '@fullcalendar/interaction';
 import timeGridPlugin from '@fullcalendar/timegrid';
-import { catchError, distinctUntilChanged, finalize, forkJoin, map, of } from 'rxjs';
+import { Subscription, catchError, distinctUntilChanged, finalize, forkJoin, map, of } from 'rxjs';
 
 import { CalendarService } from '../../../core/api/calendar.service';
 import { EventService } from '../../../core/api/event.service';
@@ -36,6 +36,8 @@ type CalendarViewName = 'dayGridMonth' | 'timeGridWeek' | 'timeGridDay';
 export class CalendarPage implements OnInit, AfterViewInit {
   @ViewChild('calendar') calendarComponent?: FullCalendarComponent;
 
+  private static readonly EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
   private readonly calendarService = inject(CalendarService);
   private readonly eventService = inject(EventService);
   private readonly searchService = inject(SearchService);
@@ -59,7 +61,16 @@ export class CalendarPage implements OnInit, AfterViewInit {
   readonly isUpdatingPayment = signal(false);
   readonly isPaymentFormOpen = signal(false);
   readonly paymentFormError = signal('');
-  readonly pendingActionEventId = signal<string | null>(null);
+  /** BLG-BUG-008: aprovações/reprovações concorrentes são rastreadas por evento. */
+  readonly pendingActionEventIds = signal<ReadonlySet<string>>(new Set());
+  /** BLG-BUG-004: falha de carga de eventos é um estado próprio, nunca uma agenda vazia. */
+  readonly eventsLoadError = signal('');
+  readonly isPendingLoading = signal(false);
+  readonly pendingLoadError = signal('');
+  private eventsSubscription: Subscription | null = null;
+  private eventsRequestId = 0;
+  private pendingSubscription: Subscription | null = null;
+  private pendingRequestId = 0;
 
   readonly eventForm = this.formBuilder.group({
     calendarId: ['', Validators.required],
@@ -521,7 +532,11 @@ export class CalendarPage implements OnInit, AfterViewInit {
 
     if (this.eventForm.invalid) {
       this.eventForm.markAllAsTouched();
-      this.eventFormError.set('Preencha os campos obrigatórios para criar o evento.');
+      this.eventFormError.set(
+        this.eventBeingEdited()
+          ? 'Preencha os campos obrigatórios para salvar o evento.'
+          : 'Preencha os campos obrigatórios para criar o evento.',
+      );
       return;
     }
 
@@ -545,8 +560,20 @@ export class CalendarPage implements OnInit, AfterViewInit {
       return;
     }
 
+    // BLG-FE-007: o título é validado depois do trim (Validators.required aceita só espaços).
+    if (!title) {
+      this.eventFormError.set('Informe o título do evento.');
+      return;
+    }
+
     if (eventType === 'CLIENT' && !clientName) {
       this.eventFormError.set('Informe o nome do cliente.');
+      return;
+    }
+
+    // BR-CLIENT-001: CLIENT exige descrição do serviço, como o backend.
+    if (eventType === 'CLIENT' && !workDescription) {
+      this.eventFormError.set('Informe a descrição do serviço do atendimento.');
       return;
     }
 
@@ -557,6 +584,19 @@ export class CalendarPage implements OnInit, AfterViewInit {
 
     if (eventType === 'SHARED' && !approvalRequestedFromEmail) {
       this.eventFormError.set('Informe o e-mail do usuário responsável pela aprovação.');
+      return;
+    }
+
+    if (eventType === 'SHARED' && !CalendarPage.EMAIL_PATTERN.test(approvalRequestedFromEmail)) {
+      this.eventFormError.set('Informe um e-mail válido para a aprovação.');
+      return;
+    }
+
+    if (
+      eventType === 'SHARED'
+      && approvalRequestedFromEmail.toLowerCase() === this.currentUser()?.email.toLowerCase()
+    ) {
+      this.eventFormError.set('A aprovação deve ser solicitada a outro usuário.');
       return;
     }
 
@@ -1127,41 +1167,111 @@ export class CalendarPage implements OnInit, AfterViewInit {
     });
   }
 
+  retryLoadEvents(): void {
+    this.loadEvents();
+  }
+
+  retryLoadPendingApprovals(): void {
+    this.loadPendingApprovals();
+  }
+
+  isPendingActionInProgress(eventId: string): boolean {
+    return this.pendingActionEventIds().has(eventId);
+  }
+
+  /**
+   * BLG-BUG-004/005: cada carga invalida e cancela a anterior (latest-wins), o loading
+   * reflete somente a carga ativa e falhas por calendário são expostas, não viram [].
+   */
   private loadEvents(): void {
     const start = this.visibleStart();
     const end = this.visibleEnd();
     const calendarIds = this.selectedCalendarIds();
+    const requestId = ++this.eventsRequestId;
+
+    this.eventsSubscription?.unsubscribe();
+    this.eventsSubscription = null;
 
     if (!start || !end || !calendarIds.length) {
       this.events.set([]);
+      this.eventsLoadError.set('');
+      this.isLoading.set(false);
       return;
     }
 
     this.isLoading.set(true);
-    this.errorMessage.set('');
+    this.eventsLoadError.set('');
 
     const requests = calendarIds.map(calendarId =>
       this.eventService
         .list(calendarId, this.toLocalDateTime(start), this.toLocalDateTime(end))
-        .pipe(catchError(() => of([] as EventResponse[]))),
+        .pipe(
+          map(events => ({ calendarId, events, failed: false })),
+          catchError(() => of({ calendarId, events: [] as EventResponse[], failed: true })),
+        ),
     );
 
-    forkJoin(requests)
-      .pipe(
-        map(groups => groups.flat()),
-        finalize(() => this.isLoading.set(false)),
-      )
-      .subscribe({
-        next: events => this.events.set(events),
-        error: () => this.errorMessage.set('Nao foi possivel carregar os eventos.'),
-      });
+    this.eventsSubscription = forkJoin(requests).subscribe(results => {
+      if (requestId !== this.eventsRequestId) {
+        return;
+      }
+
+      const failedIds = results.filter(result => result.failed).map(result => result.calendarId);
+
+      this.events.set(results.flatMap(result => result.events));
+      this.isLoading.set(false);
+
+      if (failedIds.length === results.length) {
+        this.eventsLoadError.set('Nao foi possivel carregar os eventos. A agenda exibida pode estar incompleta.');
+      } else if (failedIds.length) {
+        const names = failedIds
+          .map(id => this.calendars().find(calendar => calendar.id === id)?.name ?? id)
+          .join(', ');
+        this.eventsLoadError.set(`Nao foi possivel carregar os eventos de: ${names}. Os demais calendarios foram carregados.`);
+      }
+    });
   }
 
   private loadPendingApprovals(): void {
-    this.eventService
-      .listPendingApprovals()
-      .pipe(catchError(() => of([] as EventResponse[])))
-      .subscribe(events => this.pendingApprovals.set(events));
+    const requestId = ++this.pendingRequestId;
+
+    this.pendingSubscription?.unsubscribe();
+    this.isPendingLoading.set(true);
+    this.pendingLoadError.set('');
+
+    this.pendingSubscription = this.eventService.listPendingApprovals().subscribe({
+      next: events => {
+        if (requestId !== this.pendingRequestId) {
+          return;
+        }
+
+        this.pendingApprovals.set(events);
+        this.isPendingLoading.set(false);
+      },
+      error: () => {
+        if (requestId !== this.pendingRequestId) {
+          return;
+        }
+
+        // Mantém a última lista conhecida e sinaliza a falha em vez de afirmar "sem pendências".
+        this.pendingLoadError.set('Nao foi possivel carregar as pendencias.');
+        this.isPendingLoading.set(false);
+      },
+    });
+  }
+
+  private setPendingActionInProgress(eventId: string, inProgress: boolean): void {
+    this.pendingActionEventIds.update(current => {
+      const next = new Set(current);
+
+      if (inProgress) {
+        next.add(eventId);
+      } else {
+        next.delete(eventId);
+      }
+
+      return next;
+    });
   }
 
   private respondToSelectedEvent(action: 'approve' | 'reject'): void {
@@ -1182,11 +1292,12 @@ export class CalendarPage implements OnInit, AfterViewInit {
     action: 'approve' | 'reject',
     onDone?: () => void,
   ): void {
-    if (!this.canRespondToEvent(event)) {
+    if (!this.canRespondToEvent(event) || this.isPendingActionInProgress(event.id)) {
+      onDone?.();
       return;
     }
 
-    this.pendingActionEventId.set(event.id);
+    this.setPendingActionInProgress(event.id, true);
 
     const request = action === 'approve'
       ? this.eventService.approve(event.id)
@@ -1194,7 +1305,7 @@ export class CalendarPage implements OnInit, AfterViewInit {
 
     request
       .pipe(finalize(() => {
-        this.pendingActionEventId.set(null);
+        this.setPendingActionInProgress(event.id, false);
         onDone?.();
       }))
       .subscribe({

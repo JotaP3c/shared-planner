@@ -1,5 +1,6 @@
 import { Routes } from '@angular/router';
 import { authGuard } from './core/guards/auth.guard';
+import { auditAccessGuard, systemAdminGuard } from './core/guards/role.guard';
 
 export const routes: Routes = [
   {
@@ -52,6 +53,7 @@ export const routes: Routes = [
       },
       {
         path: 'admin/users',
+        canActivate: [systemAdminGuard],
         loadComponent: () =>
           import('./features/users/users-page/users-page').then(
             m => m.UsersPage,
@@ -59,6 +61,7 @@ export const routes: Routes = [
       },
       {
         path: 'audit',
+        canActivate: [auditAccessGuard],
         loadComponent: () =>
           import('./features/audit/audit-page/audit-page').then(
             m => m.AuditPage,

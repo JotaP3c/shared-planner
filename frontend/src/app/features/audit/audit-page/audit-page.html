@@ -1,1 +1,96 @@
-<p>audit-page works!</p>
+<section class="page audit-page" aria-labelledby="audit-title">
+  <header class="page-header">
+    <div>
+      <span class="eyebrow">Administração</span>
+      <h1 id="audit-title">Auditoria</h1>
+      <p>Histórico das operações registradas pelo sistema.</p>
+    </div>
+
+    <button class="secondary-button" type="button" (click)="load()" [disabled]="isLoading()">
+      {{ isLoading() ? 'Atualizando...' : 'Atualizar' }}
+    </button>
+  </header>
+
+  <form class="page-form audit-filters" (submit)="$event.preventDefault(); load()" aria-label="Filtros da auditoria">
+    <label class="sp-field">
+      Calendário
+      <select data-testid="audit-calendar" (change)="selectCalendar($any($event.target).value)">
+        @if (isGlobalAdmin()) {
+          <option value="" [selected]="!selectedCalendarId()">Todos</option>
+        }
+        @for (calendar of calendarOptions(); track calendar.id) {
+          <option [value]="calendar.id" [selected]="calendar.id === selectedCalendarId()">{{ calendar.name }}</option>
+        }
+      </select>
+    </label>
+
+    <label class="sp-field">
+      Tipo de registro
+      <select data-testid="audit-entity" (change)="selectEntityType($any($event.target).value)">
+        <option value="" [selected]="!selectedEntityType()">Todos</option>
+        @for (type of entityTypes; track type) {
+          <option [value]="type" [selected]="type === selectedEntityType()">{{ entityLabel(type) }}</option>
+        }
+      </select>
+    </label>
+
+    <label class="sp-field">
+      Quantidade
+      <select data-testid="audit-limit" (change)="selectLimit($any($event.target).value)">
+        @for (limit of limits; track limit) {
+          <option [value]="limit" [selected]="limit === selectedLimit()">Últimos {{ limit }}</option>
+        }
+      </select>
+    </label>
+  </form>
+
+  <p class="page-hint">
+    Exibe os registros mais recentes (sem paginação). Valores anteriores e novos não são exibidos
+    até a definição da política de retenção e minimização (Q-006).
+  </p>
+
+  @if (errorMessage()) {
+    <p class="page-feedback is-error" role="alert" data-testid="audit-error">
+      {{ errorMessage() }}
+      <button class="ghost-button" type="button" (click)="load()">Tentar novamente</button>
+    </p>
+  }
+
+  <article class="page-panel">
+    @if (isLoading() && !logs().length) {
+      <div class="page-empty" role="status"><strong>Carregando registros...</strong></div>
+    } @else if (showEmptyState()) {
+      <div class="page-empty" role="status" data-testid="audit-empty">
+        <strong>Nenhum registro encontrado.</strong>
+        <p>Ajuste os filtros ou realize operações para que elas apareçam aqui.</p>
+      </div>
+    } @else if (logs().length) {
+      <div class="page-table-wrap">
+        <table class="page-table is-stackable" data-testid="audit-table">
+          <thead>
+            <tr>
+              <th scope="col">Data</th>
+              <th scope="col">Ação</th>
+              <th scope="col">Registro</th>
+              <th scope="col">Resumo</th>
+              <th scope="col">Calendário</th>
+              <th scope="col">Responsável</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (log of logs(); track log.id) {
+              <tr>
+                <td data-label="Data">{{ formatDateTime(log.performedAt) }}</td>
+                <td data-label="Ação"><span class="role-pill">{{ actionLabel(log.action) }}</span></td>
+                <td data-label="Registro">{{ entityLabel(log.entityType) }}</td>
+                <td data-label="Resumo">{{ log.summary }}</td>
+                <td data-label="Calendário">{{ calendarName(log.calendarId) }}</td>
+                <td data-label="Responsável">{{ log.performedByEmail }}</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  </article>
+</section>

@@ -148,6 +148,59 @@ class FinanceSummaryIntegrationTests {
     }
 
     @Test
+    void timelineAndAppointmentsUseTheSamePopulationAsTheSummary() {
+        Fixture fixture = fixture();
+        clientEvent(fixture, "Day 1", new BigDecimal("100.00"), PaymentStatus.PAID, new BigDecimal("100.00"),
+                START_DATE.atTime(9, 0), EventStatus.SCHEDULED);
+        clientEvent(fixture, "Day 1 bis", new BigDecimal("40.00"), PaymentStatus.PENDING, BigDecimal.ZERO,
+                START_DATE.atTime(11, 0), EventStatus.SCHEDULED);
+        clientEvent(fixture, "Day 3", new BigDecimal("60.00"), PaymentStatus.PENDING, BigDecimal.ZERO,
+                START_DATE.plusDays(2).atTime(10, 0), EventStatus.SCHEDULED);
+        clientEvent(fixture, "Cancelled", new BigDecimal("999.00"), PaymentStatus.PENDING, BigDecimal.ZERO,
+                START_DATE.plusDays(2).atTime(12, 0), EventStatus.CANCELLED);
+        eventRepository.flush();
+
+        FinanceTimelineResponse timeline = financeService.timeline(
+                fixture.calendar().getId(), START_DATE, END_DATE, fixture.authentication());
+
+        assertThat(timeline.granularity()).isEqualTo(FinanceTimelineResponse.Granularity.DAY);
+        assertThat(timeline.points()).hasSize(31);
+        assertThat(timeline.points().get(0).expectedAmount()).isEqualByComparingTo("140.00");
+        assertThat(timeline.points().get(0).receivedAmount()).isEqualByComparingTo("100.00");
+        assertThat(timeline.points().get(0).appointmentCount()).isEqualTo(2L);
+        assertThat(timeline.points().get(1).expectedAmount()).isEqualByComparingTo("0");
+        assertThat(timeline.points().get(2).expectedAmount()).isEqualByComparingTo("60.00");
+
+        FinanceTimelineResponse yearly = financeService.timeline(
+                fixture.calendar().getId(), LocalDate.of(2026, 1, 1), LocalDate.of(2026, 12, 31), fixture.authentication());
+        assertThat(yearly.granularity()).isEqualTo(FinanceTimelineResponse.Granularity.MONTH);
+        assertThat(yearly.points()).hasSize(12);
+        assertThat(yearly.points().get(7).expectedAmount()).isEqualByComparingTo("200.00");
+
+        var appointments = financeService.appointments(
+                fixture.calendar().getId(), START_DATE, END_DATE, 2, fixture.authentication());
+        assertThat(appointments).hasSize(2);
+        assertThat(appointments.get(0).startsAt()).isAfter(appointments.get(1).startsAt());
+        assertThat(appointments).noneMatch(item -> item.amount().compareTo(new BigDecimal("999.00")) == 0);
+    }
+
+    @Test
+    void timelineAndAppointmentsRequireFinanceCapability() {
+        Fixture fixture = fixture();
+        User viewer = userRepository.save(new User("Viewer", "finance-timeline-viewer@example.com", "unused",
+                UserRole.USER, fixture.owner()));
+        memberRepository.save(new CalendarMember(fixture.calendar(), viewer, CalendarMemberRole.VIEWER, fixture.owner()));
+        var viewerAuth = new UsernamePasswordAuthenticationToken(viewer.getEmail(), null);
+
+        assertThatThrownBy(() -> financeService.timeline(fixture.calendar().getId(), START_DATE, END_DATE, viewerAuth))
+                .isInstanceOfSatisfying(ResponseStatusException.class,
+                        error -> assertThat(error.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN));
+        assertThatThrownBy(() -> financeService.appointments(fixture.calendar().getId(), START_DATE, END_DATE, 5, viewerAuth))
+                .isInstanceOfSatisfying(ResponseStatusException.class,
+                        error -> assertThat(error.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN));
+    }
+
+    @Test
     void rejectsPeriodWhoseEndPrecedesStart() {
         Fixture fixture = fixture();
 

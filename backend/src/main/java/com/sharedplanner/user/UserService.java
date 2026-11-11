@@ -4,6 +4,7 @@ import com.sharedplanner.audit.AuditAction;
 import com.sharedplanner.audit.AuditEntityType;
 import com.sharedplanner.audit.AuditService;
 import com.sharedplanner.config.AuthorizationService;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -12,6 +13,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
+import java.util.Locale;
 import java.util.UUID;
 
 @Service
@@ -48,20 +50,28 @@ public class UserService {
         authorizationService.ensureSystemAdmin(authentication);
 
         User currentUser = currentUser(authentication);
+        String email = request.email().trim().toLowerCase(Locale.ROOT);
+        String fullName = request.fullName().trim();
 
-        if (userRepository.existsByEmailIgnoreCase(request.email())) {
+        if (userRepository.existsByEmailIgnoreCase(email)) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Email already exists");
         }
 
         User user = new User(
-                request.fullName(),
-                request.email(),
+                fullName,
+                email,
                 passwordEncoder.encode(request.password()),
                 request.role(),
                 currentUser
         );
 
-        User savedUser = userRepository.save(user);
+        User savedUser;
+        try {
+            savedUser = userRepository.saveAndFlush(user);
+        } catch (DataIntegrityViolationException exception) {
+            // Cadastro concorrente do mesmo e-mail: índice único case-insensitive (V7).
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Email already exists");
+        }
 
         auditService.log(
                 AuditEntityType.USER,
@@ -96,10 +106,20 @@ public class UserService {
             }
         }
 
+        // A aplicação precisa manter ao menos um ADMIN ativo. Pela API atual a autoproteção
+        // acima já garante isso (só um ADMIN ativo administra); a guarda é defensiva para
+        // fluxos futuros (ex.: jobs, importações) que alterem usuários.
+        boolean removesActiveAdmin = user.getRole() == UserRole.ADMIN
+                && Boolean.TRUE.equals(user.getActive())
+                && (request.role() != UserRole.ADMIN || !request.active());
+        if (removesActiveAdmin && userRepository.countByRoleAndActiveTrue(UserRole.ADMIN) <= 1) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "At least one active administrator is required");
+        }
+
         String oldValue = userSnapshot(user);
 
         user.updateProfile(
-                request.fullName(),
+                request.fullName().trim(),
                 request.role(),
                 request.active(),
                 currentUser

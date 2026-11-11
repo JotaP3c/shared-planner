@@ -1,6 +1,6 @@
 # Tarefas — correção de incidentes e confirmação de agendamento
 
-Estados: PENDING · IN_PROGRESS · COMPLETED · BLOCKED. Execução de 11/11/2026, sem commit/push.
+Estados: PENDING · IN_PROGRESS · COMPLETED · BLOCKED. Execução de 11/11/2026; publicada em commits separados nos três repositórios (monorepo `3132e50`, backend `1e27685`, frontend `68ed59b`).
 
 | ID | Tarefa | Critério de conclusão verificável | Estado |
 |---|---|---|---|

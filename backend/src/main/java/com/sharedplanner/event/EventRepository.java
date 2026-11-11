@@ -100,15 +100,43 @@ public interface EventRepository extends JpaRepository<Event, UUID> {
             @Param("end") LocalDateTime end
     );
 
+    /**
+     * Desmarcados pelo cliente (confirmationStatus = CANCELLED) saem da receita prevista e
+     * pendente, mas o valor recebido deles continua contabilizado. Legado com
+     * confirmationStatus nulo é tratado como aguardando confirmação.
+     */
     @Query("""
         select
-            coalesce(sum(e.amount), 0) as expectedAmount,
+            coalesce(sum(case when e.confirmationStatus is null
+                    or e.confirmationStatus <> com.sharedplanner.event.AppointmentConfirmationStatus.CANCELLED
+                then e.amount else 0 end), 0) as expectedAmount,
             coalesce(sum(e.receivedAmount), 0) as receivedAmount,
+            coalesce(sum(case when e.confirmationStatus is null
+                    or e.confirmationStatus <> com.sharedplanner.event.AppointmentConfirmationStatus.CANCELLED
+                then e.amount - e.receivedAmount else 0 end), 0) as pendingAmount,
+            coalesce(sum(case when e.confirmationStatus = com.sharedplanner.event.AppointmentConfirmationStatus.CONFIRMED
+                then e.amount else 0 end), 0) as confirmedAmount,
+            coalesce(sum(case when e.confirmationStatus is null
+                    or e.confirmationStatus = com.sharedplanner.event.AppointmentConfirmationStatus.PENDING_CONFIRMATION
+                    or e.confirmationStatus = com.sharedplanner.event.AppointmentConfirmationStatus.RESCHEDULED
+                then e.amount else 0 end), 0) as unconfirmedAmount,
+            coalesce(sum(case when e.confirmationStatus = com.sharedplanner.event.AppointmentConfirmationStatus.CANCELLED
+                then e.amount else 0 end), 0) as unscheduledAmount,
             count(e) as appointmentCount,
             sum(case when e.paymentStatus = com.sharedplanner.event.PaymentStatus.PAID then 1 else 0 end) as paidCount,
             sum(case when e.paymentStatus = com.sharedplanner.event.PaymentStatus.PENDING then 1 else 0 end) as pendingCount,
             sum(case when e.paymentStatus = com.sharedplanner.event.PaymentStatus.PARTIALLY_PAID then 1 else 0 end) as partiallyPaidCount,
-            sum(case when e.paymentStatus = com.sharedplanner.event.PaymentStatus.REFUNDED then 1 else 0 end) as refundedCount
+            sum(case when e.paymentStatus = com.sharedplanner.event.PaymentStatus.REFUNDED then 1 else 0 end) as refundedCount,
+            sum(case when e.confirmationStatus = com.sharedplanner.event.AppointmentConfirmationStatus.CONFIRMED
+                then 1 else 0 end) as confirmedCount,
+            sum(case when e.confirmationStatus is null
+                    or e.confirmationStatus = com.sharedplanner.event.AppointmentConfirmationStatus.PENDING_CONFIRMATION
+                then 1 else 0 end) as awaitingConfirmationCount,
+            sum(case when e.confirmationStatus = com.sharedplanner.event.AppointmentConfirmationStatus.RESCHEDULED
+                then 1 else 0 end) as rescheduledCount,
+            sum(case when e.confirmationStatus = com.sharedplanner.event.AppointmentConfirmationStatus.CANCELLED
+                then 1 else 0 end) as unscheduledCount,
+            coalesce(sum(e.rescheduleCount), 0) as rescheduleOccurrences
         from Event e
         where e.calendar.id = :calendarId
           and e.eventType = com.sharedplanner.event.EventType.CLIENT
@@ -120,5 +148,23 @@ public interface EventRepository extends JpaRepository<Event, UUID> {
             @Param("calendarId") UUID calendarId,
             @Param("start") LocalDateTime start,
             @Param("end") LocalDateTime end
+    );
+
+    /** Mesma população do resumo financeiro, para evolução e lista de atendimentos. */
+    @Query("""
+        select e
+        from Event e
+        where e.calendar.id = :calendarId
+          and e.eventType = com.sharedplanner.event.EventType.CLIENT
+          and e.status <> com.sharedplanner.event.EventStatus.CANCELLED
+          and e.startsAt >= :start
+          and e.startsAt < :end
+        order by e.startsAt desc
+        """)
+    List<Event> findFinanceEvents(
+            @Param("calendarId") UUID calendarId,
+            @Param("start") LocalDateTime start,
+            @Param("end") LocalDateTime end,
+            Pageable pageable
     );
 }

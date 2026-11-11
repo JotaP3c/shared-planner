@@ -8,6 +8,14 @@ public interface FinanceTotals {
 
     BigDecimal getReceivedAmount();
 
+    BigDecimal getPendingAmount();
+
+    BigDecimal getConfirmedAmount();
+
+    BigDecimal getUnconfirmedAmount();
+
+    BigDecimal getUnscheduledAmount();
+
     Long getAppointmentCount();
 
     Long getPaidCount();
@@ -17,4 +25,14 @@ public interface FinanceTotals {
     Long getPartiallyPaidCount();
 
     Long getRefundedCount();
+
+    Long getConfirmedCount();
+
+    Long getAwaitingConfirmationCount();
+
+    Long getRescheduledCount();
+
+    Long getUnscheduledCount();
+
+    Long getRescheduleOccurrences();
 }

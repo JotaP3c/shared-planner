@@ -140,6 +140,16 @@
   }
 }
 
+.page-hint {
+  margin: 0;
+  color: var(--sp-text-2);
+  font-size: 13px;
+
+  strong {
+    color: var(--sp-text);
+  }
+}
+
 .page-form > .page-feedback,
 .page-form > .page-actions {
   grid-column: 1 / -1;

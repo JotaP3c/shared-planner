@@ -5,6 +5,7 @@ import { provideRouter } from '@angular/router';
 
 import { MembersPage } from './members-page';
 import { CalendarMemberResponse } from '../../../core/models/shared-planner.models';
+import { AuthService } from '../../../core/auth/auth.service';
 
 describe('MembersPage', () => {
   let component: MembersPage;
@@ -60,6 +61,73 @@ describe('MembersPage', () => {
     http.expectOne('/api/calendars/b/members').flush([member('mb', 'b')]);
     expect(component.members().map(item => item.id)).toEqual(['mb']);
     expect(component.isLoading()).toBe(false);
+  });
+
+  it('shows the role that will actually be sent (INC-03b) and explains an unknown e-mail (INC-03a)', () => {
+    const http = TestBed.inject(HttpTestingController);
+    TestBed.inject(AuthService).currentUser.set({
+      id: 'admin', fullName: 'Admin', email: 'owner@example.com', role: 'ADMIN', active: true, createdAt: '', updatedAt: '',
+    });
+    http.expectOne('/api/calendars').flush([calendar('a')]);
+    http.expectOne('/api/calendars/a/members').flush([member('owner', 'a')]);
+    fixture.detectChanges();
+
+    const select = fixture.nativeElement.querySelector('[data-testid="member-role-select"]') as HTMLSelectElement;
+    // Antes da correção a tela mostrava "Administrador" enquanto o estado enviado era VIEWER.
+    expect(select.value).toBe('VIEWER');
+    expect(select.selectedOptions[0].textContent).toContain('Leitor');
+
+    component.memberEmail.set('  Jpcbnu@Gmail.com ');
+    component.addMember();
+    const request = http.expectOne('/api/calendars/a/members');
+    expect(request.request.body).toEqual({ email: 'jpcbnu@gmail.com', role: 'VIEWER' });
+    request.flush({ detail: 'User not found' }, { status: 404, statusText: 'Not Found' });
+
+    expect(component.errorMessage()).toContain('Não existe conta com este e-mail');
+    expect(component.errorMessage()).toContain('Administração › Usuários');
+  });
+
+  it('maps duplicate and inactive conflicts and reloads the list after success', () => {
+    const http = TestBed.inject(HttpTestingController);
+    TestBed.inject(AuthService).currentUser.set({
+      id: 'admin', fullName: 'Admin', email: 'owner@example.com', role: 'ADMIN', active: true, createdAt: '', updatedAt: '',
+    });
+    http.expectOne('/api/calendars').flush([calendar('a')]);
+    http.expectOne('/api/calendars/a/members').flush([]);
+
+    component.memberEmail.set('dup@example.com');
+    component.addMember();
+    http.expectOne(req => req.method === 'POST').flush({ detail: 'User is already a member of this calendar' },
+      { status: 409, statusText: 'Conflict' });
+    expect(component.errorMessage()).toContain('já é membro');
+
+    component.memberEmail.set('off@example.com');
+    component.addMember();
+    http.expectOne(req => req.method === 'POST').flush({ detail: 'User is inactive' },
+      { status: 409, statusText: 'Conflict' });
+    expect(component.errorMessage()).toContain('inativa');
+
+    component.memberEmail.set('ok@example.com');
+    component.memberRole.set('EDITOR');
+    component.addMember();
+    http.expectOne(req => req.method === 'POST').flush(null, { status: 204, statusText: 'No Content' });
+    http.expectOne('/api/calendars/a/members').flush([member('ok', 'a')]);
+    expect(component.successMessage()).toContain('Editor');
+    expect(component.members().map(item => item.id)).toEqual(['ok']);
+  });
+
+  it('rejects an invalid e-mail without calling the API', () => {
+    const http = TestBed.inject(HttpTestingController);
+    TestBed.inject(AuthService).currentUser.set({
+      id: 'admin', fullName: 'Admin', email: 'owner@example.com', role: 'ADMIN', active: true, createdAt: '', updatedAt: '',
+    });
+    http.expectOne('/api/calendars').flush([calendar('a')]);
+    http.expectOne('/api/calendars/a/members').flush([]);
+
+    component.memberEmail.set('sem-arroba');
+    component.addMember();
+    http.expectNone(req => req.method === 'POST');
+    expect(component.errorMessage()).toContain('e-mail válido');
   });
 
   it('clears the previous list when loading the new calendar fails', () => {

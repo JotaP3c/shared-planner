@@ -11,6 +11,7 @@ export class MembersPage implements OnInit {
   private readonly authService = inject(AuthService);
   private membersSubscription: Subscription | null = null;
   private membersRequestId = 0;
+  private static readonly EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
   readonly roles: CalendarMemberRole[] = ['ADMIN', 'EDITOR', 'FINANCE', 'VIEWER'];
   readonly calendars = signal<CalendarResponse[]>([]);
@@ -49,14 +50,19 @@ export class MembersPage implements OnInit {
     const calendarId = this.selectedCalendarId();
     const email = this.memberEmail().trim();
 
-    if (!calendarId || !email || !this.canManage()) {
-      this.errorMessage.set('Informe um e-mail válido e selecione um calendário administrável.');
+    if (!calendarId || !this.canManage()) {
+      this.errorMessage.set('Selecione um calendário que você administra.');
+      return;
+    }
+
+    if (!MembersPage.EMAIL_PATTERN.test(email)) {
+      this.errorMessage.set('Informe um e-mail válido.');
       return;
     }
 
     this.clearMessages();
     this.isSaving.set(true);
-    this.calendarService.addMember(calendarId, { email, role: this.memberRole() })
+    this.calendarService.addMember(calendarId, { email: email.toLowerCase(), role: this.memberRole() })
       .pipe(finalize(() => this.isSaving.set(false)))
       .subscribe({
         next: () => {
@@ -65,11 +71,44 @@ export class MembersPage implements OnInit {
           }
 
           this.memberEmail.set('');
-          this.successMessage.set('Membro adicionado ou atualizado.');
+          this.successMessage.set(`${email} agora tem acesso como ${this.roleLabel(this.memberRole())}.`);
           this.loadMembers(false);
         },
-        error: error => this.errorMessage.set(this.errorText(error, 'Não foi possível adicionar o membro.')),
+        error: error => this.errorMessage.set(this.addMemberErrorText(error)),
       });
+  }
+
+  /** Erros de domínio de POST /members (INC-03), traduzidos para orientar o próximo passo. */
+  private addMemberErrorText(error: unknown): string {
+    const status = (error as { status?: number })?.status;
+    const detail = (error as { error?: { detail?: string } })?.error?.detail ?? '';
+
+    if (status === 404 && detail.includes('User')) {
+      return 'Não existe conta com este e-mail. Peça a um administrador para cadastrá-la em '
+        + 'Administração › Usuários e depois adicione-a aqui.';
+    }
+
+    if (status === 404) {
+      return 'Calendário não encontrado.';
+    }
+
+    if (status === 409 && detail.includes('inactive')) {
+      return 'Esta conta está inativa. Reative-a em Administração › Usuários antes de adicioná-la.';
+    }
+
+    if (status === 409) {
+      return 'Este usuário já é membro deste calendário. Para mudar o papel, use a lista abaixo.';
+    }
+
+    if (status === 403) {
+      return 'Você não tem permissão para gerenciar os membros deste calendário.';
+    }
+
+    if (status === 400) {
+      return 'Dados inválidos. Confira o e-mail e o papel.';
+    }
+
+    return 'Não foi possível adicionar o membro.';
   }
 
   updateRole(member: CalendarMemberResponse, role: CalendarMemberRole): void {

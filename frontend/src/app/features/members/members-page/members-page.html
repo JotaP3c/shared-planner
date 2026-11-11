@@ -14,7 +14,7 @@
           (change)="selectCalendar($any($event.target).value)"
         >
           @for (calendar of calendars(); track calendar.id) {
-            <option [value]="calendar.id">{{ calendar.name }}</option>
+            <option [value]="calendar.id" [selected]="calendar.id === selectedCalendarId()">{{ calendar.name }}</option>
           }
         </select>
       </label>
@@ -30,6 +30,10 @@
   }
 
   @if (canManage()) {
+    <p class="page-hint">
+      Adicionar membro dá acesso ao calendário a uma conta que já existe e está ativa. Para quem ainda
+      não tem conta, um administrador global deve cadastrá-la em <strong>Administração › Usuários</strong>.
+    </p>
     <form class="page-form" (submit)="$event.preventDefault(); addMember()">
       <label class="sp-field">
         E-mail
@@ -45,9 +49,9 @@
 
       <label class="sp-field">
         Papel
-        <select [value]="memberRole()" (change)="memberRole.set($any($event.target).value)">
+        <select data-testid="member-role-select" (change)="memberRole.set($any($event.target).value)">
           @for (role of roles; track role) {
-            <option [value]="role">{{ roleLabel(role) }}</option>
+            <option [value]="role" [selected]="role === memberRole()">{{ roleLabel(role) }}</option>
           }
         </select>
       </label>
@@ -89,7 +93,7 @@
                     (change)="updateRole(member, $any($event.target).value)"
                   >
                     @for (role of roles; track role) {
-                      <option [value]="role">{{ roleLabel(role) }}</option>
+                      <option [value]="role" [selected]="role === member.role">{{ roleLabel(role) }}</option>
                     }
                   </select>
                 } @else {

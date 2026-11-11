@@ -88,6 +88,27 @@ public class Event {
     @JoinColumn(name = "updated_by_user_id")
     private User updatedBy;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "confirmation_status", length = 30)
+    private AppointmentConfirmationStatus confirmationStatus;
+
+    @Column(name = "confirmation_changed_at")
+    private LocalDateTime confirmationChangedAt;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "confirmation_changed_by_user_id")
+    private User confirmationChangedBy;
+
+    @Column(name = "reschedule_count", nullable = false)
+    private int rescheduleCount;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "unschedule_reason", length = 30)
+    private UnscheduleReason unscheduleReason;
+
+    @Column(name = "unschedule_notes", length = 500)
+    private String unscheduleNotes;
+
     protected Event() {
     }
 
@@ -119,6 +140,23 @@ public class Event {
     public PaymentMethod getPaymentMethod() { return paymentMethod; }
     public BigDecimal getReceivedAmount() { return receivedAmount; }
     public LocalDateTime getPaidAt() { return paidAt; }
+    public AppointmentConfirmationStatus getConfirmationStatus() { return confirmationStatus; }
+    public LocalDateTime getConfirmationChangedAt() { return confirmationChangedAt; }
+    public User getConfirmationChangedBy() { return confirmationChangedBy; }
+    public int getRescheduleCount() { return rescheduleCount; }
+    public UnscheduleReason getUnscheduleReason() { return unscheduleReason; }
+    public String getUnscheduleNotes() { return unscheduleNotes; }
+
+    /** Situação efetiva: registros legados sem valor são tratados como aguardando confirmação. */
+    public AppointmentConfirmationStatus effectiveConfirmationStatus() {
+        if (eventType != EventType.CLIENT) {
+            return null;
+        }
+
+        return confirmationStatus == null
+                ? AppointmentConfirmationStatus.PENDING_CONFIRMATION
+                : confirmationStatus;
+    }
 
 
     public void fill(
@@ -149,12 +187,18 @@ public class Event {
             if (this.paymentStatus == null) {
                 resetPayment();
             }
+
+            // Novo atendimento (ou conversão para CLIENT) começa aguardando confirmação.
+            if (this.confirmationStatus == null) {
+                this.confirmationStatus = AppointmentConfirmationStatus.PENDING_CONFIRMATION;
+            }
         } else {
             this.clientName = null;
             this.personName = eventType == EventType.PERSONAL ? personName : null;
             this.workDescription = null;
             this.amount = null;
             resetPayment();
+            resetConfirmation();
         }
 
         this.startsAt = startsAt;
@@ -187,6 +231,48 @@ public class Event {
         this.paidAt = paidAt;
         this.updatedAt = LocalDateTime.now();
         this.updatedBy = updatedBy;
+    }
+
+    private void resetConfirmation() {
+        this.confirmationStatus = null;
+        this.confirmationChangedAt = null;
+        this.confirmationChangedBy = null;
+        this.rescheduleCount = 0;
+        this.unscheduleReason = null;
+        this.unscheduleNotes = null;
+    }
+
+    public void confirmAppointment(User changedBy) {
+        this.confirmationStatus = AppointmentConfirmationStatus.CONFIRMED;
+        this.unscheduleReason = null;
+        this.unscheduleNotes = null;
+        touchConfirmation(changedBy);
+    }
+
+    public void unscheduleAppointment(UnscheduleReason reason, String notes, User changedBy) {
+        this.confirmationStatus = AppointmentConfirmationStatus.CANCELLED;
+        this.unscheduleReason = reason;
+        this.unscheduleNotes = notes;
+        touchConfirmation(changedBy);
+    }
+
+    /** Remarcação altera a data do mesmo atendimento; valor e pagamento não são duplicados. */
+    public void rescheduleAppointment(LocalDateTime newStartsAt, LocalDateTime newEndsAt, String notes, User changedBy) {
+        this.startsAt = newStartsAt;
+        this.endsAt = newEndsAt;
+        this.confirmationStatus = AppointmentConfirmationStatus.RESCHEDULED;
+        this.rescheduleCount++;
+        this.unscheduleReason = UnscheduleReason.RESCHEDULE;
+        this.unscheduleNotes = notes;
+        touchConfirmation(changedBy);
+    }
+
+    private void touchConfirmation(User changedBy) {
+        LocalDateTime now = LocalDateTime.now();
+        this.confirmationChangedAt = now;
+        this.confirmationChangedBy = changedBy;
+        this.updatedAt = now;
+        this.updatedBy = changedBy;
     }
 
     public void approve(User approvedBy) {

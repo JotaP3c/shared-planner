@@ -99,6 +99,31 @@ public class EventController {
         eventService.delete(eventId, authentication);
     }
 
+    @PostMapping("/{eventId}/confirm")
+    public EventResponse confirmAppointment(
+            @PathVariable UUID eventId,
+            Authentication authentication
+    ) {
+        return eventService.confirmAppointment(eventId, authentication);
+    }
+
+    @PostMapping("/{eventId}/unschedule")
+    public EventResponse unscheduleAppointment(
+            @PathVariable UUID eventId,
+            @RequestBody @Valid UnscheduleAppointmentRequest request,
+            Authentication authentication
+    ) {
+        return eventService.unscheduleAppointment(eventId, request, authentication);
+    }
+
+    @GetMapping("/{eventId}/confirmation-history")
+    public List<ConfirmationHistoryResponse> confirmationHistory(
+            @PathVariable UUID eventId,
+            Authentication authentication
+    ) {
+        return eventService.confirmationHistory(eventId, authentication);
+    }
+
     @PostMapping("/{eventId}/approve")
     public EventResponse approve(
             @PathVariable UUID eventId,

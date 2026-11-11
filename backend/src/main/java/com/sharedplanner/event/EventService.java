@@ -37,6 +37,7 @@ public class EventService {
     private final UserRepository userRepository;
     private final AuthorizationService authorizationService;
     private final AuditService auditService;
+    private final AppointmentConfirmationHistoryRepository confirmationHistoryRepository;
 
     public EventService(
             EventRepository eventRepository,
@@ -44,7 +45,8 @@ public class EventService {
             CalendarMemberRepository memberRepository,
             UserRepository userRepository,
             AuthorizationService authorizationService,
-            AuditService auditService
+            AuditService auditService,
+            AppointmentConfirmationHistoryRepository confirmationHistoryRepository
     ) {
         this.eventRepository = eventRepository;
         this.calendarRepository = calendarRepository;
@@ -52,6 +54,7 @@ public class EventService {
         this.userRepository = userRepository;
         this.authorizationService = authorizationService;
         this.auditService = auditService;
+        this.confirmationHistoryRepository = confirmationHistoryRepository;
     }
 
     @Transactional
@@ -390,6 +393,169 @@ public class EventService {
         return response(event, authentication);
     }
 
+    /** PENDING_CONFIRMATION|RESCHEDULED → CONFIRMED. Confirmação ≠ pagamento. */
+    @Transactional
+    public EventResponse confirmAppointment(UUID eventId, Authentication authentication) {
+        Event event = appointmentForConfirmationChange(eventId, authentication);
+        AppointmentConfirmationStatus previous = event.effectiveConfirmationStatus();
+
+        if (previous != AppointmentConfirmationStatus.PENDING_CONFIRMATION
+                && previous != AppointmentConfirmationStatus.RESCHEDULED) {
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT,
+                    "Appointment cannot be confirmed from status " + previous
+            );
+        }
+
+        User currentUser = currentUser(authentication);
+        String oldValue = confirmationSnapshot(event);
+        event.confirmAppointment(currentUser);
+
+        recordConfirmationChange(event, previous, null, null, null, null, currentUser);
+        auditService.log(
+                AuditEntityType.EVENT,
+                event.getId(),
+                event.getCalendar().getId(),
+                AuditAction.APPOINTMENT_CONFIRMED,
+                "Appointment confirmed: " + event.getTitle(),
+                oldValue,
+                confirmationSnapshot(event),
+                currentUser
+        );
+
+        return response(event, authentication);
+    }
+
+    /**
+     * Desmarcação com motivo obrigatório. RESCHEDULE remarca o mesmo evento (nova data,
+     * sem novo registro financeiro); GAVE_UP/OTHER deixam o atendimento CANCELLED sem
+     * apagar ou estornar pagamentos existentes.
+     */
+    @Transactional
+    public EventResponse unscheduleAppointment(
+            UUID eventId,
+            UnscheduleAppointmentRequest request,
+            Authentication authentication
+    ) {
+        if (request == null || request.reason() == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Unschedule reason is required");
+        }
+
+        Event event = appointmentForConfirmationChange(eventId, authentication);
+        AppointmentConfirmationStatus previous = event.effectiveConfirmationStatus();
+
+        if (previous == AppointmentConfirmationStatus.CANCELLED) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Appointment is already unscheduled");
+        }
+
+        String notes = request.notes() == null || request.notes().isBlank() ? null : request.notes().trim();
+
+        if (request.reason() == UnscheduleReason.OTHER && notes == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Notes are required when reason is OTHER");
+        }
+
+        User currentUser = currentUser(authentication);
+        String oldValue = confirmationSnapshot(event);
+        LocalDateTime previousStartsAt = event.getStartsAt();
+        LocalDateTime previousEndsAt = event.getEndsAt();
+
+        if (request.reason() == UnscheduleReason.RESCHEDULE) {
+            if (request.newStartsAt() == null || request.newEndsAt() == null) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Reschedule requires newStartsAt and newEndsAt");
+            }
+
+            validatePeriod(request.newStartsAt(), request.newEndsAt());
+
+            if (request.newStartsAt().equals(previousStartsAt) && request.newEndsAt().equals(previousEndsAt)) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Reschedule requires a different date or time");
+            }
+
+            event.rescheduleAppointment(request.newStartsAt(), request.newEndsAt(), notes, currentUser);
+            recordConfirmationChange(event, previous, UnscheduleReason.RESCHEDULE, notes,
+                    previousStartsAt, previousEndsAt, currentUser);
+            auditService.log(
+                    AuditEntityType.EVENT,
+                    event.getId(),
+                    event.getCalendar().getId(),
+                    AuditAction.APPOINTMENT_RESCHEDULED,
+                    "Appointment rescheduled: " + event.getTitle(),
+                    oldValue,
+                    confirmationSnapshot(event),
+                    currentUser
+            );
+        } else {
+            event.unscheduleAppointment(request.reason(), notes, currentUser);
+            recordConfirmationChange(event, previous, request.reason(), notes, null, null, currentUser);
+            auditService.log(
+                    AuditEntityType.EVENT,
+                    event.getId(),
+                    event.getCalendar().getId(),
+                    AuditAction.APPOINTMENT_UNSCHEDULED,
+                    "Appointment unscheduled: " + event.getTitle(),
+                    oldValue,
+                    confirmationSnapshot(event),
+                    currentUser
+            );
+        }
+
+        return response(event, authentication);
+    }
+
+    @Transactional(readOnly = true)
+    public List<ConfirmationHistoryResponse> confirmationHistory(UUID eventId, Authentication authentication) {
+        Event event = event(eventId);
+        authorizationService.ensureCalendarVisible(event.getCalendar().getId(), authentication);
+
+        return confirmationHistoryRepository.findByEventIdOrderByPerformedAtDesc(eventId)
+                .stream()
+                .map(ConfirmationHistoryResponse::from)
+                .toList();
+    }
+
+    private Event appointmentForConfirmationChange(UUID eventId, Authentication authentication) {
+        Event event = event(eventId);
+        authorizationService.ensureCanEditEvent(event, authentication);
+        ensureNotCancelled(event);
+
+        if (event.getEventType() != EventType.CLIENT) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Only client events have appointment confirmation");
+        }
+
+        return event;
+    }
+
+    private void recordConfirmationChange(
+            Event event,
+            AppointmentConfirmationStatus previous,
+            UnscheduleReason reason,
+            String notes,
+            LocalDateTime previousStartsAt,
+            LocalDateTime previousEndsAt,
+            User performedBy
+    ) {
+        boolean rescheduled = reason == UnscheduleReason.RESCHEDULE;
+        confirmationHistoryRepository.save(new AppointmentConfirmationHistory(
+                event,
+                previous,
+                event.getConfirmationStatus(),
+                reason,
+                notes,
+                previousStartsAt,
+                previousEndsAt,
+                rescheduled ? event.getStartsAt() : null,
+                rescheduled ? event.getEndsAt() : null,
+                performedBy
+        ));
+    }
+
+    private String confirmationSnapshot(Event event) {
+        return "confirmationStatus=" + event.effectiveConfirmationStatus()
+                + "; unscheduleReason=" + event.getUnscheduleReason()
+                + "; rescheduleCount=" + event.getRescheduleCount()
+                + "; startsAt=" + event.getStartsAt()
+                + "; endsAt=" + event.getEndsAt();
+    }
+
     @Transactional(readOnly = true)
     public List<EventResponse> listPendingApprovals(Authentication authentication) {
         User currentUser = currentUser(authentication);
@@ -674,7 +840,8 @@ public class EventService {
                 + "; endsAt=" + event.getEndsAt()
                 + "; paymentStatus=" + event.getPaymentStatus()
                 + "; paymentMethod=" + event.getPaymentMethod()
-                + "; receivedAmount=" + event.getReceivedAmount();
+                + "; receivedAmount=" + event.getReceivedAmount()
+                + "; confirmationStatus=" + event.effectiveConfirmationStatus();
     }
 
     private String paymentSnapshot(Event event) {

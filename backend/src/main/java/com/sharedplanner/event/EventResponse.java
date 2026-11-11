@@ -30,10 +30,24 @@ public record EventResponse(
         @JsonInclude(JsonInclude.Include.NON_NULL)
         LocalDateTime paidAt,
         LocalDateTime startsAt,
-        LocalDateTime endsAt
-
+        LocalDateTime endsAt,
+        // Confirmação do atendimento (somente CLIENT; não é dado financeiro).
+        @JsonInclude(JsonInclude.Include.NON_NULL)
+        AppointmentConfirmationStatus confirmationStatus,
+        @JsonInclude(JsonInclude.Include.NON_NULL)
+        LocalDateTime confirmationChangedAt,
+        @JsonInclude(JsonInclude.Include.NON_NULL)
+        String confirmationChangedByEmail,
+        @JsonInclude(JsonInclude.Include.NON_NULL)
+        Integer rescheduleCount,
+        @JsonInclude(JsonInclude.Include.NON_NULL)
+        UnscheduleReason unscheduleReason,
+        @JsonInclude(JsonInclude.Include.NON_NULL)
+        String unscheduleNotes
 ) {
     static EventResponse from(Event event, boolean includeFinancialData) {
+        boolean client = event.getEventType() == EventType.CLIENT;
+
         return new EventResponse(
                 event.getId(),
                 event.getCalendar().getId(),
@@ -53,7 +67,13 @@ public record EventResponse(
                 includeFinancialData ? event.getReceivedAmount() : null,
                 includeFinancialData ? event.getPaidAt() : null,
                 event.getStartsAt(),
-                event.getEndsAt()
+                event.getEndsAt(),
+                client ? event.effectiveConfirmationStatus() : null,
+                client ? event.getConfirmationChangedAt() : null,
+                client && event.getConfirmationChangedBy() != null ? event.getConfirmationChangedBy().getEmail() : null,
+                client ? event.getRescheduleCount() : null,
+                client ? event.getUnscheduleReason() : null,
+                client ? event.getUnscheduleNotes() : null
         );
     }
 }

@@ -1,0 +1,114 @@
+// Design tokens — Shared Planner. Toda cor de UI deve vir daqui (tema claro/escuro).
+:root {
+  // Marca
+  --sp-primary: #2563eb;
+  --sp-primary-hover: #1d4ed8;
+  --sp-primary-soft: #eff4ff;
+  --sp-primary-ring: rgba(37, 99, 235, 0.22);
+  --sp-indigo: #4f46e5;
+  --sp-navy: #0f172a;
+
+  // Superfícies
+  --sp-bg: #f8fafc;
+  --sp-bg-accent: #eef3ff;
+  --sp-surface: #ffffff;
+  --sp-surface-2: #f1f5f9;
+  --sp-surface-hover: #f5f8ff;
+  --sp-border: #e2e8f0;
+  --sp-border-strong: #cbd5e1;
+
+  // Texto
+  --sp-text: #172554;
+  --sp-text-2: #64748b;
+  --sp-text-muted: #94a3b8;
+  --sp-text-on-primary: #ffffff;
+
+  // Sidebar
+  --sp-sidebar-bg: linear-gradient(180deg, #0f1f4d 0%, #0b1638 55%, #0a1330 100%);
+  --sp-sidebar-text: #c7d2fe;
+  --sp-sidebar-muted: #8b9bc9;
+  --sp-sidebar-active: #2563eb;
+  --sp-sidebar-hover: rgba(255, 255, 255, 0.07);
+  --sp-sidebar-card: rgba(255, 255, 255, 0.06);
+
+  // Tipos de evento (cliente verde, pessoal azul, compartilhado roxo)
+  --sp-client: #16a34a;
+  --sp-client-bg: #e8f8ee;
+  --sp-client-text: #166534;
+  --sp-personal: #2563eb;
+  --sp-personal-bg: #e8f0ff;
+  --sp-personal-text: #1e40af;
+  --sp-shared: #7c3aed;
+  --sp-shared-bg: #f1ebff;
+  --sp-shared-text: #5b21b6;
+  --sp-pending: #d97706;
+  --sp-pending-bg: #fff4e0;
+  --sp-pending-text: #92400e;
+  --sp-rejected: #dc2626;
+  --sp-rejected-bg: #fdecec;
+  --sp-rejected-text: #991b1b;
+
+  // Feedback
+  --sp-success: #16a34a;
+  --sp-success-bg: #e8f8ee;
+  --sp-danger: #dc2626;
+  --sp-danger-bg: #fdecec;
+  --sp-warning-bg: #fff7e6;
+
+  // Forma
+  --sp-radius-sm: 8px;
+  --sp-radius: 12px;
+  --sp-radius-lg: 16px;
+  --sp-radius-pill: 999px;
+  --sp-shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.05);
+  --sp-shadow: 0 4px 16px rgba(15, 23, 42, 0.06);
+  --sp-shadow-lg: 0 18px 48px rgba(15, 23, 42, 0.16);
+  --sp-focus: 0 0 0 3px var(--sp-primary-ring);
+
+  // Tipografia
+  --sp-font: Inter, "Segoe UI", system-ui, -apple-system, Roboto, Arial, sans-serif;
+  --sp-today: #2563eb;
+
+  color-scheme: light;
+}
+
+:root[data-theme='dark'] {
+  --sp-primary: #3b82f6;
+  --sp-primary-hover: #60a5fa;
+  --sp-primary-soft: rgba(59, 130, 246, 0.14);
+  --sp-primary-ring: rgba(96, 165, 250, 0.32);
+
+  --sp-bg: #0b1120;
+  --sp-bg-accent: #0f172a;
+  --sp-surface: #111a2e;
+  --sp-surface-2: #17223a;
+  --sp-surface-hover: #1a2742;
+  --sp-border: #23314f;
+  --sp-border-strong: #33456b;
+
+  --sp-text: #e2e8f0;
+  --sp-text-2: #9fb0cc;
+  --sp-text-muted: #6b7c9c;
+
+  --sp-sidebar-bg: linear-gradient(180deg, #0a1328 0%, #070e1f 100%);
+
+  --sp-client-bg: rgba(22, 163, 74, 0.16);
+  --sp-client-text: #86efac;
+  --sp-personal-bg: rgba(59, 130, 246, 0.18);
+  --sp-personal-text: #93c5fd;
+  --sp-shared-bg: rgba(124, 58, 237, 0.2);
+  --sp-shared-text: #c4b5fd;
+  --sp-pending-bg: rgba(217, 119, 6, 0.18);
+  --sp-pending-text: #fcd34d;
+  --sp-rejected-bg: rgba(220, 38, 38, 0.18);
+  --sp-rejected-text: #fca5a5;
+
+  --sp-success-bg: rgba(22, 163, 74, 0.16);
+  --sp-danger-bg: rgba(220, 38, 38, 0.16);
+  --sp-warning-bg: rgba(217, 119, 6, 0.14);
+
+  --sp-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+  --sp-shadow-lg: 0 18px 48px rgba(0, 0, 0, 0.5);
+
+  color-scheme: dark;
+}

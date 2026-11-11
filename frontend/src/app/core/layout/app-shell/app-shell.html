@@ -1,32 +1,46 @@
-<div class="app-shell">
-  <aside class="sidebar">
-    <header class="brand">
-      <div class="brand-mark">
-        <span></span>
-      </div>
+<div class="app-shell" [class.sidebar-open]="isSidebarOpen()">
+  @if (isSidebarOpen()) {
+    <div class="sidebar-backdrop" (click)="closeSidebar()" aria-hidden="true"></div>
+  }
 
-      <div>
-        <strong>SharedPlanner</strong>
-        <small>Agenda compartilhada</small>
+  <aside class="sidebar" id="app-sidebar" aria-label="Navegação principal">
+    <header class="brand">
+      <div class="brand-mark" aria-hidden="true">
+        <sp-icon name="calendar-check" [size]="24" />
       </div>
+      <strong>Shared<br />Planner</strong>
+      <button class="sidebar-close" type="button" aria-label="Fechar menu" (click)="closeSidebar()">
+        <sp-icon name="x" [size]="18" />
+      </button>
     </header>
 
     <nav class="navigation" aria-label="Módulos">
-      <a routerLink="/calendar" routerLinkActive="active">
-        <span class="nav-icon calendar"></span>
-        Calendário
+      <a class="nav-link" routerLink="/calendar" routerLinkActive="active">
+        <sp-icon name="calendar" />
+        <span>Calendário</span>
       </a>
 
       <section class="nav-group">
-        <button type="button" [class.open]="isNavGroupOpen('admin')" (click)="toggleNavGroup('admin')">
-          <span class="nav-icon admin"></span>
-          Administrativo
-          <small></small>
+        <button
+          type="button"
+          class="nav-link nav-group-toggle"
+          [class.open]="isNavGroupOpen('admin')"
+          [attr.aria-expanded]="isNavGroupOpen('admin')"
+          (click)="toggleNavGroup('admin')"
+        >
+          <sp-icon name="users" />
+          <span>Administração</span>
+          <sp-icon class="nav-caret" name="chevron-down" [size]="16" />
         </button>
 
         @if (isNavGroupOpen('admin')) {
           <div class="nav-subitems">
-            <a routerLink="/pending" routerLinkActive="active">Pendências</a>
+            <a routerLink="/pending" routerLinkActive="active">
+              Pendências
+              @if (pendingApprovalCount() > 0) {
+                <span class="nav-badge">{{ pendingApprovalCount() }}</span>
+              }
+            </a>
             <a routerLink="/members" routerLinkActive="active">Membros</a>
             @if (isAdmin()) {
               <a routerLink="/admin/users" routerLinkActive="active">Usuários</a>
@@ -40,10 +54,16 @@
 
       @if (canAccessFinance()) {
         <section class="nav-group" data-testid="finance-navigation">
-          <button type="button" [class.open]="isNavGroupOpen('finance')" (click)="toggleNavGroup('finance')">
-            <span class="nav-icon finance"></span>
-            Financeiro
-            <small></small>
+          <button
+            type="button"
+            class="nav-link nav-group-toggle"
+            [class.open]="isNavGroupOpen('finance')"
+            [attr.aria-expanded]="isNavGroupOpen('finance')"
+            (click)="toggleNavGroup('finance')"
+          >
+            <sp-icon name="wallet" />
+            <span>Financeiro</span>
+            <sp-icon class="nav-caret" name="chevron-down" [size]="16" />
           </button>
 
           @if (isNavGroupOpen('finance')) {
@@ -54,135 +74,182 @@
         </section>
       }
 
-      <a routerLink="/settings" routerLinkActive="active">
-        <span class="nav-icon settings"></span>
-        Configurações
+      <a class="nav-link" routerLink="/settings" routerLinkActive="active">
+        <sp-icon name="settings" />
+        <span>Configurações</span>
       </a>
     </nav>
 
     <section class="team-card">
-      <div class="team-illustration" aria-hidden="true">
-        <span class="person person-left"></span>
-        <span class="person person-center"></span>
-        <span class="person person-right"></span>
-        <span class="meeting-table"></span>
+      <div class="team-art" aria-hidden="true">
+        <span class="team-art-calendar"><sp-icon name="calendar-check" [size]="34" /></span>
+        <span class="team-art-clock"><sp-icon name="clock" [size]="20" /></span>
       </div>
-      <strong>Trabalho em equipe</strong>
-      <p>Convide sua equipe e colabore em tempo real.</p>
-      <button type="button">
-        <span class="invite-icon" aria-hidden="true"></span>
-        Convidar usuário
-      </button>
+      <strong>Trabalhem juntos, com tudo organizado!</strong>
+      <p>Compartilhe eventos e mantenha todos em sintonia.</p>
+      @if (canManageMembers()) {
+        <a class="primary-button team-card-action" routerLink="/members">
+          <sp-icon name="user-plus" [size]="18" />
+          Adicionar membro
+        </a>
+      } @else {
+        <a class="primary-button team-card-action" routerLink="/members">
+          <sp-icon name="users" [size]="18" />
+          Ver membros
+        </a>
+      }
     </section>
+
+    <div class="theme-switch" role="group" aria-label="Tema">
+      <sp-icon name="sun" [size]="16" />
+      <button
+        type="button"
+        class="theme-switch-track"
+        role="switch"
+        [attr.aria-checked]="resolvedTheme() === 'dark'"
+        aria-label="Alternar tema escuro"
+        (click)="toggleTheme()"
+      >
+        <span></span>
+      </button>
+      <sp-icon name="moon" [size]="16" />
+    </div>
   </aside>
 
   <section class="workspace">
     <header class="topbar">
-      <div class="topbar-main">
-        <div class="search-wrapper">
-          <div class="search-box" [class.search-active]="isSearchPanelOpen()">
-            <span></span>
-            <input
-              type="search"
-              placeholder="Buscar eventos, clientes ou descrições"
-              [value]="searchTerm()"
-              (focus)="onSearchFocus()"
-              (input)="onSearch($any($event.target).value)"
-              (keydown.escape)="clearSearch()"
-            />
+      <button
+        class="icon-button menu-button"
+        type="button"
+        aria-label="Abrir menu"
+        aria-controls="app-sidebar"
+        [attr.aria-expanded]="isSidebarOpen()"
+        (click)="openSidebar()"
+      >
+        <sp-icon name="menu" />
+      </button>
 
-            @if (searchTerm()) {
-              <button
-                class="search-clear-button"
-                type="button"
-                aria-label="Limpar busca"
-                (click)="clearSearch()"
-              >
-                ×
-              </button>
-            }
-          </div>
+      <div class="search-wrapper">
+        <div class="search-box" [class.search-active]="isSearchPanelOpen()">
+          <sp-icon name="search" [size]="18" />
+          <input
+            type="search"
+            aria-label="Buscar eventos"
+            placeholder="Buscar eventos, clientes ou descrições..."
+            [value]="searchTerm()"
+            (focus)="onSearchFocus()"
+            (input)="onSearch($any($event.target).value)"
+            (keydown.escape)="clearSearch()"
+          />
 
-          @if (isSearchPanelOpen()) {
-            <section class="search-results-panel" aria-label="Resultados da busca">
-              @if (isSearchLoading()) {
-                <p class="search-state">Buscando eventos...</p>
-              } @else if (searchError()) {
-                <p class="search-state error">{{ searchError() }}</p>
-              } @else if (searchResults().length) {
-                <header>
-                  <strong>Eventos encontrados</strong>
-                  <small>{{ searchResults().length }} resultado(s)</small>
-                </header>
-
-                <div class="search-results-list">
-                  @for (result of searchResults(); track result.id) {
-                    <button
-                      class="search-result-item"
-                      type="button"
-                      (click)="selectSearchResult(result)"
-                    >
-                      <span class="result-date">{{ formatSearchResultDate(result.startsAt) }}</span>
-                      <span class="result-main">
-                        <strong>{{ searchResultTitle(result) }}</strong>
-                        <small>{{ searchResultSubtitle(result) }}</small>
-                      </span>
-                      <span class="result-status">{{ result.status }}</span>
-                    </button>
-                  }
-                </div>
-              } @else {
-                <p class="search-state">Nenhum evento encontrado.</p>
-              }
-            </section>
+          @if (searchTerm()) {
+            <button class="search-clear-button" type="button" aria-label="Limpar busca" (click)="clearSearch()">
+              <sp-icon name="x" [size]="16" />
+            </button>
           }
         </div>
+
+        @if (isSearchPanelOpen()) {
+          <section class="search-results-panel" aria-label="Resultados da busca">
+            @if (isSearchLoading()) {
+              <p class="search-state" role="status">Buscando eventos...</p>
+            } @else if (searchError()) {
+              <p class="search-state error" role="alert">{{ searchError() }}</p>
+            } @else if (searchResults().length) {
+              <header>
+                <strong>Eventos encontrados</strong>
+                <small>{{ searchResults().length }} resultado(s)</small>
+              </header>
+
+              <div class="search-results-list">
+                @for (result of searchResults(); track result.id) {
+                  <button class="search-result-item" type="button" (click)="selectSearchResult(result)">
+                    <span [class]="'dot ' + typeClass(result.eventType)"></span>
+                    <span class="result-main">
+                      <strong>{{ searchResultTitle(result) }}</strong>
+                      <small>{{ searchResultSubtitle(result) }}</small>
+                    </span>
+                    <span class="result-date">{{ formatSearchResultDate(result.startsAt) }}</span>
+                  </button>
+                }
+              </div>
+            } @else {
+              <p class="search-state">Nenhum evento encontrado.</p>
+            }
+          </section>
+        }
       </div>
 
       <div class="topbar-actions">
+        <a
+          class="notification-button"
+          routerLink="/pending"
+          [attr.aria-label]="pendingApprovalCount() + ' aprovação(ões) aguardando você'"
+          title="Aprovações pendentes"
+        >
+          <sp-icon name="bell" />
+          @if (pendingApprovalCount() > 0) {
+            <span class="notification-badge">{{ pendingApprovalCount() > 9 ? '9+' : pendingApprovalCount() }}</span>
+          }
+        </a>
+
         <div class="profile-wrapper">
           <button
             class="profile-trigger"
             type="button"
+            aria-haspopup="menu"
+            [attr.aria-expanded]="showProfileMenu()"
             [class.open]="showProfileMenu()"
             (click)="toggleProfileMenu()"
             aria-label="Menu do usuário"
           >
-            <div class="avatar">{{ userInitials() }}</div>
-            <div class="profile-info">
-              <strong>{{ currentUser()?.fullName || 'Usuário' }}</strong>
-              <small>{{ currentUser()?.role || '' }}</small>
-            </div>
-            <small class="profile-caret"></small>
+            <span class="avatar">{{ userInitials() }}</span>
+            <span class="profile-name">{{ currentUser()?.fullName || 'Usuário' }}</span>
+            <sp-icon class="profile-caret" name="chevron-down" [size]="16" />
           </button>
 
           @if (showProfileMenu()) {
             <div class="profile-backdrop" (click)="closeProfileMenu()"></div>
-            <div class="profile-menu">
+            <div class="profile-menu" role="menu" (keydown.escape)="closeProfileMenu()">
               <div class="profile-menu-header">
-                <div class="avatar">{{ userInitials() }}</div>
+                <span class="avatar avatar-lg">{{ userInitials() }}</span>
                 <div>
                   <strong>{{ currentUser()?.fullName || 'Usuário' }}</strong>
-                  <small>{{ currentUser()?.role || '' }}</small>
+                  <small>{{ roleLabel() }}</small>
+                  <small class="profile-email">{{ currentUser()?.email }}</small>
                 </div>
               </div>
 
-              <div class="profile-menu-divider"></div>
+              <div class="profile-menu-section" role="group" aria-label="Tema">
+                <span class="profile-menu-label">
+                  <sp-icon [name]="resolvedTheme() === 'dark' ? 'moon' : 'sun'" [size]="18" />
+                  Tema
+                </span>
+                <div class="theme-options">
+                  <button type="button" role="menuitemradio" [attr.aria-checked]="themePreference() === 'light'"
+                          [class.active]="themePreference() === 'light'" (click)="setTheme('light')">
+                    <sp-icon name="sun" [size]="15" /> Claro
+                  </button>
+                  <button type="button" role="menuitemradio" [attr.aria-checked]="themePreference() === 'dark'"
+                          [class.active]="themePreference() === 'dark'" (click)="setTheme('dark')">
+                    <sp-icon name="moon" [size]="15" /> Escuro
+                  </button>
+                  <button type="button" role="menuitemradio" [attr.aria-checked]="themePreference() === 'system'"
+                          [class.active]="themePreference() === 'system'" (click)="setTheme('system')">
+                    <sp-icon name="monitor" [size]="15" /> Sistema
+                  </button>
+                </div>
+              </div>
 
-              <button type="button" class="profile-menu-item">
-                <span class="profile-menu-icon theme-icon"></span>
-                Tema claro / escuro
-              </button>
-
-              <a routerLink="/settings" class="profile-menu-item" (click)="closeProfileMenu()">
-                <span class="profile-menu-icon settings-icon"></span>
+              <a routerLink="/settings" class="profile-menu-item" role="menuitem" (click)="closeProfileMenu()">
+                <sp-icon name="settings" [size]="18" />
                 Configurações
               </a>
 
               <div class="profile-menu-divider"></div>
 
-              <button type="button" class="profile-menu-item danger" (click)="logout()">
-                <span class="profile-menu-icon logout-icon"></span>
+              <button type="button" class="profile-menu-item danger" role="menuitem" (click)="logout()">
+                <sp-icon name="logout" [size]="18" />
                 Sair
               </button>
             </div>

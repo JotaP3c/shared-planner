@@ -1,15 +1,18 @@
-import { Component, computed, inject, OnDestroy, OnInit, signal } from '@angular/core';
-import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
-import { Subscription, catchError, finalize, of, switchMap } from 'rxjs';
+import { Component, DestroyRef, computed, inject, OnDestroy, OnInit, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import { Subscription, catchError, filter, finalize, of, switchMap } from 'rxjs';
 import { CalendarService } from '../../api/calendar.service';
 import { EventService } from '../../api/event.service';
 import { AuthService } from '../../auth/auth.service';
 import { SearchService } from '../../api/search.service';
 import { CalendarResponse, EventSearchResponse, EventType } from '../../models/shared-planner.models';
+import { ThemePreference, ThemeService } from '../../theme/theme.service';
+import { Icon } from '../../../shared/ui/icon/icon';
 
 @Component({
   selector: 'app-app-shell',
-  imports: [RouterOutlet, RouterLink, RouterLinkActive],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, Icon],
   templateUrl: './app-shell.html',
   styleUrl: './app-shell.scss',
 })
@@ -19,6 +22,9 @@ export class AppShell implements OnInit, OnDestroy {
   private readonly searchService = inject(SearchService);
   private readonly eventService = inject(EventService);
   private readonly router = inject(Router);
+  private readonly themeService = inject(ThemeService);
+  private readonly destroyRef = inject(DestroyRef);
+  private pendingCountSubscription: Subscription | null = null;
   private searchDebounceId: ReturnType<typeof setTimeout> | null = null;
   private searchRequestId = 0;
   private searchSubscription: Subscription | null = null;
@@ -88,8 +94,43 @@ export class AppShell implements OnInit, OnDestroy {
       || this.financeCalendars().some(calendar => calendar.memberRole === 'ADMIN');
   });
 
+  /** Mesma regra do backend para gerenciar membros: ADMIN global ou ADMIN de algum calendário. */
+  readonly canManageMembers = computed(() => this.canAccessAudit());
+
+  readonly roleLabel = computed(() => {
+    const labels: Record<string, string> = { ADMIN: 'Administrador', FINANCE: 'Financeiro', USER: 'Usuário' };
+    const role = this.currentUser()?.role;
+    return role ? labels[role] ?? role : '';
+  });
+
+  /** Aprovações SHARED que aguardam o usuário atual (dado real de /api/events/pending-approvals). */
+  readonly pendingApprovalCount = signal(0);
+  readonly isSidebarOpen = signal(false);
+  readonly themePreference = this.themeService.preference;
+  readonly resolvedTheme = this.themeService.resolved;
+
   readonly openNavGroups = signal<Set<string>>(new Set(['admin']));
   readonly showProfileMenu = signal(false);
+
+  openSidebar(): void {
+    this.isSidebarOpen.set(true);
+  }
+
+  closeSidebar(): void {
+    this.isSidebarOpen.set(false);
+  }
+
+  setTheme(preference: ThemePreference): void {
+    this.themeService.setPreference(preference);
+  }
+
+  toggleTheme(): void {
+    this.themeService.toggle();
+  }
+
+  typeClass(eventType: EventType): string {
+    return eventType.toLowerCase();
+  }
 
   toggleNavGroup(group: string): void {
     const groups = new Set(this.openNavGroups());
@@ -210,7 +251,37 @@ export class AppShell implements OnInit, OnDestroy {
           : of([])),
         finalize(() => this.financeAccessResolved.set(true)),
       )
-      .subscribe(calendars => this.financeCalendars.set(calendars));
+      .subscribe(calendars => {
+        this.financeCalendars.set(calendars);
+        this.refreshPendingApprovalCount();
+      });
+
+    // Fecha o menu lateral (mobile) e atualiza o contador a cada navegação.
+    this.router.events
+      .pipe(filter(event => event instanceof NavigationEnd), takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => {
+        this.closeSidebar();
+        this.closeProfileMenu();
+        this.refreshPendingApprovalCount();
+      });
+  }
+
+  private refreshPendingApprovalCount(): void {
+    const email = this.currentUser()?.email?.toLowerCase();
+
+    if (!email) {
+      this.pendingApprovalCount.set(0);
+      return;
+    }
+
+    this.pendingCountSubscription?.unsubscribe();
+    this.pendingCountSubscription = this.eventService.listPendingApprovals().subscribe({
+      next: events => this.pendingApprovalCount.set(
+        events.filter(event => event.approvalRequestedFromEmail?.toLowerCase() === email).length,
+      ),
+      // Falha no contador não deve quebrar o shell; o badge apenas some.
+      error: () => this.pendingApprovalCount.set(0),
+    });
   }
 
   ngOnDestroy(): void {
@@ -219,6 +290,7 @@ export class AppShell implements OnInit, OnDestroy {
     }
 
     this.searchSubscription?.unsubscribe();
+    this.pendingCountSubscription?.unsubscribe();
   }
 
   logout(): void {

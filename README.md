@@ -201,6 +201,27 @@ O <code>.env</code> real é local e ignorado pelo Git. Não versione senha, segr
 docker compose config --quiet
 ~~~
 
+## Execução local sem Docker (Windows)
+
+Quando o Docker não estiver disponível, o PostgreSQL 17 pode rodar em modo portátil, sem instalador e sem permissão de administrador. Binários e dados ficam em `%USERPROFILE%\postgres-local`, fora do repositório.
+
+~~~powershell
+Set-Location C:\Kiro\shared-planner
+
+# 1. Suba o PostgreSQL (baixa os binários na primeira vez; rode de novo após reiniciar o Windows)
+.\scripts\start-local-postgres.ps1
+
+# 2. Suba o backend uma vez (IntelliJ ou terminal) para o Flyway aplicar V1..V7
+#    IntelliJ: working directory = C:\Kiro\shared-planner-backend, argumento --spring.profiles.active=dev
+#    O backend lê SPRING_DATASOURCE_* e APP_JWT_SECRET de um .env na pasta de trabalho (gitignored).
+
+# 3. Banco vazio? Crie o primeiro ADMIN global e um calendário inicial
+.\scripts\create-local-admin.ps1
+#    A senha é gerada e gravada em %USERPROFILE%\postgres-local\admin-credentials.txt (não é exibida).
+~~~
+
+O DBeaver conecta em `localhost:5432`, banco `shared_planner`, com o `POSTGRES_USER` e o `POSTGRES_PASSWORD` do `.env` da raiz. Para parar o banco: `& "$env:USERPROFILE\postgres-local\pgsql\bin\pg_ctl.exe" stop -D "$env:USERPROFILE\postgres-local\data"`.
+
 ## Desenvolvimento e testes
 
 Cada componente possui instruções próprias e pode ser desenvolvido de forma independente:

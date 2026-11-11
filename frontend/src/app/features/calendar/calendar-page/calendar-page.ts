@@ -1,4 +1,4 @@
-import { AfterViewInit, Component, DestroyRef, OnInit, ViewChild, computed, effect, inject, signal } from '@angular/core';
+import { AfterViewInit, Component, DestroyRef, OnInit, ViewChild, computed, effect, inject, signal, untracked } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
@@ -12,6 +12,9 @@ import { Subscription, catchError, distinctUntilChanged, finalize, forkJoin, map
 
 import { CalendarService } from '../../../core/api/calendar.service';
 import { EventService } from '../../../core/api/event.service';
+import { FinanceService } from '../../../core/api/finance.service';
+import { financeAuthorizedCalendars } from '../../../core/auth/finance-access';
+import { Icon, IconName } from '../../../shared/ui/icon/icon';
 import { SearchService } from '../../../core/api/search.service';
 import { AuthService } from '../../../core/auth/auth.service';
 import {
@@ -27,9 +30,19 @@ import {
 
 type CalendarViewName = 'dayGridMonth' | 'timeGridWeek' | 'timeGridDay';
 
+/** Totais reais de /api/finance/summary somados entre os calendários autorizados. */
+interface MonthlyFinanceSummary {
+  monthLabel: string;
+  expectedAmount: number;
+  receivedAmount: number;
+  pendingAmount: number;
+  appointmentCount: number;
+  previousExpectedAmount: number;
+}
+
 @Component({
   selector: 'app-calendar-page',
-  imports: [FullCalendarModule, ReactiveFormsModule],
+  imports: [FullCalendarModule, ReactiveFormsModule, Icon],
   templateUrl: './calendar-page.html',
   styleUrl: './calendar-page.scss',
 })
@@ -40,6 +53,9 @@ export class CalendarPage implements OnInit, AfterViewInit {
 
   private readonly calendarService = inject(CalendarService);
   private readonly eventService = inject(EventService);
+  private readonly financeService = inject(FinanceService);
+  private financeSubscription: Subscription | null = null;
+  private financeRequestKey = '';
   private readonly searchService = inject(SearchService);
   private readonly authService = inject(AuthService);
   private readonly formBuilder = inject(NonNullableFormBuilder);
@@ -75,7 +91,8 @@ export class CalendarPage implements OnInit, AfterViewInit {
   readonly eventForm = this.formBuilder.group({
     calendarId: ['', Validators.required],
     eventType: ['CLIENT' as EventType, Validators.required],
-    title: ['', [Validators.required, Validators.maxLength(180)]],
+    // Obrigatoriedade validada após trim em submitEventForm (CLIENT usa o nome do cliente).
+    title: ['', Validators.maxLength(180)],
     clientName: ['', Validators.maxLength(120)],
     personName: ['', Validators.maxLength(120)],
     description: [''],
@@ -109,6 +126,26 @@ export class CalendarPage implements OnInit, AfterViewInit {
   readonly openFilterMenu = signal<'calendars' | 'events' | null>(null);
   readonly currentCalendarView = signal<CalendarViewName>('dayGridMonth');
   readonly isPendingPanelCollapsed = signal(false);
+  /** Título do período visível (ex.: "Novembro de 2026"), vindo do FullCalendar. */
+  readonly periodTitle = signal('');
+
+  readonly viewOptions: Array<{ value: CalendarViewName; label: string }> = [
+    { value: 'dayGridMonth', label: 'Mês' },
+    { value: 'timeGridWeek', label: 'Semana' },
+    { value: 'timeGridDay', label: 'Dia' },
+  ];
+
+  readonly eventTypeCards: Array<{ value: EventType; label: string; hint: string; icon: IconName }> = [
+    { value: 'CLIENT', label: 'Cliente', hint: 'Atendimento com valor', icon: 'briefcase' },
+    { value: 'PERSONAL', label: 'Pessoal', hint: 'Compromisso pessoal', icon: 'calendar' },
+    { value: 'SHARED', label: 'Compartilhado', hint: 'Requer aprovação', icon: 'users' },
+  ];
+
+  readonly durationOptions = [15, 30, 45, 60, 90, 120, 180];
+
+  readonly financeSummary = signal<MonthlyFinanceSummary | null>(null);
+  readonly isFinanceLoading = signal(false);
+  readonly financeError = signal('');
 
   readonly eventTypeOptions: Array<{ value: EventType; label: string }> = [
     { value: 'CLIENT', label: 'Cliente' },
@@ -179,6 +216,36 @@ export class CalendarPage implements OnInit, AfterViewInit {
 
   readonly pendingEvents = computed(() => this.pendingApprovals());
 
+  readonly allEventTypesSelected = computed(() =>
+    this.selectedEventTypes().length === this.eventTypeOptions.length,
+  );
+
+  /** Próximos eventos do período carregado (dados reais de /api/events), sem cancelados/rejeitados. */
+  readonly upcomingEvents = computed(() => {
+    const now = Date.now();
+
+    return this.filteredEvents()
+      .filter(event => event.status !== 'CANCELLED' && event.status !== 'REJECTED')
+      .filter(event => new Date(event.endsAt).getTime() >= now)
+      .sort((left, right) => new Date(left.startsAt).getTime() - new Date(right.startsAt).getTime())
+      .slice(0, 4);
+  });
+
+  /** Calendários com capacidade financeira (BR-FIN-003); o backend continua autorizando. */
+  readonly financeCalendars = computed(() =>
+    financeAuthorizedCalendars(this.currentUser(), this.calendars()),
+  );
+
+  readonly financeDelta = computed(() => {
+    const summary = this.financeSummary();
+
+    if (!summary || summary.previousExpectedAmount <= 0) {
+      return null;
+    }
+
+    return ((summary.expectedAmount - summary.previousExpectedAmount) / summary.previousExpectedAmount) * 100;
+  });
+
   readonly unreadPendingCount = computed(() =>
     this.pendingEvents().filter(event => !this.isPendingRead(event.id)).length,
   );
@@ -243,6 +310,8 @@ export class CalendarPage implements OnInit, AfterViewInit {
   calendarOptions: CalendarOptions = {
     plugins: [dayGridPlugin, timeGridPlugin, interactionPlugin],
     initialView: 'dayGridMonth',
+    // Só as semanas do mês (4–6 linhas), sem a linha extra do mês seguinte.
+    fixedWeekCount: false,
     locale: ptBrLocale,
     headerToolbar: false,
     allDaySlot: false,
@@ -291,6 +360,179 @@ export class CalendarPage implements OnInit, AfterViewInit {
     effect(() => {
       const email = this.currentUser()?.email;
       this.readPendingIds.set(email ? this.loadReadPendingIds(email) : new Set());
+    });
+
+    effect(() => {
+      const calendarIds = this.financeCalendars().map(calendar => calendar.id);
+      untracked(() => this.loadFinanceSummary(calendarIds));
+    });
+
+    this.destroyRef.onDestroy(() => this.financeSubscription?.unsubscribe());
+  }
+
+  // ---- Redesign: filtros por tipo, período, duração e painéis ----------------------
+
+  onTypeChip(eventType: EventType): void {
+    // Com todos ativos, o chip isola o tipo; nos demais casos alterna, nunca deixando zero tipos.
+    if (this.allEventTypesSelected()) {
+      this.selectedEventTypes.set([eventType]);
+      return;
+    }
+
+    this.toggleEventType(eventType);
+
+    if (!this.selectedEventTypes().length) {
+      this.selectAllEventTypes();
+    }
+  }
+
+  isEventTypeActive(eventType: EventType): boolean {
+    return !this.allEventTypesSelected() && this.selectedEventTypes().includes(eventType);
+  }
+
+  typeClass(eventType: EventType): string {
+    return eventType.toLowerCase();
+  }
+
+  typeIcon(eventType: EventType): IconName {
+    return this.eventTypeCards.find(card => card.value === eventType)?.icon ?? 'calendar';
+  }
+
+  displayTitle(event: EventResponse): string {
+    return this.eventTitle(event);
+  }
+
+  formatTimeRange(event: EventResponse): string {
+    return `${this.formatEventTime(new Date(event.startsAt))} – ${this.formatEventTime(new Date(event.endsAt))}`;
+  }
+
+  /** "Hoje", "Amanhã" ou a data curta, seguido do intervalo de horário. */
+  formatUpcomingWhen(event: EventResponse): string {
+    const start = new Date(event.startsAt);
+    const today = new Date();
+    const tomorrow = new Date();
+    tomorrow.setDate(today.getDate() + 1);
+
+    const sameDay = (left: Date, right: Date) => left.toDateString() === right.toDateString();
+    const day = sameDay(start, today)
+      ? 'Hoje'
+      : sameDay(start, tomorrow)
+        ? 'Amanhã'
+        : start.toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: 'short' });
+
+    return `${day} · ${this.formatTimeRange(event)}`;
+  }
+
+  currentDurationMinutes(): number | null {
+    const { startTime, endTime } = this.eventForm.getRawValue();
+    const minutes = this.minutesBetween(startTime, endTime);
+    return minutes !== null && this.durationOptions.includes(minutes) ? minutes : null;
+  }
+
+  onDurationChange(value: string): void {
+    const minutes = Number(value);
+    const startTime = this.eventForm.controls.startTime.value;
+
+    if (!minutes || !startTime) {
+      return;
+    }
+
+    const [hours, mins] = startTime.split(':').map(Number);
+    const total = Math.min(hours * 60 + mins + minutes, 23 * 60 + 59);
+    const pad = (part: number) => String(part).padStart(2, '0');
+    this.eventForm.controls.endTime.setValue(`${pad(Math.floor(total / 60))}:${pad(total % 60)}`);
+  }
+
+  formatDuration(minutes: number): string {
+    if (minutes < 60) {
+      return `${minutes} min`;
+    }
+
+    const hours = Math.floor(minutes / 60);
+    const rest = minutes % 60;
+    return rest ? `${hours}h ${rest}min` : `${hours}h`;
+  }
+
+  retryFinanceSummary(): void {
+    this.financeRequestKey = '';
+    this.loadFinanceSummary(this.financeCalendars().map(calendar => calendar.id));
+  }
+
+  financeBarWidth(value: number): number {
+    const expected = this.financeSummary()?.expectedAmount ?? 0;
+    return expected > 0 ? Math.min(100, Math.round((value / expected) * 100)) : 0;
+  }
+
+  private minutesBetween(startTime: string, endTime: string): number | null {
+    if (!startTime || !endTime) {
+      return null;
+    }
+
+    const toMinutes = (value: string) => {
+      const [hours, minutes] = value.split(':').map(Number);
+      return hours * 60 + minutes;
+    };
+
+    const diff = toMinutes(endTime) - toMinutes(startTime);
+    return diff > 0 ? diff : null;
+  }
+
+  /** Mês civil atual vs. anterior, somando os calendários autorizados (sem valores fixos). */
+  private loadFinanceSummary(calendarIds: string[]): void {
+    const today = new Date();
+    const key = `${calendarIds.join(',')}|${today.getFullYear()}-${today.getMonth()}`;
+
+    if (key === this.financeRequestKey) {
+      return;
+    }
+
+    this.financeRequestKey = key;
+    this.financeSubscription?.unsubscribe();
+
+    if (!calendarIds.length) {
+      this.financeSummary.set(null);
+      this.isFinanceLoading.set(false);
+      this.financeError.set('');
+      return;
+    }
+
+    const toIso = (date: Date) => this.toInputDate(date);
+    const currentStart = new Date(today.getFullYear(), today.getMonth(), 1);
+    const currentEnd = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+    const previousStart = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+    const previousEnd = new Date(today.getFullYear(), today.getMonth(), 0);
+
+    this.isFinanceLoading.set(true);
+    this.financeError.set('');
+
+    const requests = calendarIds.flatMap(calendarId => [
+      this.financeService.summarize(calendarId, toIso(currentStart), toIso(currentEnd)),
+      this.financeService.summarize(calendarId, toIso(previousStart), toIso(previousEnd)),
+    ]);
+
+    this.financeSubscription = forkJoin(requests).subscribe({
+      next: results => {
+        const current = results.filter((_, index) => index % 2 === 0);
+        const previous = results.filter((_, index) => index % 2 === 1);
+        const sum = (items: typeof results, pick: (item: (typeof results)[number]) => number) =>
+          items.reduce((total, item) => total + (Number(pick(item)) || 0), 0);
+        const monthLabel = currentStart.toLocaleDateString('pt-BR', { month: 'long' });
+
+        this.financeSummary.set({
+          monthLabel,
+          expectedAmount: sum(current, item => item.expectedAmount),
+          receivedAmount: sum(current, item => item.receivedAmount),
+          pendingAmount: sum(current, item => item.pendingAmount),
+          appointmentCount: sum(current, item => item.appointmentCount),
+          previousExpectedAmount: sum(previous, item => item.expectedAmount),
+        });
+        this.isFinanceLoading.set(false);
+      },
+      error: () => {
+        this.financeSummary.set(null);
+        this.financeError.set('Não foi possível carregar o resumo financeiro.');
+        this.isFinanceLoading.set(false);
+      },
     });
   }
 
@@ -428,6 +670,10 @@ export class CalendarPage implements OnInit, AfterViewInit {
     this.router.navigate(['/pending']);
   }
 
+  openFinancePage(): void {
+    this.router.navigate(['/finance']);
+  }
+
   openEventDetails(event: EventResponse): void {
     this.eventDetailError.set('');
     this.paymentFormError.set('');
@@ -543,8 +789,9 @@ export class CalendarPage implements OnInit, AfterViewInit {
     const raw = this.eventForm.getRawValue();
     const calendarId = this.cleanText(raw.calendarId);
     const eventType = raw.eventType;
-    const title = this.cleanText(raw.title);
     const clientName = this.cleanText(raw.clientName);
+    // CLIENT não exibe "título" no formulário: usa o título existente ou o nome do cliente.
+    const title = this.cleanText(raw.title) || (eventType === 'CLIENT' ? clientName : '');
     const personName = this.cleanText(raw.personName);
     const description = this.cleanText(raw.description);
     const workDescription = this.cleanText(raw.workDescription);
@@ -560,14 +807,14 @@ export class CalendarPage implements OnInit, AfterViewInit {
       return;
     }
 
-    // BLG-FE-007: o título é validado depois do trim (Validators.required aceita só espaços).
-    if (!title) {
-      this.eventFormError.set('Informe o título do evento.');
+    if (eventType === 'CLIENT' && !clientName) {
+      this.eventFormError.set('Informe o nome do cliente.');
       return;
     }
 
-    if (eventType === 'CLIENT' && !clientName) {
-      this.eventFormError.set('Informe o nome do cliente.');
+    // BLG-FE-007: o título é validado depois do trim (Validators.required aceita só espaços).
+    if (!title) {
+      this.eventFormError.set('Informe o título do evento.');
       return;
     }
 
@@ -1395,6 +1642,8 @@ export class CalendarPage implements OnInit, AfterViewInit {
 
   private onDatesSet(arg: DatesSetArg): void {
     this.currentCalendarView.set(this.toCalendarViewName(arg.view.type));
+    const title = arg.view.title ?? '';
+    this.periodTitle.set(title.charAt(0).toUpperCase() + title.slice(1));
     this.visibleStart.set(arg.start);
     this.visibleEnd.set(arg.end);
     this.loadEvents();
@@ -1409,25 +1658,22 @@ export class CalendarPage implements OnInit, AfterViewInit {
   }
 
   private toCalendarEvents(events: EventResponse[]): EventInput[] {
-    return events.map(event => {
-      const colors = this.calendarColor(event.calendarId);
-      return {
-        id: event.id,
-        title: this.eventTitle(event),
-        start: event.startsAt,
-        end: event.endsAt,
-        backgroundColor: colors.bg,
-        textColor: colors.text,
-        borderColor: colors.border,
-        display: 'block',
-        classNames: [
-          'sp-event-block',
-          this.calendarColorClass(event.calendarId),
-          event.status === 'PENDING_APPROVAL' ? 'sp-event-pending' : '',
-        ],
-        extendedProps: event,
-      };
-    });
+    // Cor por tipo de evento (design system); pendente/rejeitado/cancelado sobrepõem o tipo.
+    return events.map(event => ({
+      id: event.id,
+      title: this.eventTitle(event),
+      start: event.startsAt,
+      end: event.endsAt,
+      display: 'block',
+      classNames: [
+        'sp-event-block',
+        `sp-type-${this.typeClass(event.eventType)}`,
+        event.status === 'PENDING_APPROVAL' ? 'sp-event-pending' : '',
+        event.status === 'REJECTED' ? 'sp-event-rejected' : '',
+        event.status === 'CANCELLED' ? 'sp-event-cancelled' : '',
+      ].filter(Boolean),
+      extendedProps: event,
+    }));
   }
 
   private eventTitle(event: EventResponse): string {
@@ -1448,12 +1694,16 @@ export class CalendarPage implements OnInit, AfterViewInit {
     const time = `${this.formatEventTime(startsAt)} - ${this.formatEventTime(endsAt)}`;
     const title = this.escapeHtml(this.eventTitle(event));
 
+    const status = event.status === 'PENDING_APPROVAL'
+      ? '<span class="sp-event-status">Aguardando aprovação</span>'
+      : '';
+
     if (viewType === 'dayGridMonth') {
       return {
         html: `
           <div class="sp-event-inner sp-event-inner-compact">
-            <span class="sp-event-dot"></span>
-            <span class="sp-event-compact-text">${this.formatEventTime(startsAt)} ${title}</span>
+            <span class="sp-event-title">${title}</span>
+            <span class="sp-event-time">${time}</span>
           </div>
         `,
       };
@@ -1462,12 +1712,9 @@ export class CalendarPage implements OnInit, AfterViewInit {
     return {
       html: `
         <div class="sp-event-inner">
-          <div class="sp-event-time">${time}</div>
-          <div class="sp-event-title">
-            <span class="sp-event-dot"></span>
-            <span>${title}</span>
-          </div>
-          <span class="sp-event-menu" aria-hidden="true">...</span>
+          <span class="sp-event-title">${title}</span>
+          <span class="sp-event-time">${time}</span>
+          ${status}
         </div>
       `,
     };
@@ -1532,9 +1779,9 @@ export class CalendarPage implements OnInit, AfterViewInit {
 
   eventTypeColor(type: EventType): string {
     const colors: Record<EventType, string> = {
-      CLIENT: '#3b82f6',
-      PERSONAL: '#22c55e',
-      SHARED: '#8b5cf6',
+      CLIENT: 'var(--sp-client)',
+      PERSONAL: 'var(--sp-personal)',
+      SHARED: 'var(--sp-shared)',
     };
     return colors[type];
   }

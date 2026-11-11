@@ -1,11 +1,23 @@
 <!doctype html>
-<html lang="en">
+<html lang="pt-BR">
 <head>
   <meta charset="utf-8">
-  <title>SharedPlannerFrontend</title>
+  <title>Shared Planner</title>
   <base href="/">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
   <link rel="icon" type="image/x-icon" href="favicon.ico">
+  <script>
+    // Aplica o tema salvo antes da primeira pintura (evita flash). Fonte: ThemeService.
+    (function () {
+      try {
+        var stored = localStorage.getItem('sharedPlanner.theme');
+        var dark = stored === 'dark' || ((!stored || stored === 'system')
+          && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
+        document.documentElement.dataset.theme = dark ? 'dark' : 'light';
+      } catch (e) {}
+    })();
+  </script>
 </head>
 <body>
   <app-root></app-root>

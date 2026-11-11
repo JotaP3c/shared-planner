@@ -1,0 +1,439 @@
+// Modais: criação/edição de evento, detalhe do evento e formulário de pagamento.
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  overflow-y: auto;
+  background: rgba(15, 23, 42, 0.45);
+  backdrop-filter: blur(3px);
+}
+
+.event-modal,
+.event-detail-panel {
+  width: min(760px, 100%);
+  max-height: calc(100dvh - 48px);
+  overflow: auto;
+  border: 1px solid var(--sp-border);
+  border-radius: 18px;
+  background: var(--sp-surface);
+  color: var(--sp-text);
+  box-shadow: var(--sp-shadow-lg);
+}
+
+.event-modal .modal-header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 20px 22px 16px;
+  border-bottom: 1px solid var(--sp-border);
+
+  h2 {
+    margin: 0;
+    font-size: 19px;
+    font-weight: 800;
+  }
+
+  p {
+    margin: 2px 0 0;
+    color: var(--sp-text-2);
+    font-size: 13px;
+  }
+
+  .title-icon {
+    display: grid;
+    place-items: center;
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    background: var(--sp-primary-soft);
+    color: var(--sp-primary);
+  }
+}
+
+.event-modal .modal-close {
+  margin-left: auto;
+}
+
+.event-modal .event-form {
+  display: grid;
+  grid-template-columns: 220px minmax(0, 1fr);
+}
+
+.event-modal .type-selector {
+  display: grid;
+  align-content: start;
+  gap: 10px;
+  margin: 0;
+  padding: 20px 18px;
+  border: 0;
+  border-right: 1px solid var(--sp-border);
+  background: var(--sp-surface-2);
+
+  legend {
+    float: left;
+    width: 100%;
+    margin-bottom: 4px;
+    padding: 0;
+    font-size: 14px;
+    font-weight: 800;
+  }
+}
+
+.event-modal .type-option {
+  --type-accent: var(--sp-personal);
+  --type-soft: var(--sp-personal-bg);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 11px 12px;
+  border: 1.5px solid var(--sp-border);
+  border-radius: var(--sp-radius);
+  background: var(--sp-surface);
+  color: var(--sp-text);
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease;
+
+  &.client {
+    --type-accent: var(--sp-client);
+    --type-soft: var(--sp-client-bg);
+  }
+
+  &.shared {
+    --type-accent: var(--sp-shared);
+    --type-soft: var(--sp-shared-bg);
+  }
+
+  &:hover {
+    border-color: var(--type-accent);
+  }
+
+  &.active {
+    border-color: var(--type-accent);
+    background: var(--type-soft);
+
+    .type-option-radio {
+      border-color: var(--type-accent);
+      box-shadow: inset 0 0 0 4px var(--sp-surface);
+      background: var(--type-accent);
+    }
+  }
+}
+
+.event-modal .type-option-icon {
+  display: grid;
+  flex: 0 0 auto;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  background: var(--type-soft);
+  color: var(--type-accent);
+}
+
+.event-modal .type-option-text {
+  display: grid;
+  flex: 1;
+  min-width: 0;
+
+  strong {
+    font-size: 14px;
+  }
+
+  small {
+    color: var(--sp-text-2);
+    font-size: 11px;
+  }
+}
+
+.event-modal .type-option-radio {
+  flex: 0 0 auto;
+  width: 18px;
+  height: 18px;
+  border: 2px solid var(--sp-border-strong);
+  border-radius: 50%;
+}
+
+.event-modal .form-fields {
+  display: grid;
+  align-content: start;
+  gap: 14px;
+  padding: 20px 22px;
+}
+
+.event-modal .form-row {
+  display: grid;
+  gap: 12px;
+
+  &.two {
+    grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr);
+  }
+
+  &.four {
+    grid-template-columns: minmax(0, 1.3fr) repeat(3, minmax(0, 1fr));
+  }
+}
+
+.event-modal .field-hint {
+  color: var(--sp-text-2);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.event-modal .modal-error {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: var(--sp-danger-bg);
+  color: var(--sp-danger);
+  font-size: 13px;
+  font-weight: 650;
+}
+
+.event-modal .modal-actions {
+  display: flex;
+  grid-column: 1 / -1;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 14px 22px;
+  border-top: 1px solid var(--sp-border);
+}
+
+// ---- Detalhe do evento ------------------------------------------------------
+.event-detail-panel {
+  width: min(640px, 100%);
+}
+
+.event-detail-panel .event-detail-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 20px 22px 16px;
+  border-bottom: 1px solid var(--sp-border);
+}
+
+.event-detail-panel .event-badge-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.event-detail-panel .status-pill:not([class*='status-']) {
+  background: var(--sp-primary-soft);
+  color: var(--sp-primary);
+}
+
+.event-detail-panel .event-title-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+
+  h2 {
+    margin: 0;
+    font-size: 20px;
+    font-weight: 800;
+    overflow-wrap: anywhere;
+  }
+
+  p {
+    margin: 2px 0 0;
+    color: var(--sp-text-2);
+    font-size: 13px;
+  }
+}
+
+.event-detail-panel .event-detail-avatar {
+  display: grid;
+  flex: 0 0 auto;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: var(--sp-personal-bg);
+  color: var(--sp-personal);
+
+  &.client {
+    background: var(--sp-client-bg);
+    color: var(--sp-client);
+  }
+
+  &.shared {
+    background: var(--sp-shared-bg);
+    color: var(--sp-shared);
+  }
+}
+
+.event-detail-panel .event-detail-body {
+  display: grid;
+  gap: 16px;
+  padding: 18px 22px;
+}
+
+.event-detail-panel .event-detail-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin: 0;
+}
+
+.event-detail-panel .detail-card {
+  padding: 10px 12px;
+  border: 1px solid var(--sp-border);
+  border-radius: 10px;
+  background: var(--sp-surface-2);
+
+  dt {
+    color: var(--sp-text-2);
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+  }
+
+  dd {
+    margin: 3px 0 0;
+    font-size: 14px;
+    font-weight: 650;
+    overflow-wrap: anywhere;
+  }
+
+  &.detail-wide {
+    grid-column: 1 / -1;
+  }
+}
+
+.event-detail-panel .detail-error {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: var(--sp-danger-bg);
+  color: var(--sp-danger);
+  font-size: 13px;
+  font-weight: 650;
+}
+
+.event-detail-panel .event-detail-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 14px 22px;
+  border-top: 1px solid var(--sp-border);
+
+  &:empty {
+    display: none;
+  }
+}
+
+.event-detail-panel .payment-form {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid var(--sp-border);
+  border-radius: var(--sp-radius);
+  background: var(--sp-surface);
+
+  > header {
+    display: grid;
+    gap: 2px;
+
+    strong {
+      font-size: 14px;
+    }
+
+    span {
+      color: var(--sp-text-2);
+      font-size: 12px;
+    }
+  }
+
+  > footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+  }
+}
+
+.event-detail-panel .payment-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.event-detail-panel .payment-hint {
+  margin: 0;
+  color: var(--sp-text-2);
+  font-size: 12px;
+}
+
+.event-detail-panel .required-pill {
+  margin-left: 6px;
+  padding: 1px 7px;
+  border-radius: var(--sp-radius-pill);
+  background: var(--sp-warning-bg);
+  color: var(--sp-pending-text);
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+// ---- Responsivo -------------------------------------------------------------
+@media (max-width: 720px) {
+  .modal-backdrop {
+    align-items: end;
+    padding: 0;
+  }
+
+  .event-modal,
+  .event-detail-panel {
+    max-height: 94dvh;
+    border-radius: 18px 18px 0 0;
+  }
+
+  .event-modal .event-form {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .event-modal .type-selector {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    padding: 14px;
+    border-right: 0;
+    border-bottom: 1px solid var(--sp-border);
+  }
+
+  .event-modal .type-option {
+    flex-direction: column;
+    padding: 10px 6px;
+    text-align: center;
+
+    small,
+    .type-option-radio {
+      display: none;
+    }
+  }
+
+  .event-modal .form-row.two,
+  .event-modal .form-row.four,
+  .event-detail-panel .event-detail-grid,
+  .event-detail-panel .payment-fields {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .event-modal .form-row.two > :first-child {
+    grid-column: 1 / -1;
+  }
+
+  .event-modal .modal-actions > button,
+  .event-detail-panel .event-detail-actions > button {
+    flex: 1;
+  }
+}

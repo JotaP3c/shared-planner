@@ -27,6 +27,18 @@
 - Validação: backend 19/19 e frontend 53/53 em 13 arquivos (integrado e standalones); build SSR com 9 rotas e 4 warnings de budget conhecidos; paridade backend 85/85 e frontend 78/78.
 - Q-004, Q-005 e a leitura de BR-PAY-003 (PAID → PENDING → troca de tipo/valor) continuam abertas.
 
+## Incremento 2026-11-11 — redesign de UI/UX do frontend
+
+- Design system em `src/styles/` (tokens claro/escuro, base, shell, calendário, FullCalendar, modais, login); componentes abaixo do budget de 8 kB (avisos de budget caíram de 4 para 1).
+- Ícones SVG inline (`shared/ui/icon`), sem dependência nova. `lang="pt-BR"`.
+- Tema claro/escuro/sistema real (`ThemeService`, `localStorage sharedPlanner.theme`), aplicado antes da pintura.
+- Shell: sidebar navy com grupos, colapsável em ≤1024px; sino com contagem real de aprovações que aguardam o usuário; perfil com papel, tema, configurações e sair; "Convidar usuário" falso virou "Adicionar membro" → `/members`.
+- Calendário: cores por tipo (CLIENT verde, PERSONAL azul, SHARED roxo, pendente âmbar, rejeitado vermelho), segmentado Mês/Semana/Dia, chips de tipo, título do período; painéis Próximos eventos, Convites pendentes e Resumo financeiro (real, `/api/finance/summary`, só com capacidade financeira, variação contra o mês anterior).
+- Modal: cards de tipo, campos dinâmicos, duração como atalho do término (contrato da API inalterado); CLIENT usa o nome do cliente como título quando vazio.
+- Login: split-screen, mostrar/ocultar senha, erros por campo; removidos Google, cadastro, "esqueci a senha" e "lembrar de mim" (sem suporte).
+- Correção: rotas autenticadas deixam de ser pré-renderizadas (`RenderMode.Client`); antes, F5/URL direta em `/calendar` caía num `<meta refresh>` fixo para `/login`. Só `/login` é pré-renderizada.
+- Decisões aplicadas: D1–D9 do Estágio 1 do redesign (pt-BR, tema real, sem campos/menus sem suporte).
+
 ## Multi-repository stabilization
 
 | Etapa | Status |

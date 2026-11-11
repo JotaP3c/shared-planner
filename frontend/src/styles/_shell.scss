@@ -1,0 +1,707 @@
+// Shell autenticado: sidebar, topbar, busca, notificações e menu de perfil.
+.app-shell {
+  display: grid;
+  grid-template-columns: 252px minmax(0, 1fr);
+  height: 100dvh;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 85% -10%, var(--sp-bg-accent), transparent 45%),
+    var(--sp-bg);
+}
+
+// ---- Sidebar -------------------------------------------------------------
+.app-shell .sidebar {
+  position: relative;
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  min-height: 0;
+  padding: 22px 16px 16px;
+  overflow-y: auto;
+  background: var(--sp-sidebar-bg);
+  color: var(--sp-sidebar-text);
+}
+
+.app-shell .brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0 6px 6px;
+
+  strong {
+    color: #fff;
+    font-size: 19px;
+    font-weight: 800;
+    line-height: 1.08;
+  }
+}
+
+.app-shell .brand-mark {
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  border-radius: 13px;
+  background: linear-gradient(135deg, #3b82f6, #2563eb);
+  color: #fff;
+  box-shadow: 0 10px 22px rgba(37, 99, 235, 0.38);
+}
+
+.app-shell .sidebar-close {
+  display: none;
+  margin-left: auto;
+  padding: 6px;
+  border: 0;
+  border-radius: 8px;
+  background: var(--sp-sidebar-hover);
+  color: #fff;
+  cursor: pointer;
+}
+
+.app-shell .navigation {
+  display: grid;
+  gap: 4px;
+}
+
+.app-shell .nav-link {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 44px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--sp-sidebar-text);
+  font-size: 14px;
+  font-weight: 650;
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+
+  &:hover {
+    background: var(--sp-sidebar-hover);
+    color: #fff;
+  }
+
+  &.active {
+    background: var(--sp-sidebar-active);
+    color: #fff;
+    box-shadow: 0 8px 18px rgba(37, 99, 235, 0.35);
+  }
+
+  > span {
+    flex: 1;
+  }
+}
+
+.app-shell .nav-caret {
+  transition: transform 0.2s ease;
+}
+
+.app-shell .nav-group-toggle.open .nav-caret {
+  transform: rotate(180deg);
+}
+
+.app-shell .nav-subitems {
+  display: grid;
+  gap: 2px;
+  margin: 2px 0 6px 22px;
+  padding-left: 14px;
+  border-left: 1px solid rgba(255, 255, 255, 0.1);
+
+  a {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    min-height: 34px;
+    padding: 0 10px;
+    border-radius: 8px;
+    color: var(--sp-sidebar-muted);
+    font-size: 13px;
+    font-weight: 600;
+    text-decoration: none;
+
+    &:hover {
+      color: #fff;
+      background: var(--sp-sidebar-hover);
+    }
+
+    &.active {
+      color: #fff;
+      background: rgba(37, 99, 235, 0.28);
+    }
+  }
+}
+
+.app-shell .nav-badge {
+  min-width: 20px;
+  padding: 1px 6px;
+  border-radius: var(--sp-radius-pill);
+  background: var(--sp-danger);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 800;
+  text-align: center;
+}
+
+.app-shell .team-card {
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  margin-top: auto;
+  padding: 18px 16px 16px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--sp-radius-lg);
+  background: var(--sp-sidebar-card);
+  text-align: center;
+
+  strong {
+    color: #fff;
+    font-size: 14px;
+    line-height: 1.3;
+  }
+
+  p {
+    margin: 0 0 6px;
+    color: var(--sp-sidebar-muted);
+    font-size: 12px;
+    line-height: 1.45;
+  }
+}
+
+.app-shell .team-art {
+  position: relative;
+  width: 76px;
+  height: 58px;
+  margin-bottom: 4px;
+}
+
+.app-shell .team-art-calendar {
+  position: absolute;
+  inset: 0 14px 4px 0;
+  display: grid;
+  place-items: center;
+  border-radius: 14px;
+  background: linear-gradient(135deg, #e0e7ff, #c7d7fe);
+  color: #2563eb;
+}
+
+.app-shell .team-art-clock {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border: 3px solid #0e1b42;
+  border-radius: 50%;
+  background: #3b82f6;
+  color: #fff;
+}
+
+.app-shell .team-card-action {
+  width: 100%;
+  text-decoration: none;
+}
+
+.app-shell .theme-switch {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 8px;
+  color: var(--sp-sidebar-muted);
+}
+
+.app-shell .theme-switch-track {
+  position: relative;
+  width: 40px;
+  height: 22px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--sp-radius-pill);
+  background: rgba(255, 255, 255, 0.18);
+  cursor: pointer;
+
+  span {
+    position: absolute;
+    top: 3px;
+    left: 3px;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: #fff;
+    transition: transform 0.2s ease;
+  }
+
+  &[aria-checked='true'] {
+    background: var(--sp-primary);
+
+    span {
+      transform: translateX(18px);
+    }
+  }
+}
+
+// ---- Workspace / topbar ----------------------------------------------
+.app-shell .workspace {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  min-width: 0;
+  min-height: 0;
+}
+
+.app-shell .topbar {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px 28px;
+}
+
+.app-shell .menu-button {
+  display: none;
+}
+
+.app-shell .search-wrapper {
+  position: relative;
+  flex: 1;
+  max-width: 560px;
+}
+
+.app-shell .search-box {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 46px;
+  padding: 0 14px;
+  border: 1px solid var(--sp-border);
+  border-radius: 12px;
+  background: var(--sp-surface);
+  color: var(--sp-text-muted);
+  box-shadow: var(--sp-shadow-sm);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+
+  &:focus-within,
+  &.search-active {
+    border-color: var(--sp-primary);
+    box-shadow: var(--sp-focus);
+  }
+
+  input {
+    flex: 1;
+    min-width: 0;
+    border: 0;
+    outline: 0;
+    background: transparent;
+    color: var(--sp-text);
+    font-size: 14px;
+
+    &::placeholder {
+      color: var(--sp-text-muted);
+    }
+
+    &::-webkit-search-cancel-button {
+      display: none;
+    }
+  }
+}
+
+.app-shell .search-clear-button {
+  display: grid;
+  place-items: center;
+  padding: 4px;
+  border: 0;
+  border-radius: 6px;
+  background: var(--sp-surface-2);
+  color: var(--sp-text-2);
+  cursor: pointer;
+}
+
+.app-shell .search-results-panel {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  right: 0;
+  z-index: 90;
+  max-height: min(440px, calc(100dvh - 130px));
+  overflow: hidden;
+  border: 1px solid var(--sp-border);
+  border-radius: var(--sp-radius);
+  background: var(--sp-surface);
+  box-shadow: var(--sp-shadow-lg);
+
+  header {
+    display: flex;
+    justify-content: space-between;
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--sp-border);
+    font-size: 13px;
+
+    small {
+      color: var(--sp-text-2);
+    }
+  }
+}
+
+.app-shell .search-results-list {
+  display: grid;
+  max-height: 360px;
+  overflow: auto;
+}
+
+.app-shell .search-result-item {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 16px;
+  border: 0;
+  border-bottom: 1px solid var(--sp-border);
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+
+  &:hover {
+    background: var(--sp-surface-hover);
+  }
+
+  &:last-child {
+    border-bottom: 0;
+  }
+}
+
+.app-shell .result-main {
+  display: grid;
+  min-width: 0;
+
+  strong,
+  small {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  strong {
+    font-size: 14px;
+  }
+
+  small {
+    color: var(--sp-text-2);
+    font-size: 12px;
+  }
+}
+
+.app-shell .result-date {
+  color: var(--sp-text-2);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.app-shell .search-state {
+  margin: 0;
+  padding: 16px;
+  color: var(--sp-text-2);
+  font-size: 13px;
+
+  &.error {
+    color: var(--sp-danger);
+  }
+}
+
+.app-shell .topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-left: auto;
+}
+
+.app-shell .notification-button {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  color: var(--sp-text);
+  text-decoration: none;
+
+  &:hover {
+    background: var(--sp-surface);
+  }
+}
+
+.app-shell .notification-badge {
+  position: absolute;
+  top: 5px;
+  right: 4px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border: 2px solid var(--sp-bg);
+  border-radius: var(--sp-radius-pill);
+  background: var(--sp-danger);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 800;
+  line-height: 14px;
+  text-align: center;
+}
+
+.app-shell .profile-wrapper {
+  position: relative;
+}
+
+.app-shell .profile-trigger {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 8px 4px 4px;
+  border: 1px solid transparent;
+  border-radius: var(--sp-radius-pill);
+  background: transparent;
+  cursor: pointer;
+
+  &:hover,
+  &.open {
+    border-color: var(--sp-border);
+    background: var(--sp-surface);
+  }
+
+  &.open .profile-caret {
+    transform: rotate(180deg);
+  }
+}
+
+.app-shell .profile-caret {
+  color: var(--sp-text-2);
+  transition: transform 0.2s ease;
+}
+
+.app-shell .profile-name {
+  max-width: 160px;
+  overflow: hidden;
+  color: var(--sp-text);
+  font-size: 14px;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.app-shell .avatar {
+  display: grid;
+  flex: 0 0 auto;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #3b82f6, #4f46e5);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 800;
+
+  &.avatar-lg {
+    width: 46px;
+    height: 46px;
+    font-size: 15px;
+  }
+}
+
+.app-shell .profile-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 98;
+}
+
+.app-shell .profile-menu {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  z-index: 99;
+  width: 288px;
+  max-width: calc(100vw - 24px);
+  padding: 8px;
+  border: 1px solid var(--sp-border);
+  border-radius: var(--sp-radius-lg);
+  background: var(--sp-surface);
+  box-shadow: var(--sp-shadow-lg);
+}
+
+.app-shell .profile-menu-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 6px;
+  padding: 10px 10px 14px;
+  border-bottom: 1px solid var(--sp-border);
+
+  > div {
+    display: grid;
+    min-width: 0;
+  }
+
+  strong {
+    font-size: 15px;
+  }
+
+  small {
+    color: var(--sp-text-2);
+    font-size: 12px;
+  }
+}
+
+.app-shell .profile-email {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.app-shell .profile-menu-section {
+  display: grid;
+  gap: 8px;
+  padding: 8px 10px 10px;
+}
+
+.app-shell .profile-menu-label {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--sp-text);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.app-shell .theme-options {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 4px;
+  padding: 3px;
+  border-radius: 10px;
+  background: var(--sp-surface-2);
+
+  button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    min-height: 30px;
+    border: 0;
+    border-radius: 8px;
+    background: transparent;
+    color: var(--sp-text-2);
+    font-size: 12px;
+    font-weight: 650;
+    cursor: pointer;
+
+    &.active {
+      background: var(--sp-surface);
+      color: var(--sp-primary);
+      box-shadow: var(--sp-shadow-sm);
+    }
+  }
+}
+
+.app-shell .profile-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 42px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--sp-text);
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+
+  &:hover {
+    background: var(--sp-surface-hover);
+  }
+
+  &.danger {
+    color: var(--sp-danger);
+
+    &:hover {
+      background: var(--sp-danger-bg);
+    }
+  }
+}
+
+.app-shell .profile-menu-divider {
+  height: 1px;
+  margin: 6px 4px;
+  background: var(--sp-border);
+}
+
+.app-shell .content {
+  min-height: 0;
+  padding: 0 28px 28px;
+  overflow: auto;
+}
+
+// ---- Responsivo -------------------------------------------------------
+@media (max-width: 1280px) {
+  .app-shell {
+    grid-template-columns: 228px minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 1024px) {
+  .app-shell {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .app-shell .sidebar {
+    position: fixed;
+    inset: 0 auto 0 0;
+    width: min(280px, 86vw);
+    transform: translateX(-100%);
+    transition: transform 0.22s ease;
+    box-shadow: var(--sp-shadow-lg);
+  }
+
+  .app-shell.sidebar-open .sidebar {
+    transform: translateX(0);
+  }
+
+  .app-shell .sidebar-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 35;
+    background: rgba(15, 23, 42, 0.45);
+  }
+
+  .app-shell .sidebar-close,
+  .app-shell .menu-button {
+    display: inline-grid;
+  }
+
+  .app-shell .topbar {
+    padding: 12px 16px;
+  }
+
+  .app-shell .content {
+    padding: 0 16px 20px;
+  }
+}
+
+@media (max-width: 640px) {
+  .app-shell .topbar {
+    gap: 8px;
+  }
+
+  .app-shell .profile-name,
+  .app-shell .profile-caret {
+    display: none;
+  }
+
+  .app-shell .search-box {
+    height: 42px;
+  }
+}

@@ -119,7 +119,7 @@ Estado após validação multi-repositório: `S0 = 0` e `S1 = 0`. Os dois S1, o 
 | BLG-TD-001 | P2 | Triagem controlada das dependências npm. | DONE nos dois contextos: Angular 21.2.21, `npm ci`, audits 0 e regressão; manter recorrente e nunca executar audit fix --force automaticamente. |
 | BLG-TD-002 | P3 | Automatizar paridade dos repositórios em CI/check local. | Divergência backend/frontend falha antes de release; .git, build e secrets permanecem excluídos. |
 | BLG-TD-003 | P3 | Centralizar mapeamento de erros e capacidades no frontend. | Menos duplicação sem transformar frontend em autoridade. |
-| BLG-TD-004 | P4 | Reduzir warnings de budget SCSS. | Quatro estilos ficam abaixo do budget acordado ou budget é justificado/documentado. |
+| BLG-TD-004 | P4 | Reduzir warnings de budget SCSS. | PARTIAL 2026-11-11: shell, calendário e login migrados para `src/styles/`; resta `finance-page.scss` (5 kB). |
 | BLG-TD-005 | P4 | Melhorar legibilidade de MembersPage e normalizar textos pt-BR. | Código não fica comprimido em linhas únicas e UI usa acentuação consistente. |
 | BLG-TD-006 | P4 | Rever metadados HTML e acessibilidade básica. | lang pt-BR, títulos, foco de modal e anúncios de loading/erro validados. |
 | BLG-TD-007 | P1 | Evitar N+1 na redação financeira de listas/pending. | DONE e sincronizado: `EventFinancialAccess` é resolvido uma vez por request/calendar e cacheado por `calendarId`; teste unitário e integração preservam autoria/capacidade. |
@@ -130,7 +130,7 @@ Estado após validação multi-repositório: `S0 = 0` e `S1 = 0`. Os dois S1, o 
 |---|---:|---|---|
 | BLG-UX-001 | P2 | Estados loading, empty, erro parcial, retry e acesso negado. | Cada página distingue os estados e não apresenta falha como ausência de dados. |
 | BLG-UX-002 | P2 | Explicar permissões sem substituir segurança backend. | Ações indisponíveis ficam ocultas/desabilitadas com motivo; 403 é compreensível. |
-| BLG-UX-003 | P3 | Remover ou marcar recursos fictícios. | Google, cadastro, reset, rememberMe, convite, tema, Despesas e Relatórios não parecem funcionais sem spec/implementação. |
+| BLG-UX-003 | P3 | Remover ou marcar recursos fictícios. | DONE 2026-11-11: Google, cadastro, reset e rememberMe removidos; convite virou "Adicionar membro" (→ `/members`); tema implementado de verdade. |
 | BLG-UX-004 | P3 | Avaliar eventos que atravessam dias. | Decidir requisito; se aceito, formulário representa datas distintas e possui teste. |
 | BLG-UX-005 | P3 | Feedback de sucesso e confirmação consistente. | Create/edit/payment/member/approval comunicam conclusão e impedem submissão duplicada. |
 

@@ -1,0 +1,258 @@
+// Base, tipografia e componentes compartilhados (botões, campos, cards, pills).
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  width: 100%;
+  min-height: 100%;
+  margin: 0;
+  background: var(--sp-bg);
+  color: var(--sp-text);
+  font-family: var(--sp-font);
+  -webkit-font-smoothing: antialiased;
+}
+
+// O shell rola dentro de .content; telas sem shell (login) rolam por conta própria.
+body {
+  overflow: hidden;
+}
+
+app-root {
+  display: block;
+  min-height: 100dvh;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+  color: inherit;
+}
+
+:focus-visible {
+  outline: 2px solid var(--sp-primary);
+  outline-offset: 2px;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+// ---- Botões -------------------------------------------------------------
+.primary-button,
+.save-button,
+.secondary-button,
+.ghost-button,
+.danger-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 40px;
+  padding: 0 16px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 650;
+  line-height: 1;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
+
+  &:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+  }
+}
+
+.primary-button,
+.save-button {
+  background: var(--sp-primary);
+  color: var(--sp-text-on-primary);
+  box-shadow: 0 6px 16px rgba(37, 99, 235, 0.25);
+
+  &:hover:not(:disabled) {
+    background: var(--sp-primary-hover);
+  }
+}
+
+.secondary-button,
+.ghost-button {
+  background: var(--sp-surface);
+  border-color: var(--sp-border);
+  color: var(--sp-text);
+
+  &:hover:not(:disabled) {
+    background: var(--sp-surface-hover);
+    border-color: var(--sp-border-strong);
+  }
+}
+
+.danger-button {
+  background: var(--sp-danger-bg);
+  border-color: transparent;
+  color: var(--sp-danger);
+
+  &:hover:not(:disabled) {
+    background: var(--sp-danger);
+    color: #fff;
+  }
+}
+
+.icon-button {
+  display: inline-grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border: 1px solid var(--sp-border);
+  border-radius: 10px;
+  background: var(--sp-surface);
+  color: var(--sp-text-2);
+  cursor: pointer;
+
+  &:hover:not(:disabled) {
+    color: var(--sp-primary);
+    border-color: var(--sp-border-strong);
+  }
+}
+
+.link-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--sp-primary);
+  font-size: 13px;
+  font-weight: 650;
+  text-decoration: none;
+  cursor: pointer;
+
+  &:disabled {
+    color: var(--sp-text-muted);
+    cursor: not-allowed;
+  }
+}
+
+// ---- Feedback ----------------------------------------------------------
+.error-message {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin: 0 0 14px;
+  padding: 10px 14px;
+  border: 1px solid color-mix(in srgb, var(--sp-danger) 25%, transparent);
+  border-radius: 10px;
+  background: var(--sp-danger-bg);
+  color: var(--sp-danger);
+  font-size: 13px;
+  font-weight: 600;
+
+  .secondary-button {
+    min-height: 32px;
+    padding: 0 12px;
+  }
+}
+
+// ---- Card padrão -------------------------------------------------------
+.sp-card {
+  border: 1px solid var(--sp-border);
+  border-radius: var(--sp-radius-lg);
+  background: var(--sp-surface);
+  box-shadow: var(--sp-shadow);
+}
+
+// ---- Pills por tipo/status --------------------------------------------
+.sp-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 9px;
+  border-radius: var(--sp-radius-pill);
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.3;
+  white-space: nowrap;
+}
+
+.type-client { background: var(--sp-client-bg); color: var(--sp-client-text); }
+.type-personal { background: var(--sp-personal-bg); color: var(--sp-personal-text); }
+.type-shared { background: var(--sp-shared-bg); color: var(--sp-shared-text); }
+.status-pending { background: var(--sp-pending-bg); color: var(--sp-pending-text); }
+.status-rejected { background: var(--sp-rejected-bg); color: var(--sp-rejected-text); }
+.status-approved { background: var(--sp-success-bg); color: var(--sp-success); }
+.status-cancelled { background: var(--sp-surface-2); color: var(--sp-text-2); }
+
+.dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex: 0 0 auto;
+
+  &.client { background: var(--sp-client); }
+  &.personal { background: var(--sp-personal); }
+  &.shared { background: var(--sp-shared); }
+  &.pending { background: var(--sp-pending); }
+}
+
+// ---- Campos ------------------------------------------------------------
+.sp-field {
+  display: grid;
+  gap: 6px;
+  color: var(--sp-text);
+  font-size: 13px;
+  font-weight: 650;
+
+  .req {
+    color: var(--sp-danger);
+  }
+}
+
+.sp-input,
+.sp-field input,
+.sp-field select,
+.sp-field textarea {
+  width: 100%;
+  min-height: 42px;
+  padding: 9px 12px;
+  border: 1px solid var(--sp-border);
+  border-radius: 10px;
+  background: var(--sp-surface);
+  color: var(--sp-text);
+  font-size: 14px;
+  font-weight: 500;
+  outline: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+
+  &::placeholder {
+    color: var(--sp-text-muted);
+  }
+
+  &:focus {
+    border-color: var(--sp-primary);
+    box-shadow: var(--sp-focus);
+  }
+
+  &.ng-invalid.ng-touched {
+    border-color: var(--sp-danger);
+  }
+}
+
+.sp-field textarea {
+  min-height: 76px;
+  resize: vertical;
+}

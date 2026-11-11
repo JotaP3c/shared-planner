@@ -1,0 +1,193 @@
+// Tema do FullCalendar alinhado ao design system (escopo .calendar-page).
+.calendar-page .fc {
+  --fc-border-color: var(--sp-border);
+  --fc-page-bg-color: var(--sp-surface);
+  --fc-neutral-bg-color: var(--sp-surface-2);
+  --fc-today-bg-color: color-mix(in srgb, var(--sp-primary) 6%, transparent);
+  --fc-now-indicator-color: var(--sp-danger);
+  --fc-event-border-color: transparent;
+  --fc-event-bg-color: transparent;
+  font-family: var(--sp-font);
+  color: var(--sp-text);
+}
+
+.calendar-page .fc .fc-scrollgrid {
+  overflow: hidden;
+  border-radius: var(--sp-radius);
+}
+
+.calendar-page .fc .fc-col-header-cell {
+  padding: 10px 0;
+  background: var(--sp-surface-2);
+}
+
+.calendar-page .fc .fc-col-header-cell-cushion {
+  color: var(--sp-text-2);
+  font-size: 12px;
+  font-weight: 800;
+  text-decoration: none;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.calendar-page .fc .fc-daygrid-day-frame {
+  min-height: 104px;
+}
+
+.calendar-page .fc .fc-daygrid-day-top {
+  flex-direction: row;
+  padding: 6px 8px 0;
+}
+
+.calendar-page .fc .fc-daygrid-day-number {
+  display: grid;
+  place-items: center;
+  min-width: 28px;
+  height: 28px;
+  padding: 0 4px;
+  border-radius: 50%;
+  color: var(--sp-text);
+  font-size: 13px;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.calendar-page .fc .fc-day-today {
+  background: var(--fc-today-bg-color);
+
+  .fc-daygrid-day-number {
+    background: var(--sp-today);
+    color: #fff;
+  }
+}
+
+.calendar-page .fc .fc-day-other .fc-daygrid-day-number {
+  color: var(--sp-text-muted);
+  font-weight: 600;
+}
+
+.calendar-page .fc .fc-daygrid-day:hover {
+  background: var(--sp-surface-hover);
+  cursor: pointer;
+}
+
+.calendar-page .fc .fc-daygrid-more-link {
+  color: var(--sp-primary);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.calendar-page .fc .fc-timegrid-slot {
+  height: 40px;
+}
+
+.calendar-page .fc .fc-timegrid-slot-label-cushion,
+.calendar-page .fc .fc-timegrid-axis-cushion {
+  color: var(--sp-text-2);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.calendar-page.view-week .fc .fc-scroller-liquid-absolute,
+.calendar-page.view-day .fc .fc-scroller-liquid-absolute {
+  scrollbar-width: thin;
+}
+
+.calendar-page.view-week .calendar-frame,
+.calendar-page.view-day .calendar-frame {
+  height: min(68dvh, 720px);
+}
+
+.calendar-page.view-week .fc,
+.calendar-page.view-day .fc {
+  height: 100% !important;
+}
+
+// ---- Eventos (cor por tipo) -------------------------------------------------
+.calendar-page .fc .sp-event-block {
+  --sp-ev-accent: var(--sp-personal);
+  --sp-ev-bg: var(--sp-personal-bg);
+  --sp-ev-text: var(--sp-personal-text);
+  margin: 1px 4px 3px;
+  padding: 0;
+  overflow: hidden;
+  border: 0 !important;
+  border-left: 3px solid var(--sp-ev-accent) !important;
+  border-radius: 7px;
+  background: var(--sp-ev-bg) !important;
+  color: var(--sp-ev-text) !important;
+  box-shadow: none;
+  cursor: pointer;
+
+  &:hover {
+    filter: brightness(0.97);
+  }
+
+  &.sp-type-client {
+    --sp-ev-accent: var(--sp-client);
+    --sp-ev-bg: var(--sp-client-bg);
+    --sp-ev-text: var(--sp-client-text);
+  }
+
+  &.sp-type-shared {
+    --sp-ev-accent: var(--sp-shared);
+    --sp-ev-bg: var(--sp-shared-bg);
+    --sp-ev-text: var(--sp-shared-text);
+  }
+
+  &.sp-event-pending {
+    --sp-ev-accent: var(--sp-pending);
+    --sp-ev-bg: var(--sp-pending-bg);
+    --sp-ev-text: var(--sp-pending-text);
+  }
+
+  &.sp-event-rejected {
+    --sp-ev-accent: var(--sp-rejected);
+    --sp-ev-bg: var(--sp-rejected-bg);
+    --sp-ev-text: var(--sp-rejected-text);
+  }
+
+  &.sp-event-cancelled {
+    opacity: 0.6;
+
+    .sp-event-title {
+      text-decoration: line-through;
+    }
+  }
+
+  .fc-event-main {
+    color: inherit;
+  }
+}
+
+.calendar-page .fc .sp-event-inner {
+  display: grid;
+  gap: 1px;
+  min-width: 0;
+  padding: 4px 7px;
+  line-height: 1.25;
+}
+
+.calendar-page .fc .sp-event-title,
+.calendar-page .fc .sp-event-time,
+.calendar-page .fc .sp-event-status {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.calendar-page .fc .sp-event-title {
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.calendar-page .fc .sp-event-time,
+.calendar-page .fc .sp-event-status {
+  font-size: 11px;
+  font-weight: 600;
+  opacity: 0.85;
+}
+
+.calendar-page .fc .fc-highlight {
+  background: var(--sp-primary-soft);
+}

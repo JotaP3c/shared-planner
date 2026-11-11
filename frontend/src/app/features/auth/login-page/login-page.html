@@ -1,120 +1,120 @@
-<section class="login-page">
+<main class="login-page">
   <div class="login-shell">
-    <section class="product-side">
+    <section class="product-side" aria-labelledby="login-headline">
       <header class="brand">
-        <div class="brand-icon">
-          <span></span>
-        </div>
-        <strong>SharedPlanner</strong>
+        <span class="brand-mark" aria-hidden="true"><sp-icon name="calendar-check" [size]="26" /></span>
+        <strong>Shared Planner</strong>
       </header>
 
       <div class="hero-copy">
-        <h1>
-          Agenda compartilhada,<br />
-          <span>gestão financeira integrada.</span>
-        </h1>
-
+        <h1 id="login-headline">Sua agenda, <span>compartilhada e organizada.</span></h1>
         <p>
-          Organize compromissos, acompanhe receitas e despesas
-          e tenha controle total da sua rotina financeira.
+          Gerencie atendimentos, coordene eventos compartilhados e mantenha suas informações
+          financeiras organizadas em um só lugar.
         </p>
       </div>
 
-      <div class="benefits">
-        <article>
-          <div class="benefit-icon calendar"></div>
+      <ul class="benefits">
+        <li>
+          <span class="benefit-icon"><sp-icon name="calendar" [size]="22" /></span>
           <div>
             <strong>Agenda compartilhada</strong>
-            <p>Gerencie compromissos em equipe e mantenha todos alinhados.</p>
+            <p>Compromissos da equipe sempre alinhados.</p>
           </div>
-        </article>
-
-        <article>
-          <div class="benefit-icon chart"></div>
+        </li>
+        <li>
+          <span class="benefit-icon"><sp-icon name="chart" [size]="22" /></span>
           <div>
             <strong>Financeiro integrado</strong>
-            <p>Acompanhe receitas, pagamentos e pendências em tempo real.</p>
+            <p>Acompanhe receitas, pagamentos e pendências.</p>
           </div>
-        </article>
-
-        <article>
-          <div class="benefit-icon users"></div>
+        </li>
+        <li>
+          <span class="benefit-icon"><sp-icon name="users" [size]="22" /></span>
           <div>
             <strong>Colaboração em equipe</strong>
-            <p>Trabalhe com permissões, aprovações e histórico das ações.</p>
+            <p>Permissões, aprovações e histórico das ações.</p>
           </div>
-        </article>
-      </div>
-
-      <div class="security-note">
-        <div class="shield"></div>
-        <p>
-          <strong>Seus dados estão protegidos</strong>
-          Acesso seguro com autenticação por token.
-        </p>
-      </div>
+        </li>
+      </ul>
 
       <div class="illustration" aria-hidden="true">
-        <img src="assets/login-illustration.png" alt="" />
+        <img src="assets/login-illustration.png" alt="" width="640" height="480" />
       </div>
+
+      <p class="security-note">
+        <sp-icon name="shield" [size]="20" />
+        Acesso protegido por autenticação com token.
+      </p>
     </section>
 
     <section class="form-side">
-      <form class="login-card" [formGroup]="form" (ngSubmit)="submit()">
+      <div class="login-card">
+        <header class="mobile-brand" aria-hidden="true">
+          <span class="brand-mark"><sp-icon name="calendar-check" [size]="22" /></span>
+          <strong>Shared Planner</strong>
+        </header>
+
         <div class="form-header">
           <h2>Bem-vindo de volta!</h2>
-          <p>Acesse sua conta para continuar</p>
+          <p>Acesse sua conta para continuar.</p>
         </div>
 
-        <label>
-          <span>E-mail</span>
-          <div class="input-field">
-            <i class="mail-icon"></i>
-            <input type="email" formControlName="email" placeholder="seu@email.com" autocomplete="email" />
+        <form [formGroup]="form" (ngSubmit)="submit()" novalidate>
+          <label class="login-field" for="login-email">E-mail</label>
+          <div class="input-field" [class.invalid]="emailError">
+            <sp-icon name="mail" [size]="18" />
+            <input
+              id="login-email"
+              type="email"
+              formControlName="email"
+              placeholder="seu@email.com"
+              autocomplete="email"
+              [attr.aria-invalid]="!!emailError"
+              [attr.aria-describedby]="emailError ? 'login-email-error' : null"
+            />
           </div>
-        </label>
+          @if (emailError) {
+            <p class="field-error" id="login-email-error">{{ emailError }}</p>
+          }
 
-        <label>
-          <span>Senha</span>
-          <div class="input-field">
-            <i class="lock-icon"></i>
-            <input type="password" formControlName="password" placeholder="••••••••••" autocomplete="current-password" />
+          <label class="login-field" for="login-password">Senha</label>
+          <div class="input-field" [class.invalid]="passwordError">
+            <sp-icon name="lock" [size]="18" />
+            <input
+              id="login-password"
+              [type]="showPassword() ? 'text' : 'password'"
+              formControlName="password"
+              placeholder="Sua senha"
+              autocomplete="current-password"
+              [attr.aria-invalid]="!!passwordError"
+              [attr.aria-describedby]="passwordError ? 'login-password-error' : null"
+            />
+            <button
+              class="password-toggle"
+              type="button"
+              [attr.aria-label]="showPassword() ? 'Ocultar senha' : 'Mostrar senha'"
+              [attr.aria-pressed]="showPassword()"
+              (click)="togglePasswordVisibility()"
+            >
+              <sp-icon [name]="showPassword() ? 'eye-off' : 'eye'" [size]="18" />
+            </button>
           </div>
-        </label>
+          @if (passwordError) {
+            <p class="field-error" id="login-password-error">{{ passwordError }}</p>
+          }
 
-        <div class="form-options">
-          <label class="remember">
-            <input type="checkbox" formControlName="rememberMe" />
-            <span>Lembrar de mim</span>
-          </label>
+          @if (errorMessage) {
+            <p class="error" role="alert"><sp-icon name="alert" [size]="16" />{{ errorMessage }}</p>
+          }
 
-          <a href="#">Esqueci minha senha</a>
-        </div>
+          <button class="primary-button submit-button" type="submit" [disabled]="isSubmitting">
+            {{ isSubmitting ? 'Entrando...' : 'Entrar' }}
+          </button>
+        </form>
 
-        @if (errorMessage) {
-          <p class="error">{{ errorMessage }}</p>
-        }
-
-        <button type="submit" [disabled]="isSubmitting">
-          {{ isSubmitting ? 'Entrando...' : 'Entrar' }}
-        </button>
-
-        <div class="divider">
-          <span></span>
-          <p>ou continue com</p>
-          <span></span>
-        </div>
-
-        <button class="google-button" type="button">
-          <strong>G</strong>
-          Entrar com Google
-        </button>
-
-        <p class="signup">
-          Não tem uma conta?
-          <a href="#">Criar conta</a>
-        </p>
-      </form>
+        <p class="access-note">Não tem acesso? Solicite ao administrador da sua equipe.</p>
+      </div>
     </section>
   </div>
-</section>
+</main>

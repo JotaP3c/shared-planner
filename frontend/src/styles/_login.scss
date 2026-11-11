@@ -1,0 +1,332 @@
+// Login: split-screen no desktop, formulário primeiro no mobile.
+.login-page {
+  display: grid;
+  min-height: 100dvh;
+  padding: clamp(12px, 1.6vw, 24px);
+  background:
+    radial-gradient(circle at 80% 10%, color-mix(in srgb, var(--sp-primary) 10%, transparent), transparent 35%),
+    linear-gradient(135deg, var(--sp-bg) 0%, var(--sp-bg-accent) 100%);
+  color: var(--sp-text);
+}
+
+.login-page .login-shell {
+  display: grid;
+  grid-template-columns: minmax(0, 1.25fr) minmax(400px, 0.85fr);
+  overflow: hidden;
+  border: 1px solid var(--sp-border);
+  border-radius: 20px;
+  background: var(--sp-surface);
+  box-shadow: var(--sp-shadow);
+}
+
+.login-page .product-side {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  grid-template-rows: auto auto 1fr auto;
+  column-gap: 32px;
+  padding: clamp(32px, 5vh, 56px) clamp(32px, 4vw, 64px);
+  background:
+    radial-gradient(circle at 75% 55%, color-mix(in srgb, var(--sp-primary) 14%, transparent), transparent 45%),
+    linear-gradient(90deg, var(--sp-surface) 0%, color-mix(in srgb, var(--sp-primary-soft) 70%, var(--sp-surface)) 100%);
+}
+
+.login-page .brand,
+.login-page .mobile-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+
+  strong {
+    font-size: 20px;
+    font-weight: 800;
+  }
+}
+
+.login-page .brand {
+  grid-column: 1 / -1;
+}
+
+.login-page .brand-mark {
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  border-radius: 13px;
+  background: linear-gradient(135deg, #3b82f6, #2563eb);
+  color: #fff;
+  box-shadow: 0 10px 22px rgba(37, 99, 235, 0.3);
+}
+
+.login-page .hero-copy {
+  grid-column: 1;
+  margin-top: clamp(28px, 6vh, 64px);
+
+  h1 {
+    margin: 0;
+    font-size: clamp(30px, 2.6vw, 42px);
+    font-weight: 800;
+    line-height: 1.12;
+    letter-spacing: -0.02em;
+
+    span {
+      display: block;
+      color: var(--sp-primary);
+    }
+  }
+
+  p {
+    max-width: 440px;
+    margin: 18px 0 0;
+    color: var(--sp-text-2);
+    font-size: 15px;
+    line-height: 1.6;
+  }
+}
+
+.login-page .benefits {
+  display: grid;
+  grid-column: 1;
+  align-content: start;
+  gap: 22px;
+  margin: clamp(28px, 5vh, 48px) 0 0;
+  padding: 0;
+  list-style: none;
+
+  li {
+    display: flex;
+    gap: 14px;
+  }
+
+  strong {
+    font-size: 15px;
+  }
+
+  p {
+    margin: 4px 0 0;
+    color: var(--sp-text-2);
+    font-size: 13px;
+    line-height: 1.5;
+  }
+}
+
+.login-page .benefit-icon {
+  display: grid;
+  flex: 0 0 auto;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  border: 1px solid color-mix(in srgb, var(--sp-primary) 20%, var(--sp-border));
+  border-radius: 13px;
+  background: var(--sp-primary-soft);
+  color: var(--sp-primary);
+}
+
+.login-page .illustration {
+  display: flex;
+  grid-column: 2;
+  grid-row: 2 / 5;
+  align-items: center;
+  justify-content: center;
+
+  img {
+    width: 100%;
+    max-width: 560px;
+    height: auto;
+    border-radius: 28px;
+    // O PNG tem fundo próprio: as bordas são esfumaçadas para integrar ao painel.
+    -webkit-mask-image: radial-gradient(ellipse 72% 70% at 50% 50%, #000 58%, transparent 100%);
+    mask-image: radial-gradient(ellipse 72% 70% at 50% 50%, #000 58%, transparent 100%);
+  }
+}
+
+.login-page .security-note {
+  display: flex;
+  grid-column: 1;
+  align-items: center;
+  align-self: end;
+  gap: 10px;
+  margin: 32px 0 0;
+  color: var(--sp-text-2);
+  font-size: 13px;
+
+  sp-icon {
+    color: var(--sp-primary);
+  }
+}
+
+.login-page .form-side {
+  display: grid;
+  place-items: center;
+  padding: clamp(28px, 4vw, 56px);
+  background: var(--sp-bg);
+}
+
+.login-page .login-card {
+  width: min(100%, 440px);
+  padding: clamp(32px, 5vh, 48px) clamp(28px, 3vw, 44px);
+  border: 1px solid var(--sp-border);
+  border-radius: 18px;
+  background: var(--sp-surface);
+  box-shadow: var(--sp-shadow);
+}
+
+.login-page .mobile-brand {
+  display: none;
+  margin-bottom: 24px;
+}
+
+.login-page .form-header {
+  margin-bottom: 26px;
+
+  h2 {
+    margin: 0;
+    font-size: 27px;
+    font-weight: 800;
+  }
+
+  p {
+    margin: 8px 0 0;
+    color: var(--sp-text-2);
+    font-size: 15px;
+  }
+}
+
+.login-page .login-field {
+  display: block;
+  margin: 18px 0 8px;
+  font-size: 14px;
+  font-weight: 700;
+
+  &:first-of-type {
+    margin-top: 0;
+  }
+}
+
+.login-page .input-field {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  height: 50px;
+  padding: 0 14px;
+  border: 1px solid var(--sp-border);
+  border-radius: 12px;
+  background: var(--sp-surface);
+  color: var(--sp-text-muted);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+
+  &:focus-within {
+    border-color: var(--sp-primary);
+    box-shadow: var(--sp-focus);
+  }
+
+  &.invalid {
+    border-color: var(--sp-danger);
+  }
+
+  input {
+    flex: 1;
+    min-width: 0;
+    border: 0;
+    outline: 0;
+    background: transparent;
+    color: var(--sp-text);
+    font-size: 15px;
+
+    &::placeholder {
+      color: var(--sp-text-muted);
+    }
+  }
+}
+
+.login-page .password-toggle {
+  display: grid;
+  place-items: center;
+  padding: 6px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--sp-text-2);
+  cursor: pointer;
+
+  &:hover {
+    background: var(--sp-surface-2);
+    color: var(--sp-primary);
+  }
+}
+
+.login-page .field-error {
+  margin: 6px 0 0;
+  color: var(--sp-danger);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.login-page .error {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 18px 0 0;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: var(--sp-danger-bg);
+  color: var(--sp-danger);
+  font-size: 14px;
+  font-weight: 650;
+}
+
+.login-page .submit-button {
+  width: 100%;
+  min-height: 50px;
+  margin-top: 26px;
+  font-size: 15px;
+}
+
+.login-page .access-note {
+  margin: 22px 0 0;
+  color: var(--sp-text-2);
+  font-size: 13px;
+  text-align: center;
+}
+
+// Notebook: texto ao lado do formulário, sem ilustração.
+@media (max-width: 1280px) {
+  .login-page .login-shell {
+    grid-template-columns: minmax(0, 1fr) minmax(380px, 0.9fr);
+  }
+
+  .login-page .product-side {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .login-page .illustration {
+    display: none;
+  }
+}
+
+// Tablet/mobile: formulário primeiro, marca visível no card.
+@media (max-width: 900px) {
+  .login-page .login-shell {
+    display: block;
+    border: 0;
+    background: transparent;
+    box-shadow: none;
+  }
+
+  .login-page .product-side {
+    display: none;
+  }
+
+  .login-page .form-side {
+    min-height: calc(100dvh - 32px);
+    padding: 8px;
+    background: transparent;
+  }
+
+  .login-page .mobile-brand {
+    display: flex;
+  }
+
+  .login-page .login-card {
+    padding: 28px 22px;
+  }
+}

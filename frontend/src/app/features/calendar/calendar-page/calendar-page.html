@@ -426,7 +426,7 @@
                 <select [value]="currentDurationMinutes() ?? ''" (change)="onDurationChange($any($event.target).value)">
                   <option value="">Personalizada</option>
                   @for (minutes of availableDurations(); track minutes) {
-                    <option [value]="minutes">{{ formatDuration(minutes) }}</option>
+                    <option [value]="minutes" [selected]="minutes === currentDurationMinutes()">{{ formatDuration(minutes) }}</option>
                   }
                 </select>
               </label>

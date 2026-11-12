@@ -1,5 +1,13 @@
 # 09 — Financeiro
 
+Atualização 11/11/2026: a confirmação do atendimento é dimensão independente do
+pagamento. Desmarcados deixam de compor prevista e pendente, mas valores recebidos
+continuam em recebida; por isso `pendingAmount` pode diferir de
+`expectedAmount - receivedAmount`. O texto antigo abaixo só vale sem desmarcações.
+Feriados são overlay separado; PERSONAL/SHARED não geram receita. Consolidação soma
+cada calendário autorizado uma única vez, com períodos inclusivos e resultados
+trimestrais sintéticos no complemento project-audit-and-calendar-import.
+
 Objetivo: resumir receita de atendimentos por calendário/período. Acesso CURRENT: global ADMIN; global FINANCE quando membro; calendar ADMIN/FINANCE.
 
 ## Cobertura

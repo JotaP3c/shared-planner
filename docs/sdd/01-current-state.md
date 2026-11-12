@@ -1,5 +1,25 @@
 # 01 — Current State (AS-IS)
 
+## Estado vigente — 12/11/2026
+
+Revalidação para commits e pushes autorizados: ver
+[relatório de publicação](project-audit-and-calendar-import/publication-report.md).
+
+Complemento [auditoria e importação](project-audit-and-calendar-import/validation-report.md):
+calendários PERSONAL automáticos, SHARED/IMPORTED, papéis combinados, aprovações por
+participantes, descrição CLIENT única/telefone, recorrência e importação ICS idempotente,
+feriados nacionais BR/2026 e Finance consolidado. Usuários/Auditoria/Configurações funcionais.
+
+Backup local restaurado/verificado antes de aplicar V9/V10 (V8 já existente). Importação
+real autorizada: 365 ocorrências de 2026 em 3 calendários, repetição com 0 novas e
+365 duplicadas, 1 evento sem título bloqueado. Os 5 eventos anteriores estão intactos.
+Dados reais, backup e mapa ficam fora do Git. Backend: 120/120 em 18 suítes;
+frontend: 130/130 em 21 arquivos; builds sem warnings, 1 rota pré-renderizada;
+audit de produção: 0; paridade: backend 130/130, frontend 115/115.
+Detalhes e limites no relatório. Runtime agora usa C:\git nas duas camadas,
+corrigindo o backend ativo de C:\Kiro.
+Os blocos seguintes são checkpoints históricos, não substituem este estado vigente.
+
 ## Atualização — 2026-11-11 (correção de incidentes)
 
 Ver [incident-corrections/](incident-corrections/requirements.md). Mudanças de estado:

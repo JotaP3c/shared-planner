@@ -1,5 +1,21 @@
 # 05 — Especificação de calendário
 
+## Evolução vigente — 11/11/2026
+
+`calendarType`: PERSONAL, SHARED ou LEGACY. Novo usuário recebe PERSONAL na mesma
+transação; V9 cria um PERSONAL para cada usuário legado, com índice único parcial
+por owner e vínculo ADMIN. Nenhum evento antigo é movido/reclassificado e nenhuma
+permissão para terceiros é criada. Calendários antigos permanecem LEGACY.
+
+Autenticados criam SHARED; outros administradores são incluídos pelo owner/ADMIN
+contextual, sem acesso global de usuários. Membros podem combinar `roles`.
+POST de membro não é upsert: 404 sem conta, 409 inativo/duplicado; PUT altera papéis.
+O seletor exibe todos os calendários autorizados por padrão. Feriados são uma camada
+de leitura separada, não um calendário com membros e atendimentos.
+
+As seções CURRENT/TARGET abaixo são históricas e as afirmações incompatíveis são
+substituídas por este bloco e pelo complemento project-audit-and-calendar-import.
+
 Objetivo: organizar eventos e controlar visibilidade/criação por vínculo. Atores: usuário autenticado, ADMIN global e calendar ADMIN.
 
 ## CURRENT

@@ -37,6 +37,31 @@ Todas as respostas são JSON salvo 204/string; todas as rotas, exceto health/log
 
 ## Contratos por tipo
 
+### Extensões — auditoria e calendários (11/11/2026)
+
+| Rota | Contrato complementar |
+|---|---|
+| POST `/api/calendars` | autenticado; cria SHARED (padrão) ou IMPORTED; owner ADMIN; ownerEmail diferente do ator exige ADMIN global |
+| GET `/api/calendars` | acrescenta calendarType PERSONAL/SHARED/LEGACY/IMPORTED e memberRoles[]; campos antigos preservados |
+| POST/PUT membros | roles[] combináveis, fallback role singular; owner exige ADMIN |
+| POST/PUT eventos | clientPhone?, allDay?, approvalRequestedFromEmails[]?; respostas acrescentam approvals/participantes |
+| GET `/api/events/{id}/approval-history` | rodadas e respostas de aprovação, calendário visível |
+| POST `/api/event-series` | `{event:CreateEventRequest,recurrence:{frequency,interval?,weekDays?,until?,count?,zoneId}}`; finito ≤366, ≤3 anos |
+| GET `/api/event-series/by-event/{id}` | metadados e eventos da série autorizada |
+| PUT/DELETE `/api/event-series/{id}` | `scope=ALL\|FUTURE`, fromEventId para FUTURE; individual usa API de eventos |
+| POST `/api/calendar-imports/preview` | ICS, sourceCalendarId, targetCalendarId, zoneId, windowStart/windowEnd; consulta sem gravar |
+| POST `/api/calendar-imports/commit` | mesmo corpo e mappingConfirmed=true; privateEventsAuthorized opcional false; resultados por linha, deduplicação persistida |
+| GET `/api/holidays?country=BR&year=2026` | camada read-only autenticada, id estável, startDate/endDateExclusive e fonte oficial |
+
+PRIVATE/CONFIDENTIAL só é aceito com opt-in, gestão do destino PERSONAL/IMPORTED e
+owner como único membro. YEARLY é suportado pelo importador, inclusive 29/02 sem
+deslocar datas em anos comuns. A interface de criação de série mantém os presets
+diário/semanal/quinzenal/mensal/personalizado aprovados.
+
+Recorrência/importação reutilizam EventService; autorização contextual e validações
+continuam no backend. ICS não suportado/incompleto ou privado é bloqueado com motivo.
+Nenhuma rota exporta credenciais ou atribui preço ausente. Detalhes no complemento.
+
 - CLIENT: exige clientName/workDescription/amount; PERSONAL: exige personName; SHARED: exige approvalRequestedFromEmail diferente do ator e membro.
 - `EventResponse` contém IDs/e-mails, tipo/status, conteúdo e datas. Os campos `amount`, `paymentStatus`, `paymentMethod`, `receivedAmount` e `paidAt` são omitidos quando o ator não possui capacidade financeira ou de pagamento aprovada para aquele evento; ver `SEC-AUTHZ-006`.
 - Não há envelope padronizado de erro documentado.

@@ -1,5 +1,20 @@
 # 08 — Evento SHARED
 
+## Evolução de consentimento — 11/11/2026
+
+Em calendários `SHARED` novos, CLIENT/PERSONAL/SHARED exigem participantes
+designados (padrão: demais membros ativos). O criador não vota. `approvals` contém
+resposta por usuário e rodada; todas APPROVED → evento APPROVED; uma REJECTED →
+REJECTED. Cada nova edição reabre rodada e conserva as respostas antigas no histórico
+`GET /events/{id}/approval-history`. Somente designados ainda ativos/membros podem
+responder, e a decisão é serializada por lock do evento.
+
+O tipo de evento continua independente do tipo do calendário: CLIENT conserva
+campos financeiros e confirmação de atendimento; SHARED não gera receita. Calendários
+PERSONAL podem receber convites SHARED explícitos. LEGACY conserva o caminho singular
+anterior, incluindo sua validação de aprovador herdado. Nenhuma aprovação é automática.
+O restante deste documento descreve a baseline singular por compatibilidade.
+
 Objetivo: obter consentimento de outro membro para compromisso conjunto.
 
 Pré-condições: criador pode criar no calendário; alvo informado, ativo, membro e diferente do solicitante. Criação produz `PENDING_APPROVAL`. Só `approvalRequestedFrom` pode aprovar/rejeitar; status deve estar pendente.

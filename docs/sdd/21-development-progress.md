@@ -1,5 +1,19 @@
 # 21 — Development Progress
 
+## Entrega 12/11/2026 — auditoria e importação real
+
+Implementados CAL/APP/CLI/REC/IMP/HOL/FIN do complemento. Carga oficial autorizada
+confirmou 365 ocorrências em 3 calendários separados, sem dados financeiros inventados
+nem perda dos 5 eventos anteriores; idempotência: 365 duplicados e 0 novos.
+Backup/restore PASS; migrations V9/V10 aplicadas. Regressões: 120 backend e 130 frontend
+no monorepo e nos standalones; builds e paridade PASS, navegador real e sintético PASS.
+Relatório detalhado no complemento.
+Restam título ausente, QA manual do dono e decisões explicitamente abertas.
+O checkpoint inicial terminou sem commits/push. Após autorização do dono, a nova
+regressão passou e os commits foram separados por rotina: ver
+[relatório de publicação](project-audit-and-calendar-import/publication-report.md).
+“Remaining features” abaixo é baseline histórica.
+
 ## Completed
 
 - Baseline integrada atual: backend 16/16, frontend 31/31 em 12 arquivos e build SSR com 9 rotas.

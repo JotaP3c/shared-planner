@@ -2,6 +2,23 @@
 
 Shared Planner é uma aplicação de agenda compartilhada com autenticação, calendários multiusuário, eventos pessoais, atendimentos de clientes, aprovação de eventos compartilhados, pagamentos, financeiro e auditoria.
 
+## Entrega atual — 12/11/2026
+
+Calendário pessoal automático por usuário, calendários compartilhados/auxiliares,
+papéis combinados, aprovações por participantes, telefone de cliente, recorrência,
+importação ICS idempotente e feriados BR/2026 estão implementados. Usuários, Auditoria
+e Configurações de aparência são funcionais. O retrato anterior abaixo é histórico;
+a evidência atual está em [auditoria e importação](docs/sdd/project-audit-and-calendar-import/validation-report.md).
+
+Nesta máquina: frontend `http://localhost:4200`, backend `http://127.0.0.1:8080` e
+PostgreSQL local. O backend anterior vinha de `C:\Kiro`; o runtime atual usa o JAR
+validado de `C:\git\shared-planner\backend`. Para iniciá-lo novamente, executar
+`scripts/start-development-backend.ps1 -RuntimeEnvFile C:\shared-planner-private\development-runtime.env`.
+O arquivo de configuração, ZIP, mapa, backups e evidências reais ficam fora do Git.
+Não substituir o banco por seeds; antes de migrations, usar backup e verificar restore.
+
+Código equivalente no monorepo e nos dois standalones; sem commits/push nesta rodada.
+
 ## Stack atual
 
 - Backend: Java 17, Spring Boot 4, Security/JWT, JPA, Flyway e PostgreSQL 17.
@@ -30,7 +47,9 @@ Além da agenda, o produto contempla membros e papéis por calendário, busca gl
 
 ### Estado funcional
 
-O fluxo principal de autenticação e agenda está integrado. O resumo financeiro também foi concluído; Users, Audit e Settings seguem no roadmap e não devem ser interpretados como módulos concluídos. As cópias integradas e os repositórios standalone estão sincronizados e revalidados pelo gate final.
+Autenticação, agenda, resumo financeiro, Usuários, Auditoria e preferências de aparência
+estão integrados. As cópias do monorepo e os standalones foram sincronizados e validados;
+políticas de retenção e perfil além de aparência continuam no roadmap.
 
 | Área | Estado atual |
 |---|---|
@@ -42,11 +61,14 @@ O fluxo principal de autenticação e agenda está integrado. O resumo financeir
 | Pagamentos | Consulta e atualização dos dados de pagamento de atendimentos |
 | Membros | Inclusão, alteração de papel e remoção conforme autorização; owner não pode ser removido nem rebaixado de <code>ADMIN</code> |
 | Financeiro | Resumo de receitas funcional em <code>/finance</code>, com calendários autorizados, períodos civis/custom, oito métricas e estados completos |
-| Usuários | API administrativa disponível; a página <code>/admin/users</code> ainda é uma tela-base |
-| Auditoria | API e contratos disponíveis; a página <code>/audit</code> ainda é uma tela-base |
-| Configurações | Rota <code>/settings</code> reservada para evolução |
+| Usuários | Listagem, criação, edição, desativação/reativação e proteção administrativa |
+| Auditoria | Consulta real com filtros e autorização, sem snapshots na interface |
+| Configurações | Tema claro/escuro/sistema e identidade somente leitura |
 
-Login com Google, criação de conta, recuperação de senha e o comportamento específico de “Lembrar de mim” ainda não possuem integração completa. O estado técnico detalhado está documentado em [Current State](docs/sdd/01-current-state.md), [Frontend Flows](docs/sdd/13-frontend-flows.md) e [Gap Analysis](docs/sdd/17-gap-analysis.md).
+Google Login, cadastro público, recuperação de senha e “Lembrar de mim” não são
+oferecidos pela interface. Importação de Google Agenda usa exportação ICS, sem acessar
+a conta Google. O estado técnico detalhado está em [Current State](docs/sdd/01-current-state.md)
+e no complemento de auditoria/importação.
 
 ## Arquitetura
 

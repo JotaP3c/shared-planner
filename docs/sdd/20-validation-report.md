@@ -1,5 +1,19 @@
 # 20 — Functional Validation Report — até 2026-08-22
 
+## Validação vigente — 12/11/2026
+
+Relatório completo, matriz e intercorrências em
+[project-audit-and-calendar-import/validation-report.md](project-audit-and-calendar-import/validation-report.md).
+Monorepo/standalones: backend 120/120 em 18 suítes; frontend 130/130 em 21 arquivos;
+builds frontend PASS sem warnings e com 1 rota pré-renderizada; audit de produção: 0;
+paridade: backend 130/130 e frontend 115/115. PostgreSQL real isolado V1–V10: PASS;
+backup dev restaurado e conferido antes de V9/V10. Importação real: 365; repetição:
+0 novas; 5 eventos anteriores preservados; 1 sem título bloqueado. Browser: 8 cenários
+sintéticos e login/calendários/gráficos no runtime real.
+Após autorização para commits/pushes, a nova regressão passou e os commits foram
+separados por rotina. Ver [relatório de publicação](project-audit-and-calendar-import/publication-report.md).
+Os resultados abaixo são evidências históricas.
+
 ## Baseline
 
 | Área | Resultado inicial | Classificação |

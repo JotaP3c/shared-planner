@@ -1,5 +1,21 @@
 # 19 — Matriz de rastreabilidade
 
+## Complemento de rastreabilidade — 12/11/2026
+
+| Requisito | Implementação | Evidência |
+|---|---|---|
+| CAL-01..03 / Q-001 | CalendarService/UserService/roles/V9 | CalendarEvolutionIntegrationTests + PG migration test |
+| APP-01 | EventApproval/EventService/locks/batch | evolução, aprovações anteriores e frontend/calendar/shell/pending |
+| CLI-01 | clientPhone/descrição consolidada | evolução, formulário e máscara BR |
+| REC-01 | recurrence package + editor/scope | engine, integração e componentes |
+| IMP-01 / complemento real | calendarimport + import-page + operador privado | parser/integração: 31 testes; carga: 365; repetição: 0 novas |
+| HOL-01 | holiday package/resource + overlay | HolidayServiceTests: 3 testes e navegador |
+| FIN-01 | FinancePage/serviço existente + QuarterFinanceIntegrationTests | prevista: 990/1980/2970 por mês; autorização e consolidação |
+| UI-01 | filtros/Escape/badge/wrap/intervalo importado | frontend: 130 testes; browser: 8 cenários e runtime real |
+
+IDs CAL/APP/CLI/REC/IMP/HOL/FIN pertencem ao complemento
+project-audit-and-calendar-import, não são renumeração dos IDs históricos.
+
 ## Funcional
 
 | Business Rule | Backend/API | DB | Frontend | Acceptance | Test atual/alvo |

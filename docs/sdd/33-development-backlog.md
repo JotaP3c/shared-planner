@@ -1,5 +1,25 @@
 # 33 — Backlog de desenvolvimento
 
+## Atualização vigente — 12/11/2026
+
+| ID / referência | Resultado atual |
+|---|---|
+| BLG-BR-001 / Q-001 | RESOLVED para calendário PERSONAL próprio, automático e único; responsável estruturado segue Q-002 |
+| CAL-01..03 (complemento) | DONE: PERSONAL/SHARED/IMPORTED e papéis combinados, sem privilégio global implícito |
+| APP-01 (complemento) | DONE: consentimento de designados por rodada, unanimidade e histórico; política LEGACY preservada |
+| CLI-01 (complemento) | DONE: telefone e descrição única com legado preservado |
+| REC-01 / IMP-01 (complemento) | DONE: recorrência finita e importador idempotente; 365 reais, 0 novos na repetição; 1 sem título BLOCKED_DATA |
+| HOL-01 / FIN-01 (complemento) | DONE: 10 feriados, isolamento financeiro, fixtures outubro/novembro/dezembro e consolidação |
+| BLG-FE-004/005/009 | Users/Audit/aparência implementados; retenção Q-006 e perfil além de aparência não foram antecipados |
+| BLG-TEST-001 | H2 ampliado; migrations V1–V10 também verificadas em PostgreSQL isolado; concorrência ampla permanece evolução |
+| BLG-SEC-005 / dependências | audit de produção: 0 nesta execução; nenhum upgrade adicional foi necessário |
+| UI-01 (complemento) | DONE: e-mail com limite 180, Escape/foco do filtro, feriado legível, cabeçalho Finance móvel, intervalo importado preservado |
+
+Paridade **130/130 backend, 115/115 frontend**; testes **120 backend/130 frontend** nos
+dois contextos, builds sem warnings, runtime C:\git verificado. Detalhes e critérios no
+complemento; as tabelas anteriores abaixo são históricas quando conflitarem com
+esta atualização. Q-002/003/005/006, sessãoJWT/hardeningS2S3 e CI não estão encerrados.
+
 Atualizado em 2026-08-22. Este backlog deriva da auditoria funcional e de segurança, não da facilidade aparente de implementação. Os IDs são estáveis e cada item deve manter rastreabilidade até spec, regra, critério de aceite, implementação, teste e validação.
 
 ## Política de priorização

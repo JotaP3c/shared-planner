@@ -1,5 +1,27 @@
 # 04 — Permissões
 
+## Matriz vigente — evolução de calendários (11/11/2026)
+
+Papéis globais continuam `ADMIN`, `FINANCE`, `USER`; os nomes SYSTEM_* do requisito
+são conceitos, não uma troca incompatível de enums. `memberRoles`/`roles` permitem
+combinar EDITOR+FINANCE. `memberRole`/`role` permanecem para clientes antigos.
+
+| Capacidade | Regra vigente |
+|---|---|
+| Usuários globais | somente ADMIN global |
+| Pessoal próprio | owner sempre ADMIN contextual, independente do papel global |
+| Criar compartilhado | usuário autenticado, vira owner/ADMIN contextual |
+| Ver calendário | membership ou bypass ADMIN global já existente |
+| Criar evento | ADMIN/EDITOR contextual; bypass global preservado |
+| Gerenciar membros | ADMIN contextual; bypass global preservado |
+| Consultar financeiro | ADMIN/FINANCE contextual ou FINANCE global com membership |
+| EDITOR+FINANCE | edição conforme autoria + consulta financeira, sem gestão de membros |
+| Aprovar evento | designado ativo, membro atual, resposta pendente; nunca criador |
+
+A tabela CURRENT abaixo documenta a baseline anterior; não usar seu papel singular
+para remover capacidades da evolução. Q-003 (bypass) e Q-005 (alterar pagamento)
+continuam sem política nova. Consultar o complemento e testes de evolução.
+
 ## CURRENT — matriz efetiva do backend
 
 `✓` permitido; `próprio` depende de autoria; `—` negado. Global ADMIN é bypass nas regras de calendário.

@@ -1,5 +1,25 @@
 # 03 — Regras de negócio
 
+## Evolução aprovada — calendários e importação (11/11/2026)
+
+O anexo “Complete Project Audit…” aprova CAL-01..03, APP-01, CLI-01 e REC/IMP/HOL/FIN
+do [complemento](project-audit-and-calendar-import/requirements.md). Estas regras
+substituem os itens CURRENT incompatíveis da tabela histórica abaixo:
+
+- BR-CAL-002: cadastro provisiona um PERSONAL, owner ADMIN; autenticados podem criar
+  SHARED. Calendário próprio não é qualquer evento que mencione o nome do usuário.
+- BR-CAL-003/005: papéis contextuais combináveis, owner permanece ADMIN. Nenhum
+  papel contextual concede administração de usuários globais.
+- BR-SHARED-001/002: novos calendários SHARED exigem consentimento dos participantes
+  designados em qualquer tipo de evento; unanimidade, sem voto do criador, rodadas
+  preservadas. LEGACY conserva a regra anterior; ver especificação 08.
+- BR-CLIENT-001: descrição canônica e telefone opcional BR; textos legados preservados.
+- BR-FIN-001: feriados/PERSONAL/SHARED não geram receita; cada ocorrência real tem
+  um único Event. Desmarcados excluem prevista/pendente, preservando recebido.
+
+Pagamento e confirmação de atendimento mantêm regras anteriores. Q-005 não é
+decidida por habilitar acesso de consulta financeira com papéis combinados.
+
 | ID | Regra | Estado | Fonte/evidência |
 |---|---|---|---|
 | BR-AUTH-001 | Apenas health e login são públicos; demais APIs exigem JWT válido. | CONFIRMED | `SecurityConfig.securityFilterChain` |

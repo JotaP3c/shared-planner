@@ -1,5 +1,21 @@
 # 99 — Questões em aberto
 
+## Decisões explícitas da nova solicitação — 11/11/2026
+
+Q-001: **RESOLVED para escopo de calendário próprio**: exatamente um PERSONAL por
+usuário, owner ADMIN; terceiros somente por vínculo concedido. Calendários legados
+não são reatribuídos pelo nome. Responsável estruturado (Q-002) continua aberto.
+
+Q-004: o dono aprovou consentimento por múltiplos participantes em calendários
+compartilhados, sem voto do criador; unanimidade e reabertura por rodada estão
+especificadas no complemento. LEGACY mantém compatibilidade; política adicional
+de autoria/campos por ator além disso permanece sem decisão nova.
+
+Recorrência, importação ICS, feriados BR2026 e fixtures trimestrais agora são escopo
+aprovado, substituindo sua classificação histórica abaixo como possibilidades.
+Q-003, Q-005, Q-006 e mudanças de sessão não foram decididas implicitamente.
+Auditoria de metadados já existe; retenção/minimização de snapshots continua Q-006.
+
 Atualização de 2026-08-22: o hardening de redaction financeira, revogação de membro SHARED, owner, integridade de pagamento, JWT, interceptor e loopback não decidiu implicitamente nenhuma questão abaixo. Em especial, Q-004 e Q-005 permanecem `OPEN`; a implementação preserva a política CURRENT enquanto fecha falhas independentes de confidencialidade/integridade.
 
 ## Q-001

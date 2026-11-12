@@ -1,5 +1,11 @@
 # 06 — Evento CLIENT
 
+Atualização 11/11/2026: o formulário mantém uma descrição canônica de serviço e
+adiciona `clientPhone` opcional (11 dígitos, apresentação `(XX) 9XXXX-XXXX`). A API
+normaliza e valida o telefone. As duas colunas de texto legadas não são apagadas;
+textos distintos são consolidados na apresentação/edição. Preços importados nunca
+são inventados. Demais regras de confirmação/pagamento seguem as specs existentes.
+
 Objetivo: representar atendimento e sua expectativa financeira. Ator: usuário com permissão de criação no calendário.
 
 Entrada: `calendarId`, `eventType=CLIENT`, título, `clientName`, `workDescription`, `amount>=0`, início e fim; descrição é opcional. CURRENT não possui campo separado `service` nem profissional/responsável: título/workDescription e createdBy aproximam esses conceitos (GAP-004).

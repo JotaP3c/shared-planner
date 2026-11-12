@@ -124,6 +124,11 @@ public class EventController {
         return eventService.confirmationHistory(eventId, authentication);
     }
 
+    @GetMapping("/{eventId}/approval-history")
+    public List<EventApprovalResponse> approvalHistory(@PathVariable UUID eventId, Authentication authentication) {
+        return eventService.approvalHistory(eventId, authentication);
+    }
+
     @PostMapping("/{eventId}/approve")
     public EventResponse approve(
             @PathVariable UUID eventId,

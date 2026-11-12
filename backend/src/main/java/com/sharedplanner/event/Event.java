@@ -3,10 +3,13 @@ package com.sharedplanner.event;
 import com.sharedplanner.calendar.SharedCalendar;
 import com.sharedplanner.user.User;
 import jakarta.persistence.*;
+import org.hibernate.annotations.BatchSize;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.UUID;
+import java.util.List;
+import java.util.ArrayList;
 
 @Entity
 @Table(name = "events")
@@ -45,6 +48,22 @@ public class Event {
 
     @Column(name = "client_name", length = 120)
     private String clientName;
+
+    @Column(name = "client_phone", length = 11)
+    private String clientPhone;
+
+    @Column(name = "external_source", length = 30)
+    private String externalSource;
+
+    @Column(name = "all_day", nullable = false)
+    private boolean allDay;
+
+    @Column(name = "approval_round", nullable = false)
+    private int approvalRound;
+
+    @OneToMany(mappedBy = "event", cascade = CascadeType.ALL)
+    @BatchSize(size = 50)
+    private List<EventApproval> approvals = new ArrayList<>();
 
     @Column(name = "person_name", length = 120)
     private String personName;
@@ -127,6 +146,35 @@ public class Event {
     public EventStatus getStatus() { return status; }
     public String getTitle() { return title; }
     public String getClientName() { return clientName; }
+    public String getClientPhone() { return clientPhone; }
+    public String getExternalSource() { return externalSource; }
+    public void setExternalSource(String value) { externalSource = value; }
+    public boolean isAllDay() { return allDay; }
+    public int getApprovalRound() { return approvalRound; }
+    public List<EventApproval> getApprovalHistory() { return List.copyOf(approvals); }
+    public List<EventApproval> getCurrentApprovals() {
+        return approvals.stream().filter(item -> item.getRound() == approvalRound).toList();
+    }
+    public void setClientPhone(String phone) { clientPhone = eventType == EventType.CLIENT ? phone : null; }
+    public void setAllDay(boolean value) { allDay = value; }
+    public String clientDescription() {
+        if (eventType != EventType.CLIENT) return description;
+        String work = workDescription == null ? "" : workDescription.trim();
+        String notes = description == null ? "" : description.trim();
+        return work.isEmpty() ? notes : notes.isEmpty() || work.equals(notes) ? work : work + "\n\n" + notes;
+    }
+    public void beginApprovalRound(List<User> users) {
+        approvalRound++;
+        approvedBy = null;
+        approvalRequestedFrom = users.get(0);
+        status = EventStatus.PENDING_APPROVAL;
+        users.forEach(user -> approvals.add(new EventApproval(this, user, approvalRound)));
+    }
+    public void finishApprovalRound() {
+        approvalRound++;
+        approvalRequestedFrom = null;
+        approvedBy = null;
+    }
     public String getPersonName() { return personName; }
     public String getDescription() { return description; }
     public String getWorkDescription() { return workDescription; }

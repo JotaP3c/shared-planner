@@ -17,6 +17,10 @@ public class SharedCalendar {
     @Column(name = "name", nullable = false, length = 120)
     private String name;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "calendar_type", nullable = false, length = 20)
+    private CalendarType calendarType = CalendarType.LEGACY;
+
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "owner_user_id", nullable = false)
     private User owner;
@@ -44,6 +48,18 @@ public class SharedCalendar {
         this.createdBy = owner;
         this.createdAt = LocalDateTime.now();
     }
+
+    public SharedCalendar(String name, User owner, CalendarType calendarType) {
+        this(name, owner);
+        this.calendarType = calendarType;
+    }
+
+    public SharedCalendar(String name, User owner, CalendarType calendarType, User createdBy) {
+        this(name, owner, calendarType);
+        this.createdBy = createdBy;
+    }
+
+    public CalendarType getCalendarType() { return calendarType; }
 
     public UUID getId() {
         return id;

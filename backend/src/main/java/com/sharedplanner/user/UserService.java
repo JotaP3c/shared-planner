@@ -4,6 +4,7 @@ import com.sharedplanner.audit.AuditAction;
 import com.sharedplanner.audit.AuditEntityType;
 import com.sharedplanner.audit.AuditService;
 import com.sharedplanner.config.AuthorizationService;
+import com.sharedplanner.calendar.CalendarService;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
@@ -23,17 +24,20 @@ public class UserService {
     private final PasswordEncoder passwordEncoder;
     private final AuthorizationService authorizationService;
     private final AuditService auditService;
+    private final CalendarService calendarService;
 
     public UserService(
             UserRepository userRepository,
             PasswordEncoder passwordEncoder,
             AuthorizationService authorizationService,
-            AuditService auditService
+            AuditService auditService,
+            CalendarService calendarService
     ) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.authorizationService = authorizationService;
         this.auditService = auditService;
+        this.calendarService = calendarService;
     }
 
     @Transactional(readOnly = true)
@@ -72,6 +76,8 @@ public class UserService {
             // Cadastro concorrente do mesmo e-mail: índice único case-insensitive (V7).
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Email already exists");
         }
+
+        calendarService.provisionPersonalCalendar(savedUser);
 
         auditService.log(
                 AuditEntityType.USER,

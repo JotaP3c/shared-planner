@@ -2,6 +2,7 @@ package com.sharedplanner.config;
 
 import com.sharedplanner.calendar.CalendarMember;
 import com.sharedplanner.calendar.CalendarMemberRepository;
+import com.sharedplanner.calendar.CalendarType;
 import com.sharedplanner.event.Event;
 import com.sharedplanner.event.EventType;
 import com.sharedplanner.user.User;
@@ -43,11 +44,7 @@ public class AuthorizationService {
     }
 
     public void ensureCanCreateCalendar(Authentication authentication) {
-        User user = currentUser(authentication);
-
-        if (user.getRole() != UserRole.ADMIN) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "You cannot create calendars");
-        }
+        currentUser(authentication);
     }
 
     public void ensureCanManageCalendar(UUID calendarId, Authentication authentication) {
@@ -57,7 +54,7 @@ public class AuthorizationService {
 
         CalendarMember member = requireMember(calendarId, authentication.getName());
 
-        if (!member.getRole().canManageMembers()) {
+        if (!member.canManageMembers()) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only calendar admin can manage members");
         }
     }
@@ -73,7 +70,7 @@ public class AuthorizationService {
 
         CalendarMember member = requireMember(calendarId, authentication.getName());
 
-        if (!member.getRole().canManageMembers()) {
+        if (!member.canManageMembers()) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only calendar admin can view audit logs");
         }
     }
@@ -85,7 +82,7 @@ public class AuthorizationService {
 
         CalendarMember member = requireMember(calendarId, authentication.getName());
 
-        if (!member.getRole().canCreateEvents()) {
+        if (!member.canCreateEvents()) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "You cannot create events in this calendar");
         }
     }
@@ -97,17 +94,19 @@ public class AuthorizationService {
 
         CalendarMember member = requireMember(event.getCalendar().getId(), authentication.getName());
 
-        if (member.getRole().canEditAllEvents()) {
+        if (member.canManageMembers()) {
             return;
         }
 
-        if (member.getRole().canEditOwnEvents()
+        if (member.canCreateEvents()
                 && event.getCreatedBy().getEmail().equalsIgnoreCase(authentication.getName())) {
             return;
         }
 
-        if (event.getEventType().name().equals("SHARED")
-                && member.getRole().canCreateEvents()
+        if (event.getCalendar().getCalendarType() == CalendarType.LEGACY
+                && event.getApprovalRound() == 0
+                && event.getEventType().name().equals("SHARED")
+                && member.canCreateEvents()
                 && event.getApprovalRequestedFrom() != null
                 && event.getApprovalRequestedFrom().getEmail().equalsIgnoreCase(authentication.getName())) {
             return;
@@ -126,7 +125,7 @@ public class AuthorizationService {
 
         CalendarMember member = requireMember(calendarId, authentication.getName());
 
-        if (user.getRole() == UserRole.FINANCE || member.getRole().canUseFinance()) {
+        if (user.getRole() == UserRole.FINANCE || member.canUseFinance()) {
             return;
         }
 
@@ -143,8 +142,8 @@ public class AuthorizationService {
         return memberRepository
                 .findByCalendarIdAndUserEmailIgnoreCase(calendarId, authentication.getName())
                 .map(member -> new EventFinancialAccess(
-                        user.getRole() == UserRole.FINANCE || member.getRole().canUseFinance(),
-                        member.getRole().canEditOwnEvents(),
+                        user.getRole() == UserRole.FINANCE || member.canUseFinance(),
+                        member.canCreateEvents(),
                         authentication.getName()
                 ))
                 .orElseGet(() -> new EventFinancialAccess(false, false, authentication.getName()));

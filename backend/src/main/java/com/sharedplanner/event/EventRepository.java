@@ -8,9 +8,16 @@ import org.springframework.data.domain.Pageable;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
+import java.util.Optional;
+import jakarta.persistence.LockModeType;
+import org.springframework.data.jpa.repository.Lock;
 import com.sharedplanner.finance.FinanceTotals;
 
 public interface EventRepository extends JpaRepository<Event, UUID> {
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select e from Event e where e.id = :id")
+    Optional<Event> findForUpdate(@Param("id") UUID id);
 
     List<Event> findByCalendarIdAndStartsAtLessThanAndEndsAtGreaterThanOrderByStartsAtAsc(
             UUID calendarId,
@@ -24,7 +31,11 @@ public interface EventRepository extends JpaRepository<Event, UUID> {
             select e
             from Event e
             where e.status = :status
-              and lower(e.approvalRequestedFrom.email) = lower(:email)
+              and ((e.approvalRound = 0 and lower(e.approvalRequestedFrom.email) = lower(:email))
+                or exists (select approval.id from EventApproval approval
+                    where approval.event.id = e.id and approval.round = e.approvalRound
+                      and lower(approval.user.email) = lower(:email)
+                      and approval.status = com.sharedplanner.event.EventApprovalStatus.PENDING))
               and exists (
                 select cm.id
                 from CalendarMember cm

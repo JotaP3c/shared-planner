@@ -2,6 +2,7 @@ package com.sharedplanner.calendar;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
+import java.util.Set;
 
 public record CalendarMemberResponse(
         UUID id,
@@ -9,7 +10,8 @@ public record CalendarMemberResponse(
         String userEmail,
         String userFullName,
         CalendarMemberRole role,
-        LocalDateTime createdAt
+        LocalDateTime createdAt,
+        Set<CalendarMemberRole> roles
 ) {
     public static CalendarMemberResponse from(CalendarMember member) {
         return new CalendarMemberResponse(
@@ -18,7 +20,8 @@ public record CalendarMemberResponse(
                 member.getUser().getEmail(),
                 member.getUser().getFullName(),
                 member.getRole(),
-                member.getCreatedAt()
+                member.getCreatedAt(),
+                member.getRoles()
         );
     }
 }

@@ -1,7 +1,10 @@
 package com.sharedplanner.calendar;
 
-import jakarta.validation.constraints.NotNull;
+import java.util.Set;
 
 public record UpdateCalendarMemberRequest(
-        @NotNull CalendarMemberRole role
-) {}
+        CalendarMemberRole role,
+        Set<CalendarMemberRole> roles
+) {
+    public UpdateCalendarMemberRequest(CalendarMemberRole role) { this(role, null); }
+}

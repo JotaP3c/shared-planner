@@ -16,6 +16,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 import java.util.Locale;
+import java.util.Set;
 import java.util.UUID;
 
 @Service
@@ -43,12 +44,25 @@ public class CalendarService {
 
     @Transactional
     public CalendarResponse create(CreateCalendarRequest request, Authentication authentication) {
-        authorizationService.ensureCanCreateCalendar(authentication);
-
         User currentUser = currentUser(authentication);
+        CalendarType type = request.calendarType() == null ? CalendarType.SHARED : request.calendarType();
+        if (type != CalendarType.SHARED && type != CalendarType.IMPORTED) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Only shared or auxiliary imported calendars can be created explicitly");
+        }
+        User owner = currentUser;
+        String ownerEmail = request.ownerEmail() == null ? "" : request.ownerEmail().trim().toLowerCase(Locale.ROOT);
+        if (!ownerEmail.isBlank() && !ownerEmail.equalsIgnoreCase(currentUser.getEmail())) {
+            // Resolve the account only after authorization, avoiding an account-existence oracle.
+            authorizationService.ensureSystemAdmin(authentication);
+            owner = userRepository.findByEmailIgnoreCase(ownerEmail)
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Calendar owner not found"));
+            if (!Boolean.TRUE.equals(owner.getActive())) {
+                throw new ResponseStatusException(HttpStatus.CONFLICT, "Calendar owner is inactive");
+            }
+        }
 
-        SharedCalendar calendar = calendarRepository.save(new SharedCalendar(request.name(), currentUser));
-        memberRepository.save(new CalendarMember(calendar, currentUser, CalendarMemberRole.ADMIN, currentUser));
+        SharedCalendar calendar = calendarRepository.save(new SharedCalendar(request.name(), owner, type, currentUser));
+        memberRepository.save(new CalendarMember(calendar, owner, CalendarMemberRole.ADMIN, currentUser));
 
         auditService.log(
                 AuditEntityType.CALENDAR,
@@ -64,6 +78,21 @@ public class CalendarService {
         return CalendarResponse.from(calendar, CalendarMemberRole.ADMIN);
     }
 
+    /** Called in the user registration transaction; never moves legacy events. */
+    @Transactional
+    public SharedCalendar provisionPersonalCalendar(User owner) {
+        return calendarRepository.findByOwnerIdAndCalendarType(owner.getId(), CalendarType.PERSONAL)
+                .orElseGet(() -> {
+                    String name = "Calendário de " + owner.getFullName();
+                    SharedCalendar calendar = calendarRepository.save(new SharedCalendar(
+                            name.substring(0, Math.min(120, name.length())), owner, CalendarType.PERSONAL));
+                    memberRepository.save(new CalendarMember(calendar, owner, CalendarMemberRole.ADMIN, owner));
+                    auditService.log(AuditEntityType.CALENDAR, calendar.getId(), calendar.getId(), AuditAction.CREATED,
+                            "Personal calendar created", null, calendarSnapshot(calendar), owner);
+                    return calendar;
+                });
+    }
+
     @Transactional(readOnly = true)
     public List<CalendarResponse> list(Authentication authentication) {
         User currentUser = currentUser(authentication);
@@ -77,7 +106,7 @@ public class CalendarService {
 
         return memberRepository.findByUserEmailIgnoreCase(currentUser.getEmail())
                 .stream()
-                .map(member -> CalendarResponse.from(member.getCalendar(), member.getRole()))
+                .map(member -> CalendarResponse.from(member.getCalendar(), member.getRoles()))
                 .toList();
     }
 
@@ -106,7 +135,7 @@ public class CalendarService {
         }
 
         try {
-            addNewMember(calendar, newMember, memberRole(request.role()), currentUser);
+            addNewMember(calendar, newMember, requestedRoles(request.role(), request.roles(), true), currentUser);
             memberRepository.flush();
         } catch (DataIntegrityViolationException exception) {
             // Corrida entre duas adições simultâneas: a constraint única decide.
@@ -135,8 +164,9 @@ public class CalendarService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Member not found"));
 
         String oldValue = memberSnapshot(member);
-        ensureOwnerRemainsAdmin(member, request.role());
-        member.changeRole(request.role(), currentUser);
+        Set<CalendarMemberRole> roles = requestedRoles(request.role(), request.roles(), false);
+        ensureOwnerRemainsAdmin(member, roles);
+        member.changeRoles(roles, currentUser);
 
         auditService.log(
                 AuditEntityType.CALENDAR_MEMBER,
@@ -183,8 +213,10 @@ public class CalendarService {
         memberRepository.delete(member);
     }
 
-    private void addNewMember(SharedCalendar calendar, User newMember, CalendarMemberRole role, User currentUser) {
-        CalendarMember member = memberRepository.save(new CalendarMember(calendar, newMember, role, currentUser));
+    private void addNewMember(SharedCalendar calendar, User newMember, Set<CalendarMemberRole> roles, User currentUser) {
+        CalendarMember member = new CalendarMember(calendar, newMember, CalendarMemberRole.VIEWER, currentUser);
+        member.changeRoles(roles, currentUser);
+        memberRepository.save(member);
 
         auditService.log(
                 AuditEntityType.CALENDAR_MEMBER,
@@ -198,17 +230,19 @@ public class CalendarService {
         );
     }
 
-    private CalendarMemberRole memberRole(CalendarMemberRole role) {
-        if (role == null) {
-            return CalendarMemberRole.VIEWER;
+    private Set<CalendarMemberRole> requestedRoles(CalendarMemberRole role, Set<CalendarMemberRole> roles, boolean allowDefault) {
+        if (roles == null) {
+            if (role != null) return Set.of(role);
+            if (allowDefault) return Set.of(CalendarMemberRole.VIEWER);
+        } else if (!roles.isEmpty() && roles.stream().noneMatch(java.util.Objects::isNull)) {
+            return roles;
         }
-
-        return role;
+        throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "At least one calendar role is required");
     }
 
-    private void ensureOwnerRemainsAdmin(CalendarMember member, CalendarMemberRole role) {
+    private void ensureOwnerRemainsAdmin(CalendarMember member, Set<CalendarMemberRole> roles) {
         if (member.getCalendar().getOwner().getId().equals(member.getUser().getId())
-                && role != CalendarMemberRole.ADMIN) {
+                && !roles.contains(CalendarMemberRole.ADMIN)) {
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST,
                     "Calendar owner must remain an ADMIN"
@@ -229,6 +263,6 @@ public class CalendarService {
     private String memberSnapshot(CalendarMember member) {
         return "calendarId=" + member.getCalendar().getId()
                 + "; userEmail=" + member.getUser().getEmail()
-                + "; role=" + member.getRole();
+                + "; roles=" + member.getRoles();
     }
 }

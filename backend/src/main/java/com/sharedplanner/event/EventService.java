@@ -6,6 +6,7 @@ import com.sharedplanner.audit.AuditService;
 import com.sharedplanner.calendar.CalendarMemberRepository;
 import com.sharedplanner.calendar.SharedCalendar;
 import com.sharedplanner.calendar.SharedCalendarRepository;
+import com.sharedplanner.calendar.CalendarType;
 import com.sharedplanner.config.AuthorizationService;
 import com.sharedplanner.config.AuthorizationService.EventFinancialAccess;
 import com.sharedplanner.user.User;
@@ -27,6 +28,9 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.Locale;
 
 @Service
 public class EventService {
@@ -60,11 +64,14 @@ public class EventService {
     @Transactional
     public EventResponse create(CreateEventRequest request, Authentication authentication) {
         validatePeriod(request.startsAt(), request.endsAt());
+        String description = unifiedClientDescription(request.eventType(), request.workDescription(), request.description());
+        String phone = normalizedClientPhone(request.eventType(), request.clientPhone());
+        validateAllDay(request.allDay(), request.startsAt(), request.endsAt());
         validateEventFields(
                 request.eventType(),
                 request.clientName(),
                 request.personName(),
-                request.workDescription(),
+                description,
                 request.amount()
         );
 
@@ -74,7 +81,10 @@ public class EventService {
 
         authorizationService.ensureCanCreateEvent(calendar.getId(), authentication);
 
-        User approvalRequestedFrom = approvalUser(
+        boolean multipleApproval = calendar.getCalendarType() == CalendarType.SHARED || request.approvalRequestedFromEmails() != null;
+        List<User> approvers = multipleApproval ? approvalUsers(calendar, currentUser, request.eventType(),
+                request.approvalRequestedFromEmails(), request.approvalRequestedFromEmail()) : List.of();
+        User approvalRequestedFrom = multipleApproval ? null : approvalUser(
                 request.eventType(),
                 request.approvalRequestedFromEmail(),
                 calendar.getId(),
@@ -92,14 +102,18 @@ public class EventService {
                 request.title(),
                 request.clientName(),
                 request.personName(),
-                request.description(),
-                request.workDescription(),
+                request.eventType() == EventType.CLIENT ? description : request.description(),
+                request.eventType() == EventType.CLIENT ? description : request.workDescription(),
                 request.amount(),
                 request.startsAt(),
                 request.endsAt(),
                 approvalRequestedFrom,
                 currentUser
         );
+
+        event.setClientPhone(phone);
+        event.setAllDay(Boolean.TRUE.equals(request.allDay()));
+        if (!approvers.isEmpty()) event.beginApprovalRound(approvers);
 
         Event savedEvent = eventRepository.save(event);
 
@@ -229,15 +243,17 @@ public class EventService {
     @Transactional
     public EventResponse update(UUID eventId, UpdateEventRequest request, Authentication authentication) {
         validatePeriod(request.startsAt(), request.endsAt());
+        String description = unifiedClientDescription(request.eventType(), request.workDescription(), request.description());
+        String phone = normalizedClientPhone(request.eventType(), request.clientPhone());
         validateEventFields(
                 request.eventType(),
                 request.clientName(),
                 request.personName(),
-                request.workDescription(),
+                description,
                 request.amount()
         );
 
-        Event event = event(eventId);
+        Event event = mutableEvent(eventId);
         authorizationService.ensureCanEditEvent(event, authentication);
         ensureNotCancelled(event);
         validatePaymentIntegrityForUpdate(event, request);
@@ -245,7 +261,17 @@ public class EventService {
         User currentUser = currentUser(authentication);
         String oldValue = eventSnapshot(event);
 
-        User approvalRequestedFrom = approvalUserForUpdate(event, request, authentication);
+        validateAllDay(request.allDay() == null ? event.isAllDay() : request.allDay(), request.startsAt(), request.endsAt());
+        boolean multipleApproval = event.getCalendar().getCalendarType() == CalendarType.SHARED
+                || request.approvalRequestedFromEmails() != null || !event.getCurrentApprovals().isEmpty();
+        List<String> requested = request.approvalRequestedFromEmails();
+        if (requested == null && request.approvalRequestedFromEmail() == null
+                && event.getCalendar().getCalendarType() != CalendarType.SHARED && !event.getCurrentApprovals().isEmpty()) {
+            requested = event.getCurrentApprovals().stream().map(item -> item.getUser().getEmail()).toList();
+        }
+        List<User> approvers = multipleApproval ? approvalUsers(event.getCalendar(), event.getCreatedBy(), request.eventType(),
+                requested, request.approvalRequestedFromEmail()) : List.of();
+        User approvalRequestedFrom = multipleApproval ? null : approvalUserForUpdate(event, request, authentication);
 
         EventStatus status = request.eventType() == EventType.SHARED
                 ? EventStatus.PENDING_APPROVAL
@@ -257,14 +283,19 @@ public class EventService {
                 request.title(),
                 request.clientName(),
                 request.personName(),
-                request.description(),
-                request.workDescription(),
+                request.eventType() == EventType.CLIENT ? description : request.description(),
+                request.eventType() == EventType.CLIENT ? description : request.workDescription(),
                 request.amount(),
                 request.startsAt(),
                 request.endsAt(),
                 approvalRequestedFrom,
                 currentUser
         );
+
+        event.setClientPhone(phone);
+        if (request.allDay() != null) event.setAllDay(request.allDay());
+        if (!approvers.isEmpty()) event.beginApprovalRound(approvers);
+        else if (multipleApproval) event.finishApprovalRound();
 
         auditService.log(
                 AuditEntityType.EVENT,
@@ -282,7 +313,7 @@ public class EventService {
 
     @Transactional
     public void delete(UUID eventId, Authentication authentication) {
-        Event event = event(eventId);
+        Event event = mutableEvent(eventId);
         authorizationService.ensureCanEditEvent(event, authentication);
         ensureNotCancelled(event);
 
@@ -305,12 +336,12 @@ public class EventService {
 
     @Transactional
     public EventResponse approve(UUID eventId, Authentication authentication) {
-        Event event = event(eventId);
+        Event event = mutableEvent(eventId);
         User currentUser = currentUser(authentication);
         ensureApprovalTarget(event, currentUser);
         String oldValue = eventSnapshot(event);
 
-        event.approve(currentUser);
+        decideApproval(event, currentUser, true);
 
         auditService.log(
                 AuditEntityType.EVENT,
@@ -328,12 +359,12 @@ public class EventService {
 
     @Transactional
     public EventResponse reject(UUID eventId, Authentication authentication) {
-        Event event = event(eventId);
+        Event event = mutableEvent(eventId);
         User currentUser = currentUser(authentication);
         ensureApprovalTarget(event, currentUser);
         String oldValue = eventSnapshot(event);
 
-        event.reject(currentUser);
+        decideApproval(event, currentUser, false);
 
         auditService.log(
                 AuditEntityType.EVENT,
@@ -351,7 +382,7 @@ public class EventService {
 
     @Transactional
     public EventResponse updatePayment(UUID eventId, UpdatePaymentRequest request, Authentication authentication) {
-        Event event = event(eventId);
+        Event event = mutableEvent(eventId);
 
         authorizationService.ensureCanEditEvent(event, authentication);
         ensureNotCancelled(event);
@@ -513,7 +544,7 @@ public class EventService {
     }
 
     private Event appointmentForConfirmationChange(UUID eventId, Authentication authentication) {
-        Event event = event(eventId);
+        Event event = mutableEvent(eventId);
         authorizationService.ensureCanEditEvent(event, authentication);
         ensureNotCancelled(event);
 
@@ -589,6 +620,29 @@ public class EventService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Event not found"));
     }
 
+    private Event mutableEvent(UUID eventId) {
+        return eventRepository.findForUpdate(eventId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Event not found"));
+    }
+
+    @Transactional(readOnly = true)
+    public List<EventApprovalResponse> approvalHistory(UUID eventId, Authentication authentication) {
+        Event event = event(eventId);
+        authorizationService.ensureCalendarVisible(event.getCalendar().getId(), authentication);
+        return event.getApprovalHistory().stream().map(EventApprovalResponse::from).toList();
+    }
+
+    private void decideApproval(Event event, User user, boolean approved) {
+        if (event.getCurrentApprovals().isEmpty()) {
+            if (approved) event.approve(user); else event.reject(user);
+            return;
+        }
+        event.getCurrentApprovals().stream().filter(item -> item.getUser().getId().equals(user.getId()))
+                .findFirst().orElseThrow().respond(approved);
+        if (!approved) event.reject(user);
+        else if (event.getCurrentApprovals().stream().allMatch(item -> item.getStatus() == EventApprovalStatus.APPROVED)) event.approve(user);
+    }
+
     private User currentUser(Authentication authentication) {
         return userRepository.findByEmailIgnoreCaseAndActiveTrue(authentication.getName())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
@@ -604,8 +658,11 @@ public class EventService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Event is not pending approval");
         }
 
-        if (event.getApprovalRequestedFrom() == null ||
-                !event.getApprovalRequestedFrom().getEmail().equalsIgnoreCase(currentUser.getEmail())) {
+        boolean designated = event.getCurrentApprovals().isEmpty()
+                ? event.getApprovalRequestedFrom() != null && event.getApprovalRequestedFrom().getId().equals(currentUser.getId())
+                : event.getCurrentApprovals().stream().anyMatch(item -> item.getUser().getId().equals(currentUser.getId())
+                        && item.getStatus() == EventApprovalStatus.PENDING);
+        if (!designated) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "This event is not waiting for your approval");
         }
 
@@ -635,6 +692,55 @@ public class EventService {
 
         return userRepository.findByEmailIgnoreCaseAndActiveTrue(email)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Approval user not found"));
+    }
+
+    private List<User> approvalUsers(SharedCalendar calendar, User creator, EventType type,
+            List<String> requestedEmails, String legacyEmail) {
+        if (calendar.getCalendarType() != CalendarType.SHARED && type != EventType.SHARED) return List.of();
+        List<String> emails = requestedEmails;
+        if (emails == null && legacyEmail != null && !legacyEmail.isBlank()) emails = List.of(legacyEmail);
+        if (emails == null && calendar.getCalendarType() == CalendarType.SHARED) {
+            emails = memberRepository.findByCalendarIdOrderByCreatedAtAsc(calendar.getId()).stream()
+                    .map(member -> member.getUser()).filter(user -> Boolean.TRUE.equals(user.getActive()))
+                    .filter(user -> !user.getId().equals(creator.getId())).map(User::getEmail).toList();
+        }
+        if (emails == null || emails.isEmpty() || emails.size() > 100) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "At least one other active calendar member must approve the event");
+        }
+        Map<UUID, User> users = new LinkedHashMap<>();
+        for (String email : emails) {
+            if (email == null || email.isBlank()) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Approval email is required");
+            User user = userRepository.findByEmailIgnoreCaseAndActiveTrue(email.trim().toLowerCase(Locale.ROOT))
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Approval user not found"));
+            if (user.getId().equals(creator.getId())) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Event creator cannot approve their own event");
+            requireEligibleInheritedApprover(user, calendar.getId());
+            users.put(user.getId(), user);
+        }
+        return new ArrayList<>(users.values());
+    }
+
+    private String unifiedClientDescription(EventType type, String work, String notes) {
+        if (type != EventType.CLIENT) return work;
+        String service = work == null ? "" : work.trim();
+        String description = notes == null ? "" : notes.trim();
+        return service.isEmpty() ? description : description.isEmpty() || service.equals(description)
+                ? service : service + "\n\n" + description;
+    }
+
+    private String normalizedClientPhone(EventType type, String phone) {
+        if (type != EventType.CLIENT || phone == null || phone.isBlank()) return null;
+        if (!phone.matches("[+0-9() \\-]+")) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid Brazilian mobile phone");
+        String digits = phone.replaceAll("\\D", "");
+        if (digits.length() == 13 && digits.startsWith("55")) digits = digits.substring(2);
+        if (!digits.matches("[1-9][0-9]9[0-9]{8}")) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Brazilian mobile phone must contain area code and 9 digits");
+        return digits;
+    }
+
+    private void validateAllDay(Boolean allDay, LocalDateTime start, LocalDateTime end) {
+        if (Boolean.TRUE.equals(allDay) && (!start.toLocalTime().equals(java.time.LocalTime.MIDNIGHT)
+                || !end.toLocalTime().equals(java.time.LocalTime.MIDNIGHT))) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "All-day events require midnight boundaries and exclusive end date");
+        }
     }
 
     private User approvalUserForUpdate(Event event, UpdateEventRequest request, Authentication authentication) {

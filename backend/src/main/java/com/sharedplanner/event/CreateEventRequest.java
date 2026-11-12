@@ -9,6 +9,7 @@ import jakarta.validation.constraints.Digits;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.UUID;
+import java.util.List;
 
 public record CreateEventRequest(
         @NotNull
@@ -41,6 +42,23 @@ public record CreateEventRequest(
         @NotNull
         LocalDateTime endsAt,
 
-        String approvalRequestedFromEmail
+        String approvalRequestedFromEmail,
+        @Size(max = 24) String clientPhone,
+        @Size(max = 100) List<String> approvalRequestedFromEmails,
+        Boolean allDay
 ) {
+    public CreateEventRequest(UUID calendarId, EventType eventType, String title, String clientName,
+            String personName, String description, String workDescription, BigDecimal amount,
+            LocalDateTime startsAt, LocalDateTime endsAt, String approvalRequestedFromEmail) {
+        this(calendarId, eventType, title, clientName, personName, description, workDescription, amount,
+                startsAt, endsAt, approvalRequestedFromEmail, null, null, null);
+    }
+    public CreateEventRequest withAllDay(boolean value) {
+        return new CreateEventRequest(calendarId, eventType, title, clientName, personName, description,
+                workDescription, amount, startsAt, endsAt, approvalRequestedFromEmail, clientPhone, approvalRequestedFromEmails, value);
+    }
+    public CreateEventRequest withPeriod(LocalDateTime start, LocalDateTime end) {
+        return new CreateEventRequest(calendarId, eventType, title, clientName, personName, description,
+                workDescription, amount, start, end, approvalRequestedFromEmail, clientPhone, approvalRequestedFromEmails, allDay);
+    }
 }

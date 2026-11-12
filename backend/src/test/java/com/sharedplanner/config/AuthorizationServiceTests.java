@@ -56,7 +56,7 @@ class AuthorizationServiceTests {
         when(userRepository.findByEmailIgnoreCaseAndActiveTrue(email)).thenReturn(Optional.of(editor));
         when(memberRepository.findByCalendarIdAndUserEmailIgnoreCase(calendarId, email))
                 .thenReturn(Optional.of(membership));
-        when(membership.getRole()).thenReturn(CalendarMemberRole.EDITOR);
+        when(membership.canCreateEvents()).thenReturn(true);
 
         AuthorizationService.EventFinancialAccess access = authorizationService
                 .resolveEventFinancialAccess(calendarId, authentication);

@@ -1,11 +1,13 @@
 package com.sharedplanner.user;
 
 import jakarta.persistence.*;
+import org.hibernate.annotations.BatchSize;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Entity
+@BatchSize(size = 50)
 @Table(name = "users")
 public class User {
 

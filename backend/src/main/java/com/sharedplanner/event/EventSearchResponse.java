@@ -15,7 +15,8 @@ public record EventSearchResponse(
         String clientName,
         String personName,
         LocalDateTime startsAt,
-        LocalDateTime endsAt
+        LocalDateTime endsAt,
+        String externalSource
 ) {
     static EventSearchResponse from(Event event) {
         return new EventSearchResponse(
@@ -30,7 +31,8 @@ public record EventSearchResponse(
                 event.getClientName(),
                 event.getPersonName(),
                 event.getStartsAt(),
-                event.getEndsAt()
+                event.getEndsAt(),
+                event.getExternalSource()
         );
     }
 }

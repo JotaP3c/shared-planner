@@ -5,6 +5,7 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.UUID;
+import java.util.List;
 
 public record EventResponse(
         UUID id,
@@ -43,7 +44,12 @@ public record EventResponse(
         @JsonInclude(JsonInclude.Include.NON_NULL)
         UnscheduleReason unscheduleReason,
         @JsonInclude(JsonInclude.Include.NON_NULL)
-        String unscheduleNotes
+        String unscheduleNotes,
+        String clientPhone,
+        boolean allDay,
+        List<String> approvalRequestedFromEmails,
+        List<EventApprovalResponse> approvals,
+        String externalSource
 ) {
     static EventResponse from(Event event, boolean includeFinancialData) {
         boolean client = event.getEventType() == EventType.CLIENT;
@@ -59,8 +65,8 @@ public record EventResponse(
                 event.getTitle(),
                 event.getClientName(),
                 event.getPersonName(),
-                event.getDescription(),
-                event.getWorkDescription(),
+                client ? event.clientDescription() : event.getDescription(),
+                client ? event.clientDescription() : event.getWorkDescription(),
                 includeFinancialData ? event.getAmount() : null,
                 includeFinancialData ? event.getPaymentStatus() : null,
                 includeFinancialData ? event.getPaymentMethod() : null,
@@ -73,7 +79,14 @@ public record EventResponse(
                 client && event.getConfirmationChangedBy() != null ? event.getConfirmationChangedBy().getEmail() : null,
                 client ? event.getRescheduleCount() : null,
                 client ? event.getUnscheduleReason() : null,
-                client ? event.getUnscheduleNotes() : null
+                client ? event.getUnscheduleNotes() : null,
+                client ? event.getClientPhone() : null,
+                event.isAllDay(),
+                event.getCurrentApprovals().isEmpty()
+                        ? event.getApprovalRequestedFrom() == null ? List.of() : List.of(event.getApprovalRequestedFrom().getEmail())
+                        : event.getCurrentApprovals().stream().map(item -> item.getUser().getEmail()).toList(),
+                event.getCurrentApprovals().stream().map(EventApprovalResponse::from).toList(),
+                event.getExternalSource()
         );
     }
 }

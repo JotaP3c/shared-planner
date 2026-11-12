@@ -50,12 +50,14 @@
       </div>
 
       <div class="filter-grid">
+        <label class="consolidation-option"><input type="checkbox" [checked]="consolidated()"
+          (change)="setConsolidated($any($event.target).checked)" /> Consolidar calendários</label>
         <label class="sp-field">
           Calendário
           <select
             aria-label="Calendário financeiro"
             data-testid="finance-calendar-select"
-            [disabled]="isLoadingSummary()"
+            [disabled]="isLoadingSummary() || consolidated()"
             (change)="selectCalendar($any($event.target).value)"
           >
             @for (calendar of authorizedCalendars(); track calendar.id) {
@@ -114,6 +116,15 @@
         </button>
       </div>
 
+      @if (consolidated()) {
+        <div class="finance-calendars" role="group" aria-label="Calendários do consolidado">
+          @for (calendar of authorizedCalendars(); track calendar.id) {
+            <label><input type="checkbox" [checked]="includedCalendarIds().includes(calendar.id)"
+              (change)="toggleIncludedCalendar(calendar.id)" />{{ calendar.name }}</label>
+          }
+        </div>
+      }
+
       <p class="active-period" aria-live="polite" data-testid="finance-active-period">
         <span aria-hidden="true"></span>
         Intervalo atual: <strong>{{ periodLabel() }}</strong>
@@ -137,7 +148,7 @@
         <header class="summary-heading">
           <div>
             <span>Visão geral</span>
-            <h2 id="values-title">{{ selectedCalendar()?.name }}</h2>
+            <h2 id="values-title">{{ calendarScopeLabel() }}</h2>
           </div>
           <small>{{ periodLabel() }}</small>
         </header>
@@ -162,7 +173,7 @@
             <span class="kpi-icon" aria-hidden="true"><sp-icon name="clock" [size]="20" /></span>
             <span class="kpi-label">Receita pendente</span>
             <strong>{{ formatCurrency(finance.pendingAmount) }}</strong>
-            <small>Prevista menos recebida</small>
+            <small>Saldo dos atendimentos não desmarcados</small>
           </article>
 
           <article class="kpi-card tone-partial">
@@ -207,7 +218,9 @@
             <p>Não há receitas de eventos CLIENT não cancelados neste intervalo.</p>
           </div>
         } @else {
-          <div class="chart-grid">
+          <button class="secondary-button" type="button" [attr.aria-expanded]="!chartsCollapsed()" aria-controls="finance-charts"
+            (click)="chartsCollapsed.set(!chartsCollapsed())">{{ chartsCollapsed() ? 'Expandir gráficos' : 'Recolher gráficos' }}</button>
+          <div class="chart-grid" id="finance-charts" [hidden]="chartsCollapsed()">
             <article class="page-panel chart-panel wide" aria-labelledby="evolution-title">
               <header class="chart-header">
                 <h3 id="evolution-title">Evolução da receita</h3>

@@ -5,6 +5,7 @@ import { Subscription, finalize, forkJoin } from 'rxjs';
 import { CalendarService } from '../../../core/api/calendar.service';
 import { FinanceService } from '../../../core/api/finance.service';
 import { AuthService } from '../../../core/auth/auth.service';
+import { financeAuthorizedCalendars } from '../../../core/auth/finance-access';
 import {
   AppointmentConfirmationStatus,
   CalendarResponse,
@@ -50,6 +51,14 @@ export class FinancePage implements OnInit {
   readonly calendars = signal<CalendarResponse[]>([]);
   readonly calendarsLoaded = signal(false);
   readonly selectedCalendarId = signal('');
+  readonly consolidated = signal(false);
+  readonly includedCalendarIds = signal<string[]>([]);
+  readonly chartsCollapsed = signal(false);
+  readonly financeCalendarIds = computed(() => this.consolidated()
+    ? this.authorizedCalendars().filter(calendar => this.includedCalendarIds().includes(calendar.id)).map(calendar => calendar.id)
+    : [this.selectedCalendarId()].filter(Boolean));
+  readonly calendarScopeLabel = computed(() => this.consolidated()
+    ? `Consolidado · ${this.financeCalendarIds().length} calendários` : this.selectedCalendar()?.name ?? '');
   readonly selectedPeriod = signal<FinancePeriod>('MONTHLY');
   readonly referenceDate = signal(this.localToday());
   readonly customStartDate = signal(this.localToday());
@@ -73,17 +82,7 @@ export class FinancePage implements OnInit {
       return [];
     }
 
-    if (user.role === 'ADMIN') {
-      return calendars;
-    }
-
-    if (user.role === 'FINANCE') {
-      return calendars.filter(calendar => calendar.memberRole !== null);
-    }
-
-    return calendars.filter(calendar =>
-      calendar.memberRole === 'ADMIN' || calendar.memberRole === 'FINANCE',
-    );
+    return financeAuthorizedCalendars(user, calendars);
   });
 
   readonly selectedCalendar = computed(() =>
@@ -169,6 +168,7 @@ export class FinancePage implements OnInit {
         next: calendars => {
           if (requestId === this.calendarRequestId) {
             this.calendars.set(calendars);
+            this.includedCalendarIds.set(financeAuthorizedCalendars(this.currentUser(), calendars).map(calendar => calendar.id));
           }
         },
         error: error => {
@@ -191,6 +191,17 @@ export class FinancePage implements OnInit {
     }
 
     this.selectedCalendarId.set(calendarId);
+    this.loadSummary();
+  }
+
+  setConsolidated(value: boolean): void {
+    this.consolidated.set(value);
+    this.loadSummary();
+  }
+
+  toggleIncludedCalendar(calendarId: string): void {
+    if (!this.authorizedCalendars().some(calendar => calendar.id === calendarId)) return;
+    this.includedCalendarIds.update(ids => ids.includes(calendarId) ? ids.filter(id => id !== calendarId) : [...ids, calendarId]);
     this.loadSummary();
   }
 
@@ -317,22 +328,31 @@ export class FinancePage implements OnInit {
     return new Date(value).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
   }
 
-  private loadDetails(calendarId: string, range: DateRange, requestId: number): void {
+  private loadDetails(calendarIds: string[], range: DateRange, requestId: number): void {
     this.detailsSubscription?.unsubscribe();
     this.detailsError.set('');
     this.isLoadingDetails.set(true);
 
-    this.detailsSubscription = forkJoin({
+    this.detailsSubscription = forkJoin(calendarIds.map(calendarId => forkJoin({
       timeline: this.financeService.timeline(calendarId, range.startDate, range.endDate),
       appointments: this.financeService.appointments(calendarId, range.startDate, range.endDate),
-    }).subscribe({
-      next: ({ timeline, appointments }) => {
+    }))).subscribe({
+      next: results => {
         if (requestId !== this.summaryRequestId) {
           return;
         }
 
-        this.timeline.set(timeline);
-        this.appointments.set(appointments);
+        const points = new Map<string, FinanceTimelineResponse['points'][number]>();
+        for (const result of results) for (const point of result.timeline.points) {
+          const previous = points.get(point.date);
+          points.set(point.date, previous ? { date: point.date,
+            expectedAmount: Math.round((previous.expectedAmount + Number(point.expectedAmount)) * 100) / 100,
+            receivedAmount: Math.round((previous.receivedAmount + Number(point.receivedAmount)) * 100) / 100,
+            appointmentCount: previous.appointmentCount + point.appointmentCount } : { ...point });
+        }
+        this.timeline.set({ ...results[0].timeline, calendarId: calendarIds.join(','), points: [...points.values()].sort((a, b) => a.date.localeCompare(b.date)) });
+        this.appointments.set([...new Map(results.flatMap(result => result.appointments).map(item => [item.eventId, item])).values()]
+          .sort((a, b) => b.startsAt.localeCompare(a.startsAt)).slice(0, 8));
         this.isLoadingDetails.set(false);
       },
       error: () => {
@@ -348,10 +368,12 @@ export class FinancePage implements OnInit {
 
   private loadSummary(): void {
     const calendarId = this.selectedCalendarId();
+    const calendarIds = this.financeCalendarIds();
     const range = this.selectedDateRange();
 
-    if (!calendarId || !range) {
+    if (!calendarId || !range || !calendarIds.length) {
       this.invalidateSummary();
+      if (!calendarIds.length) this.errorMessage.set('Selecione ao menos um calendário autorizado.');
       return;
     }
 
@@ -361,20 +383,20 @@ export class FinancePage implements OnInit {
     this.clearDetails();
     this.isLoadingSummary.set(true);
 
-    this.financeService
-      .summarize(calendarId, range.startDate, range.endDate)
+    forkJoin(calendarIds.map(id => this.financeService.summarize(id, range.startDate, range.endDate)))
       .pipe(finalize(() => {
         if (requestId === this.summaryRequestId) {
           this.isLoadingSummary.set(false);
         }
       }))
       .subscribe({
-        next: summary => {
+        next: summaries => {
           if (requestId === this.summaryRequestId) {
+            const summary = consolidateSummaries(summaries);
             this.summary.set(summary);
 
             if ((summary.appointmentCount ?? 0) > 0) {
-              this.loadDetails(calendarId, range, requestId);
+              this.loadDetails(calendarIds, range, requestId);
             }
           }
         },
@@ -517,4 +539,14 @@ export class FinancePage implements OnInit {
     const body = (error as { error?: { detail?: string; message?: string } })?.error;
     return body?.detail || body?.message || fallback;
   }
+}
+
+/** Sum authoritative per-calendar metrics; pending is not derived from received. */
+export function consolidateSummaries(summaries: FinanceSummaryResponse[]): FinanceSummaryResponse {
+  const result = { ...summaries[0], calendarId: summaries.map(summary => summary.calendarId).join(',') };
+  const fields = ['expectedAmount', 'receivedAmount', 'pendingAmount', 'appointmentCount', 'paidCount', 'pendingCount',
+    'partiallyPaidCount', 'refundedCount', 'confirmedAmount', 'unconfirmedAmount', 'unscheduledAmount',
+    'confirmedCount', 'awaitingConfirmationCount', 'rescheduledCount', 'unscheduledCount', 'rescheduleOccurrences'] as const;
+  for (const field of fields) result[field] = Math.round(summaries.reduce((sum, summary) => sum + Number(summary[field] ?? 0), 0) * 100) / 100;
+  return result;
 }

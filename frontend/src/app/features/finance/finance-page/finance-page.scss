@@ -2,6 +2,11 @@
   display: block;
 }
 
+.consolidation-option, .finance-calendars { display: flex; gap: 8px; align-items: center; font-size: 13px; }
+.finance-calendars { flex-wrap: wrap; margin-top: 12px; gap: 16px; }
+.finance-calendars label { display: flex; gap: 6px; align-items: center; }
+.chart-grid[hidden] { display: none; }
+
 .filter-heading {
   display: flex;
   align-items: center;
@@ -34,7 +39,7 @@
   grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
   align-items: end;
   gap: 12px;
-  margin-top: 18px;
+  margin-top: 12px;
 }
 
 .active-period {

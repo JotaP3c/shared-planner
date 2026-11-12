@@ -11,7 +11,7 @@ import {
   FinanceTimelineResponse,
   UserResponse,
 } from '../../../core/models/shared-planner.models';
-import { FinancePage } from './finance-page';
+import { consolidateSummaries, FinancePage } from './finance-page';
 
 describe('FinancePage', () => {
   let component: FinancePage;
@@ -336,6 +336,38 @@ describe('FinancePage', () => {
     expect(fixture.nativeElement.querySelector('[data-testid="expected-amount"]')).not.toBeNull();
     // Período vazio não gera gráfico fictício.
     expect(fixture.nativeElement.querySelector('[data-testid="payment-status-chart"]')).toBeNull();
+  });
+
+  it('consolidates only authorized selected calendars and keeps received and pending independent', async () => {
+    component.setReferenceDate('2026-10-11');
+    http.expectOne('/api/calendars').flush([calendar('joao', 'ADMIN'), calendar('malu', 'FINANCE'), calendar('private', 'VIEWER')]);
+    await fixture.whenStable();
+    expectSummaryRequest('joao', '2026-10-01', '2026-10-31').flush(summary('joao', '2026-10-01', '2026-10-31'));
+    flushDetails();
+    component.setConsolidated(true);
+    const requests = http.match(request => request.url === '/api/finance/summary');
+    expect(requests.map(request => request.request.params.get('calendarId'))).toEqual(['joao', 'malu']);
+    requests.forEach(request => request.flush(summary(request.request.params.get('calendarId')!, '2026-10-01', '2026-10-31', {
+      expectedAmount: 495, receivedAmount: 230, pendingAmount: 290,
+    })));
+    expect(component.summary()?.expectedAmount).toBe(990);
+    expect(component.summary()?.receivedAmount).toBe(460);
+    expect(component.summary()?.pendingAmount).toBe(580);
+    expect(component.calendarScopeLabel()).toContain('2 calendários');
+    fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).toContain('Saldo dos atendimentos não desmarcados');
+    component.chartsCollapsed.set(true); fixture.detectChanges();
+    expect((fixture.nativeElement.querySelector('#finance-charts') as HTMLElement).hidden).toBe(true);
+  });
+
+  it('adds authoritative quarterly fixture metrics in cents without deriving pending from expected minus received', () => {
+    http.expectOne('/api/calendars').flush([]);
+    for (const factor of [1, 2, 3]) {
+      const result = consolidateSummaries(['joao', 'malu'].map(id => summary(id, '', '', {
+        expectedAmount: 495 * factor, receivedAmount: 230 * factor, pendingAmount: 290 * factor,
+      })));
+      expect([result.expectedAmount, result.receivedAmount, result.pendingAmount]).toEqual([990 * factor, 460 * factor, 580 * factor]);
+    }
   });
 
   function expectSummaryRequest(calendarId: string, startDate: string, endDate: string) {

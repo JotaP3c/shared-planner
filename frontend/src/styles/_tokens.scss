@@ -1,5 +1,8 @@
 // Design tokens — Shared Planner. Toda cor de UI deve vir daqui (tema claro/escuro).
 :root {
+  --sp-holiday: #0f766e;
+  --sp-holiday-bg: #ccfbf1;
+  --sp-holiday-text: #115e59;
   // Marca
   --sp-primary: #2563eb;
   --sp-primary-hover: #1d4ed8;
@@ -76,6 +79,9 @@
 }
 
 :root[data-theme='dark'] {
+  --sp-holiday: #2dd4bf;
+  --sp-holiday-bg: #11332f;
+  --sp-holiday-text: #99f6e4;
   --sp-primary: #3b82f6;
   --sp-primary-hover: #60a5fa;
   --sp-primary-soft: rgba(59, 130, 246, 0.14);

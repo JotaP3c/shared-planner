@@ -5,6 +5,8 @@ import { Subscription, catchError, filter, finalize, of, switchMap } from 'rxjs'
 import { CalendarService } from '../../api/calendar.service';
 import { EventService } from '../../api/event.service';
 import { AuthService } from '../../auth/auth.service';
+import { financeAuthorizedCalendars } from '../../auth/finance-access';
+import { canRespondToApproval, hasCalendarRole } from '../../auth/calendar-permissions';
 import { SearchService } from '../../api/search.service';
 import { CalendarResponse, EventSearchResponse, EventType } from '../../models/shared-planner.models';
 import { DataChangeService } from '../../state/data-change.service';
@@ -69,17 +71,7 @@ export class AppShell implements OnInit, OnDestroy {
       return false;
     }
 
-    if (user.role === 'ADMIN') {
-      return true;
-    }
-
-    if (user.role === 'FINANCE') {
-      return this.financeCalendars().some(calendar => calendar.memberRole !== null);
-    }
-
-    return this.financeCalendars().some(calendar =>
-      calendar.memberRole === 'ADMIN' || calendar.memberRole === 'FINANCE',
-    );
+    return user.role === 'ADMIN' || financeAuthorizedCalendars(user, this.financeCalendars()).length > 0;
   });
 
   // BR-AUDIT-002: ADMIN global ou ADMIN de algum calendário. Mesma regra do auditAccessGuard.
@@ -95,7 +87,7 @@ export class AppShell implements OnInit, OnDestroy {
     }
 
     return user.role === 'ADMIN'
-      || this.financeCalendars().some(calendar => calendar.memberRole === 'ADMIN');
+      || this.financeCalendars().some(calendar => hasCalendarRole(calendar, 'ADMIN'));
   });
 
   /** Mesma regra do backend para gerenciar membros: ADMIN global ou ADMIN de algum calendário. */
@@ -256,6 +248,7 @@ export class AppShell implements OnInit, OnDestroy {
   }
 
   searchResultTitle(result: EventSearchResponse): string {
+    if (result.externalSource === 'GOOGLE_ICS') return result.title;
     return result.clientName || result.personName || result.title;
   }
 
@@ -306,7 +299,7 @@ export class AppShell implements OnInit, OnDestroy {
     this.pendingCountSubscription?.unsubscribe();
     this.pendingCountSubscription = this.eventService.listPendingApprovals().subscribe({
       next: events => this.pendingApprovalCount.set(
-        events.filter(event => event.approvalRequestedFromEmail?.toLowerCase() === email).length,
+        events.filter(event => canRespondToApproval(event, email)).length,
       ),
       // Falha no contador não deve quebrar o shell; o badge apenas some.
       error: () => this.pendingApprovalCount.set(0),

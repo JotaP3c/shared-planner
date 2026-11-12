@@ -4,6 +4,7 @@ import { finalize } from 'rxjs';
 
 import { EventService } from '../../../core/api/event.service';
 import { AuthService } from '../../../core/auth/auth.service';
+import { canRespondToApproval } from '../../../core/auth/calendar-permissions';
 import { EventResponse } from '../../../core/models/shared-planner.models';
 import { DataChangeService } from '../../../core/state/data-change.service';
 
@@ -118,10 +119,7 @@ export class PendingPage implements OnInit {
   canRespond(event: EventResponse): boolean {
     const currentUser = this.currentUser();
 
-    return !!currentUser
-      && event.status === 'PENDING_APPROVAL'
-      && !!event.approvalRequestedFromEmail
-      && event.approvalRequestedFromEmail.toLowerCase() === currentUser.email.toLowerCase();
+    return canRespondToApproval(event, currentUser?.email);
   }
 
   formatDateTime(value: string): string {
@@ -132,6 +130,7 @@ export class PendingPage implements OnInit {
   }
 
   eventTitle(event: EventResponse): string {
+    if (event.externalSource === 'GOOGLE_ICS') return event.title;
     if (event.eventType === 'CLIENT') {
       return event.clientName || event.title || 'Cliente';
     }

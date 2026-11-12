@@ -6,6 +6,7 @@ import { provideRouter } from '@angular/router';
 import { AppShell } from './app-shell';
 import { AuthService } from '../../auth/auth.service';
 import { DataChangeService } from '../../state/data-change.service';
+import { EventSearchResponse } from '../../models/shared-planner.models';
 
 describe('AppShell', () => {
   let component: AppShell;
@@ -24,6 +25,12 @@ describe('AppShell', () => {
 
   it('should create', () => {
     expect(component).toBeTruthy();
+  });
+
+  it('keeps the ICS title in search without applying an owner-name heuristic to legacy events', () => {
+    const imported = { eventType: 'PERSONAL', title: 'Academia', personName: 'Pessoa proprietária', externalSource: 'GOOGLE_ICS' } as EventSearchResponse;
+    expect(component.searchResultTitle(imported)).toBe('Academia');
+    expect(component.searchResultTitle({ ...imported, externalSource: undefined })).toBe('Pessoa proprietária');
   });
 
   it('shows finance navigation only when the effective calendar capability allows it', () => {
@@ -122,8 +129,8 @@ describe('AppShell', () => {
     TestBed.tick();
 
     http.expectOne('/api/events/pending-approvals').flush([
-      { id: 'a', approvalRequestedFromEmail: 'USER@example.com' },
-      { id: 'b', approvalRequestedFromEmail: 'other@example.com' },
+      { id: 'a', status: 'PENDING_APPROVAL', approvalRequestedFromEmail: 'USER@example.com' },
+      { id: 'b', status: 'PENDING_APPROVAL', approvalRequestedFromEmail: 'other@example.com' },
     ]);
     expect(component.pendingApprovalCount()).toBe(1);
   });

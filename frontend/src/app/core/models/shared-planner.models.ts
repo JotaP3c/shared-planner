@@ -54,25 +54,31 @@ export interface CalendarResponse {
   ownerEmail: string;
   memberRole: CalendarMemberRole | null;
   canCreateEvents: boolean;
+  calendarType?: 'LEGACY' | 'PERSONAL' | 'SHARED' | 'IMPORTED';
+  memberRoles?: CalendarMemberRole[];
 }
 
 export interface CreateCalendarRequest {
   name: string;
+  calendarType?: 'SHARED' | 'IMPORTED';
 }
 
 export interface AddCalendarMemberRequest {
   email: string;
   role: CalendarMemberRole;
+  roles?: CalendarMemberRole[];
 }
 
 export interface CalendarMemberResponse {
   id: string; calendarId: string; userEmail: string; userFullName: string;
   role: CalendarMemberRole; createdAt: string;
+  roles?: CalendarMemberRole[];
 }
 
-export interface UpdateCalendarMemberRequest { role: CalendarMemberRole; }
+export interface UpdateCalendarMemberRequest { role: CalendarMemberRole; roles?: CalendarMemberRole[]; }
 
 export interface EventResponse {
+  externalSource?: 'GOOGLE_ICS' | null;
   id: string;
   calendarId: string;
   createdByEmail: string;
@@ -85,6 +91,10 @@ export interface EventResponse {
   personName: string | null;
   description: string | null;
   workDescription: string | null;
+  clientPhone?: string | null;
+  allDay?: boolean;
+  approvalRequestedFromEmails?: string[];
+  approvals?: EventApproval[];
   amount?: number | null;
   paymentStatus?: PaymentStatus | null;
   paymentMethod?: PaymentMethod | null;
@@ -132,6 +142,7 @@ export interface ConfirmationHistoryResponse {
 }
 
 export interface EventSearchResponse {
+  externalSource?: 'GOOGLE_ICS' | null;
   id: string;
   calendarId: string;
   calendarName: string;
@@ -154,10 +165,38 @@ export interface CreateEventRequest {
   personName?: string | null;
   description?: string | null;
   workDescription?: string | null;
+  clientPhone?: string | null;
+  allDay?: boolean;
   amount?: number | null;
   startsAt: string;
   endsAt: string;
   approvalRequestedFromEmail?: string | null;
+  approvalRequestedFromEmails?: string[];
+}
+
+export interface EventApproval {
+  userEmail: string;
+  status: 'PENDING' | 'APPROVED' | 'REJECTED';
+  round: number;
+  requestedAt: string;
+  respondedAt: string | null;
+}
+
+export interface RecurrenceRequest {
+  frequency: 'DAILY' | 'WEEKLY' | 'BIWEEKLY' | 'MONTHLY' | 'CUSTOM';
+  interval?: number;
+  weekDays?: string[];
+  until?: string;
+  count?: number;
+  zoneId: string;
+}
+
+export interface EventSeriesResponse {
+  id: string;
+  frequency: RecurrenceRequest['frequency'];
+  zoneId: string;
+  events: EventResponse[];
+  conflictCount?: number | null;
 }
 
 export type UpdateEventRequest = Omit<CreateEventRequest, 'calendarId'>;

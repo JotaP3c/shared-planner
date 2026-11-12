@@ -7,6 +7,7 @@ import {
   CreateEventRequest,
   EventResponse,
   EventSearchResponse,
+  EventApproval,
   RevenuePeriod,
   UpdateEventRequest,
   UpdatePaymentRequest,
@@ -91,5 +92,9 @@ export class EventService {
 
   confirmationHistory(eventId: string) {
     return this.http.get<ConfirmationHistoryResponse[]>(`${this.apiUrl}/${eventId}/confirmation-history`);
+  }
+
+  approvalHistory(eventId: string) {
+    return this.http.get<EventApproval[]>(`${this.apiUrl}/${eventId}/approval-history`);
   }
 }

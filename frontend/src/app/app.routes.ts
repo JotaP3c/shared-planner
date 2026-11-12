@@ -38,6 +38,10 @@ export const routes: Routes = [
           ),
       },
       {
+        path: 'calendar-import',
+        loadComponent: () => import('./features/calendar/calendar-import-page/calendar-import-page').then(m => m.CalendarImportPage),
+      },
+      {
         path: 'finance',
         loadComponent: () =>
           import('./features/finance/finance-page/finance-page').then(

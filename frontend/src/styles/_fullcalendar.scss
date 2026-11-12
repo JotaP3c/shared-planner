@@ -191,3 +191,30 @@
 .calendar-page .fc .fc-highlight {
   background: var(--sp-primary-soft);
 }
+
+// Read-only all-day holiday layer: the FullCalendar inner element otherwise keeps
+// its default white text, and an inline title can overflow a narrow month cell.
+.calendar-page .fc .sp-holiday {
+  min-width: 0;
+  margin: 1px 4px 3px;
+  overflow: hidden;
+  border: 0 !important;
+  border-left: 3px solid var(--sp-holiday) !important;
+  border-radius: 7px;
+  background: var(--sp-holiday-bg) !important;
+  color: var(--sp-holiday-text) !important;
+  cursor: default;
+
+  .fc-event-main {
+    min-width: 0;
+    padding: 4px 7px;
+    color: var(--sp-holiday-text);
+    line-height: 1.35;
+  }
+
+  .sp-event-title {
+    display: block;
+    max-width: 100%;
+    font-weight: 650;
+  }
+}

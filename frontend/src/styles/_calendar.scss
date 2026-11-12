@@ -4,6 +4,10 @@
   color: var(--sp-text);
 }
 
+.calendar-page app-calendar-creator { margin-bottom: 12px; }
+.holiday-dot { background: var(--sp-holiday); }
+.series-controls { display: grid; gap: 10px; font-size: 13px; }
+
 .calendar-page .calendar-layout {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 330px;

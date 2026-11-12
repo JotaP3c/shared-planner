@@ -1,4 +1,5 @@
 import { CalendarResponse, UserResponse } from '../models/shared-planner.models';
+import { calendarRoles, hasCalendarRole } from './calendar-permissions';
 
 /**
  * Calendários em que o usuário tem capacidade financeira (BR-FIN-003), espelhando o backend:
@@ -18,8 +19,8 @@ export function financeAuthorizedCalendars(
   }
 
   if (user.role === 'FINANCE') {
-    return calendars.filter(calendar => calendar.memberRole !== null);
+    return calendars.filter(calendar => calendarRoles(calendar).length > 0);
   }
 
-  return calendars.filter(calendar => calendar.memberRole === 'ADMIN' || calendar.memberRole === 'FINANCE');
+  return calendars.filter(calendar => hasCalendarRole(calendar, 'ADMIN') || hasCalendarRole(calendar, 'FINANCE'));
 }

@@ -5,6 +5,7 @@ import { Observable, catchError, map, of, switchMap } from 'rxjs';
 import { CalendarService } from '../api/calendar.service';
 import { AuthService } from '../auth/auth.service';
 import { UserResponse } from '../models/shared-planner.models';
+import { hasCalendarRole } from '../auth/calendar-permissions';
 
 /**
  * Guards de UX por papel (BLG-FE-002). O backend continua sendo a autoridade:
@@ -36,7 +37,7 @@ export const auditAccessGuard: CanActivateFn = () => {
       }
 
       return calendarService.list().pipe(
-        map(calendars => calendars.some(calendar => calendar.memberRole === 'ADMIN')
+        map(calendars => calendars.some(calendar => hasCalendarRole(calendar, 'ADMIN'))
           ? true
           : denied(router)),
         catchError(() => of(denied(router))),

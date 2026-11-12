@@ -2,6 +2,7 @@ import { AfterViewInit, Component, DestroyRef, OnInit, ViewChild, computed, effe
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
+import { HttpClient } from '@angular/common/http';
 import { FullCalendarComponent, FullCalendarModule } from '@fullcalendar/angular';
 import { CalendarOptions, DatesSetArg, EventInput } from '@fullcalendar/core';
 import ptBrLocale from '@fullcalendar/core/locales/pt-br';
@@ -12,6 +13,11 @@ import { Subscription, catchError, distinctUntilChanged, finalize, forkJoin, map
 
 import { CalendarService } from '../../../core/api/calendar.service';
 import { EventService } from '../../../core/api/event.service';
+import { EventSeriesService } from '../../../core/api/event-series.service';
+import { canRespondToApproval, hasCalendarRole } from '../../../core/auth/calendar-permissions';
+import { formatBrazilianPhone, phoneDigits } from '../../../shared/forms/brazilian-phone';
+import { RecurrenceEditor } from '../recurrence-editor/recurrence-editor';
+import { CalendarCreator } from '../calendar-creator/calendar-creator';
 import { FinanceService } from '../../../core/api/finance.service';
 import { financeAuthorizedCalendars } from '../../../core/auth/finance-access';
 import { Icon, IconName } from '../../../shared/ui/icon/icon';
@@ -25,6 +31,9 @@ import {
   CalendarResponse,
   CreateEventRequest,
   EventResponse,
+  EventApproval,
+  EventSeriesResponse,
+  RecurrenceRequest,
   EventType,
   PaymentMethod,
   PaymentStatus,
@@ -46,11 +55,25 @@ interface MonthlyFinanceSummary {
 
 @Component({
   selector: 'app-calendar-page',
-  imports: [FullCalendarModule, ReactiveFormsModule, Icon, DialogFocusDirective, AppointmentConfirmation],
+  imports: [FullCalendarModule, ReactiveFormsModule, Icon, DialogFocusDirective, AppointmentConfirmation, RecurrenceEditor, CalendarCreator],
   templateUrl: './calendar-page.html',
   styleUrl: './calendar-page.scss',
+  host: { '(document:keydown.escape)': 'onFilterEscape($event)' },
 })
 export class CalendarPage implements OnInit, AfterViewInit {
+  private readonly http = inject(HttpClient);
+  private readonly seriesService = inject(EventSeriesService);
+  readonly recurrence = signal<RecurrenceRequest | null>(null);
+  readonly editingSeries = signal<EventSeriesResponse | null>(null);
+  readonly seriesScope = signal<'SINGLE' | 'ALL' | 'FUTURE'>('SINGLE');
+  readonly seriesMessage = signal('');
+  readonly seriesNotice = signal('');
+  readonly approvalHistory = signal<EventApproval[] | null>(null);
+  readonly approvalHistoryError = signal('');
+  readonly holidayVisible = signal(true);
+  readonly holidayEvents = signal<EventInput[]>([]);
+  readonly holidayError = signal('');
+  private readonly loadedHolidayYears = new Set<number>();
   @ViewChild('calendar') calendarComponent?: FullCalendarComponent;
 
   private static readonly EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -80,6 +103,12 @@ export class CalendarPage implements OnInit, AfterViewInit {
   readonly formEventType = signal<EventType>('CLIENT');
   readonly selectedEvent = signal<EventResponse | null>(null);
   readonly eventBeingEdited = signal<EventResponse | null>(null);
+  /** The single-date editor must never shorten an imported interval spanning civil dates. */
+  readonly preservesOriginalInterval = computed(() => {
+    const event = this.eventBeingEdited();
+    return !!event && (!!event.allDay || (event.externalSource === 'GOOGLE_ICS'
+      && event.startsAt.slice(0, 10) !== event.endsAt.slice(0, 10)));
+  });
   readonly isEditMode = signal(false);
   readonly isDeletingEvent = signal(false);
   readonly isUpdatingApproval = signal(false);
@@ -103,6 +132,7 @@ export class CalendarPage implements OnInit, AfterViewInit {
     // Obrigatoriedade validada após trim em submitEventForm (CLIENT usa o nome do cliente).
     title: ['', Validators.maxLength(180)],
     clientName: ['', Validators.maxLength(120)],
+    clientPhone: [''],
     personName: ['', Validators.maxLength(120)],
     description: [''],
     workDescription: [''],
@@ -133,6 +163,7 @@ export class CalendarPage implements OnInit, AfterViewInit {
   readonly errorMessage = signal('');
   readonly readPendingIds = signal<Set<string>>(new Set());
   readonly openFilterMenu = signal<'calendars' | 'events' | null>(null);
+  private filterTrigger: HTMLElement | null = null;
   readonly currentCalendarView = signal<CalendarViewName>('dayGridMonth');
   readonly isPendingPanelCollapsed = signal(false);
   private readonly layout = inject(LayoutPreferencesService);
@@ -266,10 +297,7 @@ export class CalendarPage implements OnInit, AfterViewInit {
     const event = this.selectedEvent();
     const currentUser = this.currentUser();
 
-    return !!event
-      && event.status === 'PENDING_APPROVAL'
-      && !!event.approvalRequestedFromEmail
-      && event.approvalRequestedFromEmail.toLowerCase() === currentUser?.email.toLowerCase();
+    return !!event && canRespondToApproval(event, currentUser?.email);
   });
 
   readonly periodChip = computed(() => {
@@ -326,7 +354,7 @@ export class CalendarPage implements OnInit, AfterViewInit {
     fixedWeekCount: false,
     locale: ptBrLocale,
     headerToolbar: false,
-    allDaySlot: false,
+    allDaySlot: true,
     height: 'auto',
     slotMinTime: '00:00:00',
     slotMaxTime: '24:00:00',
@@ -355,8 +383,10 @@ export class CalendarPage implements OnInit, AfterViewInit {
     datesSet: (arg) => this.onDatesSet(arg),
     dateClick: (arg) => this.openNewEventModal(arg.date),
     select: (arg) => this.openNewEventModal(arg.start, arg.end),
-    eventClick: (arg) => this.openEventDetails(arg.event.extendedProps as EventResponse),
-    eventContent: (arg) => this.renderCalendarEvent(arg.event.extendedProps as EventResponse, arg.view.type),
+    eventClick: (arg) => { if (!arg.event.extendedProps['systemHoliday']) this.openEventDetails(arg.event.extendedProps as EventResponse); },
+    eventContent: (arg) => arg.event.extendedProps['systemHoliday']
+      ? { html: `<span class="sp-event-title">${this.escapeHtml(arg.event.title)}</span>` }
+      : this.renderCalendarEvent(arg.event.extendedProps as EventResponse, arg.view.type),
     events: [],
   };
 
@@ -365,7 +395,7 @@ export class CalendarPage implements OnInit, AfterViewInit {
     effect(() => {
       this.calendarOptions = {
         ...this.calendarOptions,
-        events: this.toCalendarEvents(this.filteredEvents()),
+        events: [...this.toCalendarEvents(this.filteredEvents()), ...(this.holidayVisible() ? this.holidayEvents() : [])],
       };
     });
 
@@ -640,12 +670,26 @@ export class CalendarPage implements OnInit, AfterViewInit {
     this.openSearchTarget();
   }
 
-  toggleFilterMenu(filterMenu: 'calendars' | 'events'): void {
-    this.openFilterMenu.set(this.openFilterMenu() === filterMenu ? null : filterMenu);
+  toggleFilterMenu(filterMenu: 'calendars' | 'events', trigger?: HTMLElement): void {
+    if (this.openFilterMenu() === filterMenu) {
+      this.closeFilterMenu();
+      return;
+    }
+    this.filterTrigger = trigger ?? (typeof document !== 'undefined' && document.activeElement instanceof HTMLElement ? document.activeElement : null);
+    this.openFilterMenu.set(filterMenu);
   }
 
   closeFilterMenu(): void {
     this.openFilterMenu.set(null);
+    if (this.filterTrigger?.isConnected) this.filterTrigger.focus();
+    this.filterTrigger = null;
+  }
+
+  onFilterEscape(event: Event): void {
+    if (!this.openFilterMenu()) return;
+    event.preventDefault();
+    event.stopPropagation();
+    this.closeFilterMenu();
   }
 
   toggleCalendar(calendarId: string): void {
@@ -661,6 +705,7 @@ export class CalendarPage implements OnInit, AfterViewInit {
   }
 
   selectAllCalendars(): void {
+    this.holidayVisible.set(true);
     this.selectedCalendarIds.set(this.calendars().map(calendar => calendar.id));
     this.loadEvents();
   }
@@ -698,6 +743,7 @@ export class CalendarPage implements OnInit, AfterViewInit {
   }
 
   clearFilters(): void {
+    this.holidayVisible.set(true);
     this.searchService.clear();
     this.selectedCalendarIds.set(this.calendars().map(calendar => calendar.id));
     this.selectAllEventTypes();
@@ -748,6 +794,8 @@ export class CalendarPage implements OnInit, AfterViewInit {
   }
 
   openEventDetails(event: EventResponse): void {
+    this.approvalHistory.set(null);
+    this.approvalHistoryError.set('');
     this.eventDetailError.set('');
     this.paymentFormError.set('');
     this.isPaymentFormOpen.set(false);
@@ -767,6 +815,10 @@ export class CalendarPage implements OnInit, AfterViewInit {
   }
 
   openNewEventModal(start?: Date, end?: Date): void {
+    this.recurrence.set(null);
+    this.editingSeries.set(null);
+    this.seriesScope.set('SINGLE');
+    this.seriesMessage.set('');
     const startsAt = start ?? new Date();
     const endsAt = end ?? this.addMinutes(startsAt, 60);
     const calendarId = this.defaultEventCalendarId();
@@ -787,6 +839,7 @@ export class CalendarPage implements OnInit, AfterViewInit {
       eventType: 'CLIENT',
       title: '',
       clientName: '',
+      clientPhone: '',
       personName: '',
       description: '',
       workDescription: '',
@@ -802,6 +855,10 @@ export class CalendarPage implements OnInit, AfterViewInit {
   }
 
   openEditEventModal(event: EventResponse): void {
+    this.recurrence.set(null);
+    this.editingSeries.set(null);
+    this.seriesScope.set('SINGLE');
+    this.seriesMessage.set('');
     const startsAt = new Date(event.startsAt);
     const endsAt = new Date(event.endsAt);
 
@@ -817,14 +874,17 @@ export class CalendarPage implements OnInit, AfterViewInit {
       eventType: event.eventType,
       title: event.title,
       clientName: event.clientName ?? '',
+      clientPhone: formatBrazilianPhone(event.clientPhone ?? ''),
       personName: event.personName ?? '',
       description: event.description ?? '',
-      workDescription: event.workDescription ?? '',
+      workDescription: event.eventType === 'CLIENT'
+        ? [...new Set([event.workDescription, event.description].filter((text): text is string => !!text?.trim()))].join('\n\n')
+        : event.workDescription ?? '',
       amount: event.amount == null ? '' : String(event.amount),
       date: this.toInputDate(startsAt),
       startTime: this.toInputTime(startsAt),
       endTime: this.toInputTime(endsAt),
-      approvalRequestedFromEmail: event.approvalRequestedFromEmail ?? '',
+      approvalRequestedFromEmail: (event.approvalRequestedFromEmails ?? [event.approvalRequestedFromEmail]).filter(Boolean).join(', '),
     });
 
     this.isEventModalOpen.set(true);
@@ -847,6 +907,7 @@ export class CalendarPage implements OnInit, AfterViewInit {
   }
 
   submitEventForm(): void {
+    if (this.isSavingEvent()) return;
     this.eventFormError.set('');
 
     if (this.eventForm.invalid) {
@@ -869,6 +930,12 @@ export class CalendarPage implements OnInit, AfterViewInit {
     const description = this.cleanText(raw.description);
     const workDescription = this.cleanText(raw.workDescription);
     const approvalRequestedFromEmail = this.cleanText(raw.approvalRequestedFromEmail);
+    const approvalEmails = [...new Set(approvalRequestedFromEmail.split(/[;,\s]+/).filter(Boolean).map(email => email.toLowerCase()))];
+    const sharedCalendar = this.calendars().find(calendar => calendar.id === calendarId)?.calendarType === 'SHARED';
+    const clientPhone = phoneDigits(raw.clientPhone ?? '');
+    if (eventType === 'CLIENT' && clientPhone && !/^\d{11}$/.test(clientPhone)) {
+      this.eventFormError.set('Informe o telefone com DDD e 11 dígitos.'); return;
+    }
 
     if (!calendarId) {
       this.eventFormError.set('Selecione o calendário do evento.');
@@ -902,28 +969,29 @@ export class CalendarPage implements OnInit, AfterViewInit {
       return;
     }
 
-    if (eventType === 'SHARED' && !approvalRequestedFromEmail) {
+    if (eventType === 'SHARED' && !sharedCalendar && !approvalRequestedFromEmail) {
       this.eventFormError.set('Informe o e-mail do usuário responsável pela aprovação.');
       return;
     }
 
-    if (eventType === 'SHARED' && !CalendarPage.EMAIL_PATTERN.test(approvalRequestedFromEmail)) {
+    if ((eventType === 'SHARED' || sharedCalendar) && approvalEmails.some(email => !CalendarPage.EMAIL_PATTERN.test(email))) {
       this.eventFormError.set('Informe um e-mail válido para a aprovação.');
       return;
     }
 
     if (
-      eventType === 'SHARED'
-      && approvalRequestedFromEmail.toLowerCase() === this.currentUser()?.email.toLowerCase()
+      (eventType === 'SHARED' || sharedCalendar)
+      && approvalEmails.includes(this.currentUser()?.email.toLowerCase() ?? '')
     ) {
       this.eventFormError.set('A aprovação deve ser solicitada a outro usuário.');
       return;
     }
 
+    const preservedEvent = this.preservesOriginalInterval() ? this.eventBeingEdited() : null;
     const startsAt = this.buildLocalDateTime(raw.date, raw.startTime);
     const endsAt = this.buildLocalDateTime(raw.date, raw.endTime);
 
-    if (endsAt <= startsAt) {
+    if (!preservedEvent && endsAt <= startsAt) {
       this.eventFormError.set('O horário final deve ser maior que o horário inicial.');
       return;
     }
@@ -940,20 +1008,37 @@ export class CalendarPage implements OnInit, AfterViewInit {
       title,
       clientName: eventType === 'CLIENT' ? clientName : null,
       personName: eventType === 'PERSONAL' ? personName : null,
-      description: description || null,
+      description: eventType === 'CLIENT' ? null : description || null,
       workDescription: eventType === 'CLIENT' ? workDescription || null : null,
+      clientPhone: eventType === 'CLIENT' ? clientPhone || null : null,
+      allDay: preservedEvent?.allDay ?? false,
       amount,
-      startsAt: this.toLocalDateTime(startsAt),
-      endsAt: this.toLocalDateTime(endsAt),
+      startsAt: preservedEvent?.startsAt ?? this.toLocalDateTime(startsAt),
+      endsAt: preservedEvent?.endsAt ?? this.toLocalDateTime(endsAt),
       approvalRequestedFromEmail:
-        eventType === 'SHARED' ? approvalRequestedFromEmail : null,
+        eventType === 'SHARED' ? approvalEmails[0] ?? null : null,
+      approvalRequestedFromEmails: eventType === 'SHARED' || sharedCalendar ? approvalEmails.length ? approvalEmails : undefined : undefined,
     };
+
+    const recurrence = this.recurrence();
+    if (recurrence && ((!recurrence.until && !recurrence.count) || (recurrence.count !== undefined && (recurrence.count < 1 || recurrence.count > 366)))) {
+      this.eventFormError.set('Defina uma data limite ou quantidade entre 1 e 366 para a repetição.'); return;
+    }
 
     this.isSavingEvent.set(true);
     const editedEvent = this.eventBeingEdited();
+    const series = this.editingSeries();
+    const scope = this.seriesScope();
     const saveRequest = editedEvent
-      ? this.eventService.update(editedEvent.id, request)
-      : this.eventService.create({ calendarId, ...request } as CreateEventRequest);
+      ? series && scope !== 'SINGLE'
+        ? this.seriesService.update(series.id, editedEvent.id, scope, request).pipe(map(result => result.events[0]))
+        : this.eventService.update(editedEvent.id, request)
+      : recurrence
+        ? this.seriesService.create({ calendarId, ...request }, recurrence).pipe(map(result => {
+          this.seriesNotice.set(result.conflictCount ? `Série criada: ${result.conflictCount} ocorrência(s) com sobreposição. Revise os horários na agenda.` : 'Série recorrente criada.');
+          return result.events[0];
+        }))
+        : this.eventService.create({ calendarId, ...request } as CreateEventRequest);
 
     saveRequest
       .pipe(finalize(() => this.isSavingEvent.set(false)))
@@ -1201,10 +1286,7 @@ export class CalendarPage implements OnInit, AfterViewInit {
   canRespondToEvent(event: EventResponse): boolean {
     const currentUser = this.currentUser();
 
-    return !!currentUser
-      && event.status === 'PENDING_APPROVAL'
-      && !!event.approvalRequestedFromEmail
-      && event.approvalRequestedFromEmail.toLowerCase() === currentUser.email.toLowerCase();
+    return canRespondToApproval(event, currentUser?.email);
   }
 
   isPendingRead(eventId: string): boolean {
@@ -1286,22 +1368,97 @@ export class CalendarPage implements OnInit, AfterViewInit {
 
     const calendar = this.calendars().find(currentCalendar => currentCalendar.id === event.calendarId);
 
-    if (!calendar?.memberRole) {
+    if (!calendar) {
       return false;
     }
 
-    if (calendar.memberRole === 'ADMIN') {
+    if (hasCalendarRole(calendar, 'ADMIN')) {
       return true;
     }
 
-    if (calendar.memberRole === 'EDITOR'
+    if (hasCalendarRole(calendar, 'EDITOR')
         && event.createdByEmail.toLowerCase() === currentUser.email.toLowerCase()) {
       return true;
     }
 
     return event.eventType === 'SHARED'
       && calendar.canCreateEvents
+      && (!calendar.calendarType || calendar.calendarType === 'LEGACY')
+      && !event.approvals?.length
       && event.approvalRequestedFromEmail?.toLowerCase() === currentUser.email.toLowerCase();
+  }
+
+  formatPhoneInput(value: string): void {
+    this.eventForm.controls.clientPhone.setValue(formatBrazilianPhone(value));
+  }
+
+  readonly formatClientPhone = formatBrazilianPhone;
+
+  onCalendarCreated(calendar: CalendarResponse): void {
+    this.calendars.update(calendars => [...calendars, calendar]);
+    this.selectedCalendarIds.update(ids => [...ids, calendar.id]);
+    this.dataChanges.notify();
+    this.loadEvents();
+  }
+
+  formUsesSharedCalendar(): boolean {
+    return this.calendars().find(calendar => calendar.id === this.eventForm.controls.calendarId.value)?.calendarType === 'SHARED';
+  }
+
+  loadEditingSeries(): void {
+    const event = this.eventBeingEdited();
+    if (!event) return;
+    this.seriesMessage.set('Consultando série...');
+    this.seriesService.byEvent(event.id).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: series => {
+        if (this.eventBeingEdited()?.id !== event.id) return;
+        this.editingSeries.set(series); this.seriesMessage.set(`${series.events.length} ocorrência(s) nesta série · ${series.zoneId}`);
+      },
+      error: error => { if (this.eventBeingEdited()?.id === event.id) this.seriesMessage.set(error?.status === 404 ? 'Este evento não pertence a uma série.' : 'Não foi possível consultar a série.'); },
+    });
+  }
+
+  cancelEditingSeries(): void {
+    const series = this.editingSeries();
+    const event = this.eventBeingEdited();
+    const scope = this.seriesScope();
+    if (!series || !event || scope === 'SINGLE' || this.isSavingEvent()) return;
+    if (!window.confirm(scope === 'ALL' ? 'Cancelar todas as ocorrências desta série?' : 'Cancelar esta ocorrência e as futuras?')) return;
+    this.isSavingEvent.set(true);
+    this.seriesService.cancel(series.id, event.id, scope).pipe(finalize(() => this.isSavingEvent.set(false))).subscribe({
+      next: () => { this.isEventModalOpen.set(false); this.loadEvents(); this.loadPendingApprovals(); this.dataChanges.notify(); },
+      error: () => this.eventFormError.set('Não foi possível cancelar a série. Verifique suas permissões.'),
+    });
+  }
+
+  loadApprovalHistory(event: EventResponse): void {
+    this.approvalHistoryError.set('');
+    this.eventService.approvalHistory(event.id).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: history => { if (this.selectedEvent()?.id === event.id) this.approvalHistory.set(history); },
+      error: () => { if (this.selectedEvent()?.id === event.id) this.approvalHistoryError.set('Não foi possível consultar as respostas.'); },
+    });
+  }
+
+  approvalStatusLabel(status: string): string {
+    return ({ PENDING: 'Pendente', APPROVED: 'Aprovado', REJECTED: 'Recusado' } as Record<string, string>)[status] ?? status;
+  }
+
+  private loadHolidays(start: Date, end: Date): void {
+    // The official dataset currently covers 2026 only; no dates are guessed for other years.
+    if (start.getFullYear() > 2026 || end.getFullYear() < 2026 || this.loadedHolidayYears.has(2026)) return;
+    this.loadedHolidayYears.add(2026);
+    this.http.get<{ holidays: Array<{ id: string; title: string; startDate: string; endDateExclusive: string }> }>('/api/holidays', {
+      params: { country: 'BR', year: '2026' },
+    }).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: result => {
+        this.holidayError.set('');
+        this.holidayEvents.set(result.holidays.map(holiday => ({
+          id: holiday.id, title: holiday.title, start: holiday.startDate, end: holiday.endDateExclusive,
+          allDay: true, editable: false, classNames: ['sp-holiday'], extendedProps: { systemHoliday: true },
+        })));
+      },
+      error: () => { this.loadedHolidayYears.delete(2026); this.holidayError.set('Não foi possível carregar os feriados de 2026.'); },
+    });
   }
 
   hasFinancialDetails(event: EventResponse): boolean {
@@ -1758,6 +1915,7 @@ export class CalendarPage implements OnInit, AfterViewInit {
   }
 
   private onDatesSet(arg: DatesSetArg): void {
+    this.loadHolidays(arg.start, arg.end);
     this.currentCalendarView.set(this.toCalendarViewName(arg.view.type));
     const title = arg.view.title ?? '';
     this.periodTitle.set(title.charAt(0).toUpperCase() + title.slice(1));
@@ -1781,6 +1939,7 @@ export class CalendarPage implements OnInit, AfterViewInit {
       title: this.eventTitle(event),
       start: event.startsAt,
       end: event.endsAt,
+      allDay: event.allDay ?? false,
       display: 'block',
       classNames: [
         'sp-event-block',
@@ -1794,6 +1953,7 @@ export class CalendarPage implements OnInit, AfterViewInit {
   }
 
   private eventTitle(event: EventResponse): string {
+    if (event.externalSource === 'GOOGLE_ICS') return event.title;
     if (event.eventType === 'CLIENT') {
       return event.clientName || event.title || 'Cliente';
     }
@@ -1808,7 +1968,7 @@ export class CalendarPage implements OnInit, AfterViewInit {
   private renderCalendarEvent(event: EventResponse, viewType: string): { html: string } {
     const startsAt = new Date(event.startsAt);
     const endsAt = new Date(event.endsAt);
-    const time = `${this.formatEventTime(startsAt)} - ${this.formatEventTime(endsAt)}`;
+    const time = event.allDay ? 'Dia inteiro' : `${this.formatEventTime(startsAt)} - ${this.formatEventTime(endsAt)}`;
     const title = this.escapeHtml(this.eventTitle(event));
 
     const status = event.status === 'PENDING_APPROVAL'

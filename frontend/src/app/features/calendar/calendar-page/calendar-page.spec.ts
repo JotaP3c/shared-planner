@@ -27,6 +27,21 @@ describe('CalendarPage', () => {
     expect(component).toBeTruthy();
   });
 
+  it('closes the calendar filter with Escape while focus stays on its trigger and removes the backdrop', () => {
+    fixture.detectChanges();
+    const element: HTMLElement = fixture.nativeElement;
+    const trigger = element.querySelector<HTMLButtonElement>('button.filter-chip')!;
+    trigger.focus(); trigger.click(); fixture.detectChanges();
+    expect(component.openFilterMenu()).toBe('calendars');
+    expect(document.activeElement).toBe(trigger);
+    expect(element.querySelector('.filter-backdrop')).not.toBeNull();
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    fixture.detectChanges();
+    expect(component.openFilterMenu()).toBeNull();
+    expect(element.querySelector('.filter-backdrop')).toBeNull();
+    expect(document.activeElement).toBe(trigger);
+  });
+
   it('collapses the right panel independently and lets the calendar take the space (INC-06)', () => {
     localStorage.removeItem('sharedPlanner.layout');
     fixture.detectChanges();
@@ -386,5 +401,113 @@ describe('CalendarPage async states and validation (BLG-BUG-004/005/008, BLG-FE-
     const request = http.expectOne(req => req.method === 'POST' && req.url === '/api/events');
     expect(request.request.body.title).toBe('Atendimento');
     expect(request.request.body.workDescription).toBe('Corte');
+  });
+
+  it('keeps all authorized calendars selected and filters event types across them together', () => {
+    component.selectAllCalendars();
+    expect(component.selectedCalendarIds()).toEqual(['cal-a', 'cal-b']);
+    component.events.set([
+      event('client', { calendarId: 'cal-a', eventType: 'CLIENT' }),
+      event('personal', { calendarId: 'cal-b', eventType: 'PERSONAL' }),
+      event('shared', { calendarId: 'cal-b', eventType: 'SHARED' }),
+    ]);
+    component.selectAllEventTypes();
+    expect(component.filteredEvents().map(item => item.id)).toEqual(['client', 'personal', 'shared']);
+    component.selectedEventTypes.set(['CLIENT', 'PERSONAL']);
+    expect(component.filteredEvents().map(item => item.id)).toEqual(['client', 'personal']);
+  });
+
+  it('shows the imported title without changing the legacy PERSONAL display rule or all-day interval', () => {
+    const imported = event('ics', { eventType: 'PERSONAL', personName: 'Pessoa proprietária', title: 'Academia', externalSource: 'GOOGLE_ICS', allDay: true,
+      startsAt: '2026-12-25T00:00:00', endsAt: '2026-12-26T00:00:00' });
+    expect(component.displayTitle(imported)).toBe('Academia');
+    expect(component.displayTitle({ ...imported, externalSource: undefined })).toBe('Pessoa proprietária');
+    component.openEditEventModal(imported);
+    component.eventForm.controls.date.setValue('2026-12-31');
+    component.submitEventForm();
+    const request = http.expectOne('/api/events/ics');
+    expect(request.request.body.allDay).toBe(true);
+    expect(request.request.body.startsAt).toBe('2026-12-25T00:00:00');
+    expect(request.request.body.endsAt).toBe('2026-12-26T00:00:00');
+  });
+
+  it('allows designated editors to answer a shared round without editing another creator’s event', () => {
+    component.calendars.set([{ ...calendarA, calendarType: 'SHARED', memberRole: 'EDITOR', memberRoles: ['EDITOR', 'FINANCE'] }]);
+    const shared = event('shared', { createdByEmail: 'owner@example.com', approvals: [
+      { userEmail: 'user@example.com', status: 'PENDING', round: 1, requestedAt: '', respondedAt: null },
+    ] });
+    expect(component.canRespondToEvent(shared)).toBe(true);
+    expect(component.canEditEvent(shared)).toBe(false);
+    expect(component.canEditEvent({ ...shared, createdByEmail: 'user@example.com' })).toBe(true);
+  });
+
+  it('preserves the exact civil interval when editing the title of an imported timed overnight event', () => {
+    const imported = event('overnight', { eventType: 'PERSONAL', personName: 'Pessoa', title: 'Viagem', externalSource: 'GOOGLE_ICS', allDay: false,
+      startsAt: '2026-11-10T23:30:15', endsAt: '2026-11-11T01:30:45' });
+    component.openEditEventModal(imported);
+    expect(component.preservesOriginalInterval()).toBe(true);
+    component.eventForm.controls.title.setValue('Viagem atualizada');
+    component.submitEventForm();
+    expect(component.eventFormError()).toBe('');
+    const request = http.expectOne('/api/events/overnight');
+    expect(request.request.body.title).toBe('Viagem atualizada');
+    expect(request.request.body.allDay).toBe(false);
+    expect(request.request.body.startsAt).toBe('2026-11-10T23:30:15');
+    expect(request.request.body.endsAt).toBe('2026-11-11T01:30:45');
+  });
+
+  it('masks a Brazilian phone and preserves both legacy descriptions in one CLIENT field', () => {
+    const legacy = event('client', { eventType: 'CLIENT', clientName: 'Cliente', workDescription: 'Serviço antigo', description: 'Observação antiga', amount: 100 });
+    component.openEditEventModal(legacy);
+    expect(component.eventForm.controls.workDescription.value).toBe('Serviço antigo\n\nObservação antiga');
+    component.formatPhoneInput('+55 47 99999-1234');
+    expect(component.eventForm.controls.clientPhone.value).toBe('(47) 99999-1234');
+    component.submitEventForm();
+    const request = http.expectOne('/api/events/client');
+    expect(request.request.body.clientPhone).toBe('47999991234');
+    expect(request.request.body.workDescription).toContain('Observação antiga');
+    expect(request.request.body.description).toBeNull();
+  });
+
+  it('uses the shared calendar default approvers for CLIENT and accepts multiple explicit participants', () => {
+    component.calendars.set([{ ...calendarA, calendarType: 'SHARED' }]);
+    fillForm({ eventType: 'CLIENT', title: 'Atendimento', clientName: 'Cliente', amount: '100', workDescription: 'Serviço' });
+    component.submitEventForm();
+    const defaults = http.expectOne(req => req.method === 'POST' && req.url === '/api/events');
+    expect(defaults.request.body.approvalRequestedFromEmails).toBeUndefined();
+    defaults.flush({}, { status: 400, statusText: 'Bad Request' });
+    component.eventForm.controls.approvalRequestedFromEmail.setValue('malu@example.test, outra@example.test');
+    component.submitEventForm();
+    const explicit = http.expectOne(req => req.method === 'POST' && req.url === '/api/events');
+    expect(explicit.request.body.approvalRequestedFromEmails).toEqual(['malu@example.test', 'outra@example.test']);
+  });
+
+  it('creates a bounded weekly series and allows future-only editing after loading its identity', () => {
+    fillForm({ eventType: 'PERSONAL', title: 'Academia', personName: 'Pessoa' });
+    component.recurrence.set({ frequency: 'WEEKLY', count: 8, weekDays: ['MONDAY', 'WEDNESDAY'], zoneId: 'America/Sao_Paulo' });
+    component.submitEventForm();
+    const create = http.expectOne('/api/event-series');
+    expect(create.request.body.recurrence.count).toBe(8);
+    create.flush({}, { status: 400, statusText: 'Bad Request' });
+
+    component.openEditEventModal(event('occurrence', { eventType: 'PERSONAL', personName: 'Pessoa' }));
+    component.loadEditingSeries();
+    http.expectOne('/api/event-series/by-event/occurrence').flush({ id: 'series', frequency: 'WEEKLY', zoneId: 'America/Sao_Paulo', events: [] });
+    component.seriesScope.set('FUTURE'); component.submitEventForm();
+    const update = http.expectOne(req => req.url === '/api/event-series/series');
+    expect(update.request.params.get('scope')).toBe('FUTURE');
+    expect(update.request.params.get('fromEventId')).toBe('occurrence');
+  });
+
+  it('loads holidays separately as read-only all-day events and lets the filter hide them', () => {
+    (component as unknown as { loadHolidays(start: Date, end: Date): void }).loadHolidays(new Date(2026, 11, 1), new Date(2027, 0, 1));
+    const request = http.match(req => req.url === '/api/holidays')[0];
+    expect(request).toBeDefined();
+    request.flush({ holidays: [{ id: 'christmas', title: 'Natal', startDate: '2026-12-25', endDateExclusive: '2026-12-26' }] });
+    TestBed.tick();
+    const visible = component.calendarOptions.events as Array<{ id: string; allDay: boolean; editable: boolean }>;
+    expect(visible.find(item => item.id === 'christmas')).toMatchObject({ allDay: true, editable: false });
+    component.holidayVisible.set(false); TestBed.tick();
+    expect((component.calendarOptions.events as Array<{ id: string }>).some(item => item.id === 'christmas')).toBe(false);
   });
 });

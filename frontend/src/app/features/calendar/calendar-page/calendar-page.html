@@ -4,6 +4,7 @@
   [class.view-week]="currentCalendarView() === 'timeGridWeek'"
   [class.view-day]="currentCalendarView() === 'timeGridDay'"
 >
+  @if (seriesNotice()) { <p class="page-feedback is-success" role="status">{{ seriesNotice() }}</p> }
   @if (errorMessage()) {
     <p class="error-message" role="alert">{{ errorMessage() }}</p>
   }
@@ -55,6 +56,8 @@
         </div>
       </header>
 
+      <app-calendar-creator (created)="onCalendarCreated($event)" />
+
       <div class="calendar-toolbar">
         <div class="toolbar-filters">
           <span class="toolbar-label">Exibir:</span>
@@ -90,7 +93,7 @@
               aria-haspopup="menu"
               [class.open]="openFilterMenu() === 'calendars'"
               [attr.aria-expanded]="openFilterMenu() === 'calendars'"
-              (click)="toggleFilterMenu('calendars')"
+              (click)="toggleFilterMenu('calendars', $any($event.currentTarget))"
             >
               <sp-icon name="layers" [size]="16" />
               Calendários: {{ calendarChip() }}
@@ -106,6 +109,10 @@
                 </header>
 
                 <div class="filter-options">
+                  <label class="filter-option">
+                    <input type="checkbox" [checked]="holidayVisible()" (change)="holidayVisible.set(!holidayVisible())" />
+                    <span class="cal-dot holiday-dot"></span><span>Feriados no Brasil · 2026</span>
+                  </label>
                   @for (calendar of calendars(); track calendar.id) {
                     <label class="filter-option">
                       <input
@@ -141,6 +148,8 @@
           </button>
         </div>
       </div>
+
+      @if (holidayError()) { <p class="error-message" role="alert">{{ holidayError() }}</p> }
 
       <div class="calendar-frame" [attr.aria-busy]="isLoading()">
         @if (isLoading()) {
@@ -402,6 +411,11 @@
                   <input type="number" min="0" step="0.01" inputmode="decimal" formControlName="amount" placeholder="0,00" />
                 </label>
               </div>
+              <label class="sp-field">Telefone do cliente
+                <input type="tel" formControlName="clientPhone" maxlength="20" inputmode="tel"
+                  placeholder="(XX) 9XXXX-XXXX" (input)="formatPhoneInput($any($event.target).value)" />
+                <small class="field-hint">Opcional. DDD e número de celular brasileiro.</small>
+              </label>
             } @else {
               <label class="sp-field">
                 <span>Título do evento <span class="req">*</span></span>
@@ -420,26 +434,30 @@
               </label>
             }
 
-            @if (formEventType() === 'SHARED') {
+            @if (formEventType() === 'SHARED' || formUsesSharedCalendar()) {
               <label class="sp-field">
-                <span>Convidar usuário (e-mail) <span class="req">*</span></span>
-                <input type="email" formControlName="approvalRequestedFromEmail" placeholder="usuario@email.com" />
-                <small class="field-hint">O convidado precisa ser membro do calendário e aprovar o evento.</small>
+                <span>Aprovadores designados (e-mails)</span>
+                <input type="text" formControlName="approvalRequestedFromEmail" placeholder="pessoa@email.com, outra@email.com" />
+                <small class="field-hint">Separe por vírgulas. Todos os designados precisam aprovar. Em calendário compartilhado, vazio convida os demais membros ativos. Você não aprova o próprio evento.</small>
               </label>
+            }
+
+            @if (preservesOriginalInterval()) {
+              <p class="field-hint">{{ eventBeingEdited()?.allDay ? 'Evento de dia inteiro.' : 'Evento importado com intervalo de mais de um dia.' }} A edição de conteúdo preserva as datas e os horários originais.</p>
             }
 
             <div class="form-row four">
               <label class="sp-field">
                 <span>Data <span class="req">*</span></span>
-                <input type="date" formControlName="date" />
+                <input type="date" formControlName="date" [readOnly]="preservesOriginalInterval()" />
               </label>
               <label class="sp-field">
                 <span>Início <span class="req">*</span></span>
-                <input type="time" formControlName="startTime" />
+                <input type="time" formControlName="startTime" [readOnly]="preservesOriginalInterval()" />
               </label>
               <label class="sp-field">
                 Duração
-                <select [value]="currentDurationMinutes() ?? ''" (change)="onDurationChange($any($event.target).value)">
+                <select [value]="currentDurationMinutes() ?? ''" [disabled]="preservesOriginalInterval()" (change)="onDurationChange($any($event.target).value)">
                   <option value="">Personalizada</option>
                   @for (minutes of availableDurations(); track minutes) {
                     <option [value]="minutes" [selected]="minutes === currentDurationMinutes()">{{ formatDuration(minutes) }}</option>
@@ -448,7 +466,7 @@
               </label>
               <label class="sp-field">
                 <span>Término <span class="req">*</span></span>
-                <input type="time" formControlName="endTime" />
+                <input type="time" formControlName="endTime" [readOnly]="preservesOriginalInterval()" />
               </label>
             </div>
 
@@ -459,10 +477,33 @@
               </label>
             }
 
+            @if (formEventType() !== 'CLIENT') {
             <label class="sp-field">
-              {{ formEventType() === 'CLIENT' ? 'Observações' : 'Descrição' }}
+              Descrição
               <textarea rows="2" formControlName="description" placeholder="Detalhes adicionais (opcional)"></textarea>
             </label>
+            }
+
+            @if (!isEditMode()) {
+              <app-recurrence-editor (changed)="recurrence.set($event)" />
+            } @else {
+              <div class="series-controls">
+                <button class="secondary-button" type="button" (click)="loadEditingSeries()">Gerenciar série recorrente</button>
+                @if (seriesMessage()) { <p role="status">{{ seriesMessage() }}</p> }
+                @if (editingSeries()) {
+                  <label class="sp-field">Aplicar alteração
+                    <select [value]="seriesScope()" (change)="seriesScope.set($any($event.target).value)">
+                      <option value="SINGLE">Somente esta ocorrência</option>
+                      <option value="FUTURE">Esta e as futuras</option>
+                      <option value="ALL">Toda a série</option>
+                    </select>
+                  </label>
+                  @if (seriesScope() !== 'SINGLE') {
+                    <button class="danger-button" type="button" (click)="cancelEditingSeries()" [disabled]="isSavingEvent()">Cancelar ocorrências selecionadas</button>
+                  }
+                }
+              </div>
+            }
 
             @if (eventFormError()) {
               <p class="modal-error" role="alert">
@@ -559,6 +600,9 @@
                   <dd>{{ event.clientName }}</dd>
                 </div>
               }
+              @if (event.clientPhone) {
+                <div><dt>Telefone</dt><dd>{{ formatClientPhone(event.clientPhone) }}</dd></div>
+              }
               @if (event.personName) {
                 <div class="detail-person">
                   <dt>Pessoa</dt>
@@ -581,7 +625,7 @@
                   <dd>{{ event.workDescription }}</dd>
                 </div>
               }
-              @if (event.description) {
+              @if (event.description && event.description !== event.workDescription) {
                 <div class="detail-description detail-wide">
                   <dt>Descrição</dt>
                   <dd>{{ event.description }}</dd>
@@ -589,6 +633,22 @@
               }
             </dl>
           </section>
+
+          @if (event.approvals?.length || event.approvalRequestedFromEmail) {
+            <section class="detail-section" aria-label="Respostas dos participantes">
+              <h3>Aprovações</h3>
+              @for (approval of event.approvals ?? []; track approval.userEmail) {
+                <p>{{ approval.userEmail }} · {{ approvalStatusLabel(approval.status) }}</p>
+              }
+              <button class="secondary-button" type="button" (click)="loadApprovalHistory(event)">Histórico de respostas</button>
+              @if (approvalHistoryError()) { <p role="alert">{{ approvalHistoryError() }}</p> }
+              @if (approvalHistory(); as history) {
+                <ol>@for (approval of history; track $index) {
+                  <li>Rodada {{ approval.round }} · {{ approval.userEmail }} · {{ approvalStatusLabel(approval.status) }} · {{ approval.respondedAt ? formatDateTime(approval.respondedAt) : 'Aguardando resposta' }}</li>
+                }</ol>
+              }
+            </section>
+          }
 
           <!-- Financeiro (somente com capacidade financeira) -->
           @if (hasFinancialDetails(event) && event.eventType === 'CLIENT') {

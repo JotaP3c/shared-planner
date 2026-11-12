@@ -4,6 +4,7 @@ import { finalize } from 'rxjs';
 import { AuditService } from '../../../core/api/audit.service';
 import { CalendarService } from '../../../core/api/calendar.service';
 import { AuthService } from '../../../core/auth/auth.service';
+import { hasCalendarRole } from '../../../core/auth/calendar-permissions';
 import {
   AuditAction,
   AuditEntityType,
@@ -67,7 +68,7 @@ export class AuditPage implements OnInit {
   readonly calendarOptions = computed(() =>
     this.isGlobalAdmin()
       ? this.calendars()
-      : this.calendars().filter(calendar => calendar.memberRole === 'ADMIN'),
+      : this.calendars().filter(calendar => hasCalendarRole(calendar, 'ADMIN')),
   );
 
   readonly showEmptyState = computed(() =>

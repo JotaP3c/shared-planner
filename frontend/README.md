@@ -1,5 +1,21 @@
 # Shared Planner Frontend
 
+## Estado vigente — 12/11/2026
+
+Angular framework 21.2.26, tooling/SSR 21.2.29, Node 22.12 validado. As contagens
+e descrições de placeholders abaixo são históricas: Usuários, Auditoria e aparência
+em Configurações estão implementados. Há criação de calendário compartilhado,
+papéis combinados, consentimento por participantes, telefone CLIENT, recorrência
+finita, prévia de importação ICS, feriados oficiais BR/2026 e Finance consolidado.
+Login/tema e os fluxos de pagamento/confirmação existentes foram preservados.
+
+O proxy de desenvolvimento usa `http://127.0.0.1:8080`; `npm.cmd start` publica em
+`http://localhost:4200`. Build pré-renderiza somente `/login`.
+`tests/browser-smoke.cjs` usa fixtures sintéticas somente no processo de teste;
+`tests/local-development-check.cjs` valida a aplicação local sem editar seus dados.
+Playwright é ferramenta opcional externa, não dependência da aplicação. Capturas
+reais exigem diretório privado fora do Git. Não versionar ZIP/ICS/credenciais.
+
 ![Angular 21.2.21](https://img.shields.io/badge/Angular-21.2.21-DD0031?logo=angular&logoColor=white)
 ![TypeScript 5.9](https://img.shields.io/badge/TypeScript-5.9-3178C6?logo=typescript&logoColor=white)
 ![Node.js 24](https://img.shields.io/badge/Node.js-24-339933?logo=nodedotjs&logoColor=white)
@@ -21,7 +37,9 @@ Essa distinção permite combinar agenda, colaboração e controle financeiro ma
 
 ## Estado funcional
 
-O frontend possui autenticação, agenda e resumo Finance operacionais. Algumas áreas administrativas continuam expostas como evolução do produto e não devem ser consideradas concluídas. O incremento atual está sincronizado entre a cópia integrada e o standalone, com paridade oficial de 76/76 arquivos e regressão concluída nos dois contextos.
+O frontend possui autenticação, agenda, Finance, Usuários, Auditoria e aparência
+operacionais. Código integrado e standalone estão em paridade de 115/115 arquivos,
+com 130 testes em 21 arquivos e build de produção aprovados nos dois contextos.
 
 | Área | Estado atual |
 |---|---|
@@ -33,13 +51,15 @@ O frontend possui autenticação, agenda e resumo Finance operacionais. Algumas 
 | Pagamentos | Consulta/atualização em `CLIENT`; dados e controles são omitidos quando a resposta vem financeiramente redigida |
 | Membros | Listagem, inclusão, alteração de papel e remoção, respeitando a proteção do proprietário |
 | Financeiro | `/finance` funcional com calendário autorizado, DAILY/WEEKLY/BIWEEKLY/MONTHLY/CUSTOM, oito métricas e estados completos |
-| Usuários | Cliente HTTP para criação/edição; tela `/admin/users` ainda é um placeholder |
-| Auditoria | Cliente HTTP e contrato disponíveis; tela `/audit` ainda é um placeholder |
-| Configurações | Rota reservada, ainda sem fluxo funcional definido |
+| Usuários | Lista, busca, criação, edição, desativação/reativação e autoproteção |
+| Auditoria | Consulta real com filtros e escopo de calendário; sem snapshots na tela |
+| Configurações | Claro/escuro/sistema e identidade somente leitura |
 
 Para o retrato técnico atualizado e as lacunas priorizadas, consulte [Current State](https://github.com/JotaP3c/shared-planner/blob/main/docs/sdd/01-current-state.md), [Frontend Flows](https://github.com/JotaP3c/shared-planner/blob/main/docs/sdd/13-frontend-flows.md) e [Gap Analysis](https://github.com/JotaP3c/shared-planner/blob/main/docs/sdd/17-gap-analysis.md).
 
-As ações visuais de login com Google, criação de conta e recuperação de senha ainda não possuem integração. A opção “Lembrar de mim” também não altera a persistência atual: o token é armazenado no `localStorage`. Esses elementos devem ser tratados como protótipos de interface até que seus requisitos e fluxos sejam especificados.
+Google Login, cadastro público, recuperação e “Lembrar de mim” não são apresentados.
+A sessão continua em localStorage conforme a política existente; sua evolução é
+uma decisão separada. A importação de eventos recebe arquivo ICS e mapa explícito.
 
 ## Papéis e autorização
 
@@ -65,7 +85,7 @@ Spring Boot API :8080
 PostgreSQL :5432
 ```
 
-No desenvolvimento, o Angular Dev Server atende em `http://localhost:4200` e o [`proxy.conf.json`](proxy.conf.json) encaminha `/api` para `http://localhost:8080`. Na imagem de produção, o servidor [`src/server.ts`](src/server.ts) entrega os artefatos renderizados e encaminha `/api` para a URL definida em `BACKEND_URL`.
+No desenvolvimento, o Angular Dev Server atende em `http://localhost:4200` e o [`proxy.conf.json`](proxy.conf.json) encaminha `/api` para `http://127.0.0.1:8080`. Na imagem de produção, o servidor [`src/server.ts`](src/server.ts) entrega os artefatos renderizados e encaminha `/api` para a URL definida em `BACKEND_URL`.
 
 O uso de caminhos relativos (`/api/...`) mantém frontend e API sob a mesma origem aparente e evita gravar endereços de infraestrutura no bundle do navegador.
 

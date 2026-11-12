@@ -1,5 +1,23 @@
 # Shared Planner — Backend API
 
+## Estado vigente — 12/11/2026
+
+Flyway **V1–V10**, Java 17 e Spring Boot 4. As referências de baseline abaixo são
+históricas. Agora há calendário PERSONAL automático/único por usuário, SHARED e
+IMPORTED auxiliares, papéis combinados, consentimento por participantes/rodadas,
+telefone de cliente e descrição única com preservação dos textos anteriores.
+
+Novas APIs: `/api/event-series`, `/api/calendar-imports/preview|commit` e
+`/api/holidays?country=BR&year=2026`. Importador preserva UID/recorrência/origem;
+prévia não grava, commit exige mapa confirmado e não inventa valores financeiros.
+PRIVATE/CONFIDENTIAL exige opt-in e destino privado do owner. Veja
+`src/main/java/com/sharedplanner/calendarimport/README.md` e o SDD complementar.
+Dados/credenciais reais, dumps e exportações ficam fora dos repositórios.
+
+Testes PostgreSQL opcionais usam `PLANNER_MIGRATION_TEST_URL` em banco isolado
+identificado; testes normais usam H2. Não aplicar seeds ou migrations a banco
+existente sem o procedimento de backup/restauração do SDD.
+
 ![Java 17](https://img.shields.io/badge/Java-17-ED8B00?logo=openjdk&logoColor=white)
 ![Spring Boot 4.0.6](https://img.shields.io/badge/Spring%20Boot-4.0.6-6DB33F?logo=springboot&logoColor=white)
 ![PostgreSQL 17](https://img.shields.io/badge/PostgreSQL-17-4169E1?logo=postgresql&logoColor=white)

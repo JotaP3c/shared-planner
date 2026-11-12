@@ -3,9 +3,11 @@ import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { Subscription, finalize } from 'rxjs';
 import { CalendarService } from '../../../core/api/calendar.service';
 import { AuthService } from '../../../core/auth/auth.service';
+import { hasCalendarRole } from '../../../core/auth/calendar-permissions';
+import { CalendarCreator } from '../../calendar/calendar-creator/calendar-creator';
 import { CalendarMemberResponse, CalendarMemberRole, CalendarResponse } from '../../../core/models/shared-planner.models';
 
-@Component({ selector: 'app-members-page', imports: [DatePipe], templateUrl: './members-page.html', styleUrl: './members-page.scss' })
+@Component({ selector: 'app-members-page', imports: [DatePipe, CalendarCreator], templateUrl: './members-page.html', styleUrl: './members-page.scss' })
 export class MembersPage implements OnInit {
   private readonly calendarService = inject(CalendarService);
   private readonly authService = inject(AuthService);
@@ -28,8 +30,40 @@ export class MembersPage implements OnInit {
   readonly successMessage = signal('');
   readonly memberEmail = signal('');
   readonly memberRole = signal<CalendarMemberRole>('VIEWER');
+  readonly additionalFinance = signal(false);
+  readonly additionalEditor = signal(false);
   readonly selectedCalendar = computed(() => this.calendars().find(item => item.id === this.selectedCalendarId()) ?? null);
-  readonly canManage = computed(() => this.authService.currentUser()?.role === 'ADMIN' || this.selectedCalendar()?.memberRole === 'ADMIN');
+  readonly canManage = computed(() => this.authService.currentUser()?.role === 'ADMIN' || !!this.selectedCalendar() && hasCalendarRole(this.selectedCalendar()!, 'ADMIN'));
+
+  onCalendarCreated(calendar: CalendarResponse): void {
+    this.calendars.update(items => [...items, calendar]);
+    this.selectCalendar(calendar.id);
+    this.successMessage.set('Calendário compartilhado criado. Adicione os participantes e administradores.');
+  }
+
+  effectiveRoles(member: CalendarMemberResponse): CalendarMemberRole[] {
+    return member.roles ?? [member.role];
+  }
+
+  rolesLabel(member: CalendarMemberResponse): string {
+    return this.effectiveRoles(member).map(role => this.roleLabel(role)).join(' + ');
+  }
+
+  setAdditionalRole(member: CalendarMemberResponse, role: CalendarMemberRole, checked: boolean): void {
+    if (!this.canManage() || this.isOwner(member) || this.isMemberBusy(member.id)) return;
+    const roles = checked ? [...new Set([...this.effectiveRoles(member), role])]
+      : this.effectiveRoles(member).filter(current => current !== role);
+    if (!roles.length) return;
+    this.setMemberBusy(member.id, true);
+    this.calendarService.updateMember(member.calendarId, member.id, { role: roles[0], roles })
+      .pipe(finalize(() => this.setMemberBusy(member.id, false)))
+      .subscribe({
+        next: updated => {
+          if (member.calendarId === this.selectedCalendarId()) this.members.update(items => items.map(item => item.id === updated.id ? updated : item));
+        },
+        error: () => this.errorMessage.set('Não foi possível atualizar as permissões.'),
+      });
+  }
 
   ngOnInit(): void {
     this.loadCalendars();
@@ -62,7 +96,8 @@ export class MembersPage implements OnInit {
 
     this.clearMessages();
     this.isSaving.set(true);
-    this.calendarService.addMember(calendarId, { email: email.toLowerCase(), role: this.memberRole() })
+    const roles = [...new Set([this.memberRole(), ...(this.additionalFinance() ? ['FINANCE' as const] : []), ...(this.additionalEditor() ? ['EDITOR' as const] : [])])];
+    this.calendarService.addMember(calendarId, { email: email.toLowerCase(), role: this.memberRole(), ...(roles.length > 1 ? { roles } : {}) })
       .pipe(finalize(() => this.isSaving.set(false)))
       .subscribe({
         next: () => {
@@ -112,7 +147,7 @@ export class MembersPage implements OnInit {
   }
 
   updateRole(member: CalendarMemberResponse, role: CalendarMemberRole): void {
-    if (!this.canManage() || member.role === role || this.isMemberBusy(member.id)) return;
+    if (!this.canManage() || this.isOwner(member) || member.role === role || this.isMemberBusy(member.id)) return;
 
     this.clearMessages();
     this.setMemberBusy(member.id, true);
@@ -129,7 +164,7 @@ export class MembersPage implements OnInit {
   }
 
   removeMember(member: CalendarMemberResponse): void {
-    if (!this.canManage() || this.isMemberBusy(member.id)) return;
+    if (!this.canManage() || this.isOwner(member) || this.isMemberBusy(member.id)) return;
     if (!window.confirm(`Remover ${member.userFullName} deste calendário?`)) return;
 
     this.clearMessages();

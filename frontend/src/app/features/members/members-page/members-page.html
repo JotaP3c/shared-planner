@@ -21,6 +21,8 @@
     </div>
   </header>
 
+  <app-calendar-creator (created)="onCalendarCreated($event)" />
+
   @if (errorMessage()) {
     <p class="page-feedback is-error" role="alert">{{ errorMessage() }}</p>
   }
@@ -55,6 +57,11 @@
           }
         </select>
       </label>
+
+      <div class="additional-roles" role="group" aria-label="Permissões adicionais">
+        <label><input type="checkbox" [checked]="additionalFinance()" (change)="additionalFinance.set($any($event.target).checked)" /> Financeiro adicional</label>
+        <label><input type="checkbox" [checked]="additionalEditor()" (change)="additionalEditor.set($any($event.target).checked)" /> Editor adicional</label>
+      </div>
 
       <button class="primary-button" type="submit" [disabled]="isSaving()">
         {{ isSaving() ? 'Salvando...' : 'Adicionar membro' }}
@@ -96,9 +103,16 @@
                       <option [value]="role" [selected]="role === member.role">{{ roleLabel(role) }}</option>
                     }
                   </select>
+                  <div class="additional-roles">
+                    @for (role of ['EDITOR', 'FINANCE']; track role) {
+                      <label><input type="checkbox" [checked]="effectiveRoles(member).includes($any(role))"
+                        [disabled]="isMemberBusy(member.id) || member.role === role"
+                        (change)="setAdditionalRole(member, $any(role), $any($event.target).checked)" />{{ roleLabel($any(role)) }}</label>
+                    }
+                  </div>
                 } @else {
                   <span class="role-pill">
-                    {{ roleLabel(member.role) }}@if (isOwner(member)) { · Proprietário }
+                    {{ rolesLabel(member) }}@if (isOwner(member)) { · Proprietário }
                   </span>
                 }
               </td>

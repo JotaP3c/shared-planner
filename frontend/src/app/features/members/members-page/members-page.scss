@@ -1,3 +1,7 @@
 :host {
   display: block;
 }
+
+.additional-roles { display: flex; flex-wrap: wrap; gap: 10px; font-size: 12px; }
+.additional-roles label { display: flex; align-items: center; gap: 5px; }
+app-calendar-creator { margin-bottom: 16px; }

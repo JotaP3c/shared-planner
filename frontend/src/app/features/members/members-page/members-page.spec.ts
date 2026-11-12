@@ -77,10 +77,10 @@ describe('MembersPage', () => {
     expect(select.value).toBe('VIEWER');
     expect(select.selectedOptions[0].textContent).toContain('Leitor');
 
-    component.memberEmail.set('  Jpcbnu@Gmail.com ');
+    component.memberEmail.set('  Fixture-member@Example.invalid ');
     component.addMember();
     const request = http.expectOne('/api/calendars/a/members');
-    expect(request.request.body).toEqual({ email: 'jpcbnu@gmail.com', role: 'VIEWER' });
+    expect(request.request.body).toEqual({ email: 'fixture-member@example.invalid', role: 'VIEWER' });
     request.flush({ detail: 'User not found' }, { status: 404, statusText: 'Not Found' });
 
     expect(component.errorMessage()).toContain('Não existe conta com este e-mail');
@@ -128,6 +128,17 @@ describe('MembersPage', () => {
     component.addMember();
     http.expectNone(req => req.method === 'POST');
     expect(component.errorMessage()).toContain('e-mail válido');
+  });
+
+  it('sends EDITOR plus FINANCE without granting calendar administration', () => {
+    const http = TestBed.inject(HttpTestingController);
+    http.expectOne('/api/calendars').flush([calendar('a')]);
+    http.expectOne('/api/calendars/a/members').flush([]);
+    component.memberEmail.set('editor@example.test'); component.memberRole.set('EDITOR'); component.additionalFinance.set(true);
+    component.addMember();
+    const request = http.expectOne(req => req.method === 'POST');
+    expect(request.request.body.roles).toEqual(['EDITOR', 'FINANCE']);
+    expect(request.request.body.roles).not.toContain('ADMIN');
   });
 
   it('clears the previous list when loading the new calendar fails', () => {

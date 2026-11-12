@@ -49,9 +49,12 @@
 
       <label class="sp-field">
         E-mail
-        <input type="email" formControlName="email" autocomplete="off" />
+        <input type="email" formControlName="email" autocomplete="off" maxlength="180" />
         @if (showError('create', 'email', 'required') || showError('create', 'email', 'email')) {
           <span class="field-error" role="alert">Informe um e-mail válido.</span>
+        }
+        @if (showError('create', 'email', 'maxlength')) {
+          <span class="field-error" role="alert">O e-mail deve ter até 180 caracteres.</span>
         }
       </label>
 

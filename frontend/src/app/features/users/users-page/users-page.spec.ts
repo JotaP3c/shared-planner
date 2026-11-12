@@ -41,6 +41,17 @@ describe('UsersPage', () => {
     expect(component).toBeTruthy();
   });
 
+  it('validates the same 180-character email limit as the API', () => {
+    http.expectOne('/api/users').flush([]);
+    component.openCreate();
+    const email = `${'a'.repeat(60)}@${'b'.repeat(60)}.${'c'.repeat(60)}`;
+    component.createForm.patchValue({ fullName: 'Pessoa', email, password: 'test-only-value', role: 'USER' });
+    component.submitCreate(); fixture.detectChanges();
+    http.expectNone(request => request.method === 'POST');
+    expect(component.createForm.controls.email.hasError('maxlength')).toBe(true);
+    expect(text()).toContain('180 caracteres');
+  });
+
   it('shows loading and then the list', () => {
     expect(text()).toContain('Carregando usuários');
 

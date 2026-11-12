@@ -62,7 +62,7 @@ export class UsersPage implements OnInit {
 
   readonly createForm = this.formBuilder.nonNullable.group({
     fullName: ['', [Validators.required, Validators.maxLength(120), this.notBlank]],
-    email: ['', [Validators.required, Validators.email, Validators.maxLength(255)]],
+    email: ['', [Validators.required, Validators.email, Validators.maxLength(180)]],
     password: ['', [Validators.required, Validators.minLength(6), Validators.maxLength(72)]],
     role: ['USER' as UserRole, [Validators.required]],
   });

@@ -2,7 +2,7 @@
 
 ## Estado vigente — 12/11/2026
 
-Flyway **V1–V10**, Java 17 e Spring Boot 4. As referências de baseline abaixo são
+Flyway **V1–V12**, Java 17 e Spring Boot 4. As referências de baseline abaixo são
 históricas. Agora há calendário PERSONAL automático/único por usuário, SHARED e
 IMPORTED auxiliares, papéis combinados, consentimento por participantes/rodadas,
 telefone de cliente e descrição única com preservação dos textos anteriores.
@@ -13,6 +13,25 @@ prévia não grava, commit exige mapa confirmado e não inventa valores financei
 PRIVATE/CONFIDENTIAL exige opt-in e destino privado do owner. Veja
 `src/main/java/com/sharedplanner/calendarimport/README.md` e o SDD complementar.
 Dados/credenciais reais, dumps e exportações ficam fora dos repositórios.
+
+O controle de acesso agora usa um catálogo único de permissões e perfis configuráveis
+em `/api/access`. Papéis legados são mapeados para perfis nativos; associações explícitas
+substituem os padrões somente no escopo escolhido. A autorização efetiva combina
+habilitação global da operação com acesso ao calendário e é reavaliada no banco a cada
+requisição. `/api/auth/me.permissions` e `CalendarResponse.permissions` orientam a UI.
+Permissões ausentes negam acesso; o administrador essencial e o owner permanecem protegidos.
+
+`GET /api/finance/export` gera XLSX com quatro abas e três gráficos nativos editáveis.
+Exige `FINANCE_VIEW` e `FINANCE_EXPORT` em **todos** os calendários selecionados,
+deduplica IDs e limita o relatório a 20 calendários, 1.100 dias, 10.000 atendimentos e
+dois milhões de caracteres. Datas/valores são células nativas; textos não viram fórmulas.
+`Payments` representa o snapshot de pagamento do atendimento, pois não há ledger de
+transações ou histórico de reembolso neste modelo. Simulação financeira é identificada
+por `financialSimulation`/`simulationReferenceDate` e `containsSimulatedData` no resumo.
+
+V11 cria perfis e associações sem alterar vínculos existentes. V12 acrescenta somente
+proveniência de correção e marcação de simulação; não atribui preços nem move eventos.
+O procedimento de correção local usa plano e backup privados, separado das migrations.
 
 Testes PostgreSQL opcionais usam `PLANNER_MIGRATION_TEST_URL` em banco isolado
 identificado; testes normais usam H2. Não aplicar seeds ou migrations a banco
@@ -25,7 +44,7 @@ existente sem o procedimento de backup/restauração do SDD.
 
 O **Shared Planner** é uma aplicação de agenda compartilhada voltada a casais e pequenos grupos. O produto reúne calendários multiusuário, compromissos pessoais, atendimentos de clientes, eventos que dependem da aprovação de outra pessoa, controle de pagamentos, visão financeira e trilha de auditoria.
 
-Este repositório contém a API responsável pelas regras de negócio, autenticação, autorização, persistência e evolução do banco de dados. Ele também é o **contexto implantável independente do backend** usado pelo Docker Compose do projeto. O incremento atual está sincronizado entre a cópia integrada e o standalone, com paridade oficial de 84/84 arquivos e regressão concluída nos dois contextos.
+Este repositório contém a API responsável pelas regras de negócio, autenticação, autorização, persistência e evolução do banco de dados. Ele também é o **contexto implantável independente do backend** usado pelo Docker Compose do projeto. A cópia integrada e o standalone são conferidos pelo script oficial de paridade; contagens e checks vigentes constam no relatório SDD de cada entrega.
 
 ## O produto
 
@@ -44,10 +63,11 @@ O Shared Planner combina visibilidade compartilhada com autoria, papéis e conse
 | Domínio | Responsabilidade |
 |---|---|
 | `auth` | Login, emissão e validação de JWT e identificação do usuário autenticado |
+| `access` | Catálogo único, perfis globais/contextuais, associações e cálculo das permissões efetivas |
 | `user` | Cadastro, consulta, atualização, ativação e papéis globais de usuários |
 | `calendar` | Criação de calendários, listagem por visibilidade e gestão de membros |
 | `event` | CRUD lógico, busca, tipos de evento, aprovação e controle de pagamentos |
-| `finance` | Resumos financeiros por intervalo e indicadores de recebimento |
+| `finance` | Resumos financeiros por intervalo, indicadores e exportação XLSX com gráficos |
 | `audit` | Registro e consulta autorizada da trilha de alterações |
 | `config` | Segurança stateless e regras centralizadas de autorização |
 | `health` | Endpoint público para healthcheck da aplicação |
@@ -62,7 +82,7 @@ flowchart LR
     S --> A[Autorização e auditoria]
     S --> R[Spring Data JPA]
     R --> P[(PostgreSQL 17)]
-    M[Flyway V1–V7] --> P
+    M[Flyway V1–V12] --> P
 ```
 
 A aplicação separa controllers REST, serviços de domínio, autorização, repositórios JPA e entidades. O Flyway é responsável pela evolução do schema; nos perfis `dev` e `prod`, o Hibernate apenas valida a compatibilidade entre o modelo e o banco.
@@ -133,12 +153,13 @@ Há dois níveis complementares de papel:
 - **global:** `ADMIN`, `FINANCE` e `USER`;
 - **por calendário:** `ADMIN`, `FINANCE`, `EDITOR` e `VIEWER`.
 
-O comportamento atualmente implementado é:
+Os perfis nativos preservam o comportamento legado abaixo. Perfis personalizados
+podem restringir ou combinar operações, respeitando o contexto e os limites de delegação:
 
 | Ação | Global ADMIN | Calendar ADMIN | EDITOR | FINANCE | VIEWER |
 |---|---:|---:|---:|---:|---:|
 | Visualizar calendários e eventos | todos | sim | sim | sim | sim |
-| Criar calendário | sim | não | não | não | não |
+| Criar calendário | sim | conforme permissão global | conforme permissão global | conforme permissão global | conforme permissão global |
 | Criar evento | sim | sim | sim | não | não |
 | Editar ou cancelar evento | todos | todos do calendário | próprios | não | não |
 | Consultar financeiro | todos | sim | não | sim | não |
@@ -146,7 +167,20 @@ O comportamento atualmente implementado é:
 | Consultar auditoria | todos | do calendário | não | não | não |
 | Aprovar ou rejeitar `SHARED` | somente se for alvo ativo e membro atual | somente se for alvo ativo e membro atual | somente se for alvo ativo e membro atual | somente se for alvo ativo e membro atual | somente se for alvo ativo e membro atual |
 
-O papel global `FINANCE` não concede acesso irrestrito: o usuário também precisa pertencer ao calendário. Campos financeiros de eventos são omitidos para ator sem capacidade; a autorização é resolvida uma vez por request/calendar e cacheada por calendário em pendências. Atualizações de pagamento seguem a permissão CURRENT de edição do evento; a política futura permanece aberta em Q-005. O owner do calendário não pode ser removido nem rebaixado de `ADMIN`.
+O papel global `FINANCE` não concede acesso irrestrito: o usuário também precisa pertencer ao calendário. Campos financeiros de eventos são omitidos para ator sem capacidade. Pagamentos usam `FINANCE_MANAGE` ou `FINANCE_MANAGE_OWN` com autoria, independentemente de `EVENT_EDIT`. Editar/cancelar exige a operação correspondente e autoria ou `EVENT_EDIT_ALL`, preservando a política singular de aprovação em calendário LEGACY. O owner não pode ser removido nem rebaixado de `ADMIN`. Alterar papéis legados restaura o mapeamento padrão nesse escopo; a associação personalizada anterior é removida para não manter permissões obsoletas.
+
+| Permissão administrativa | Escopo e limite |
+|---|---|
+| `ROLES_MANAGE` | Catálogo e associações globais; não pode delegar grants que não possui |
+| `MEMBERS_MANAGE` | Membros e associações do calendário autorizado; não altera perfis globais |
+| `USERS_VIEW` / `USERS_MANAGE` | Consulta global separada da alteração de usuários |
+| `AUDIT_VIEW` / `AUDIT_VIEW_ALL` | Consulta contextual separada da auditoria sem filtro de calendário |
+| `FINANCE_VIEW` / `FINANCE_EXPORT` | Ambas obrigatórias para exportar cada calendário |
+
+Perfis desativados não concedem permissões. Uma associação explícita vazia nega acesso;
+excluí-la restaura os perfis nativos somente quando o ator pode delegar esses grants.
+Mudanças de perfis/associações entram na auditoria. O JWT não concede permissões antigas
+após revogação, porque os grants atuais são consultados no backend.
 
 ## Endpoints principais
 
@@ -172,6 +206,13 @@ Todos os endpoints, exceto health e login, exigem `Authorization: Bearer <token>
 | `PUT` | `/api/events/{eventId}/payment` | Atualizar os dados de pagamento de um atendimento |
 | `GET` | `/api/events/client-revenue` | Resumir receita de clientes por período padrão |
 | `GET` | `/api/finance/summary` | Consolidar valores em um intervalo de datas |
+| `GET` | `/api/finance/export` | Exportar XLSX; `calendarIds` repetível e `startDate`/`endDate` inclusivos |
+| `GET` | `/api/access/permissions` | Catálogo de permissões explícitas |
+| `GET` / `POST` | `/api/access/profiles` | Consultar ou criar perfis; `calendarId` limita a consulta contextual |
+| `PUT` | `/api/access/profiles/{id}` | Editar nome, situação e permissões de um perfil globalmente autorizado |
+| `GET` / `PUT` / `DELETE` | `/api/access/assignments` | Consultar, substituir ou restaurar associações de perfis por usuário/escopo |
+| `GET` | `/api/access/effective` | Consultar resultado efetivo próprio ou de usuário autorizado |
+| `GET` | `/api/access/users` | Listar usuários para associação, com `ROLES_MANAGE` |
 | `GET` | `/api/audit-logs` | Consultar logs com filtros opcionais |
 
 Os contratos completos, parâmetros, respostas e regras de status HTTP estão na [especificação de API](https://github.com/JotaP3c/shared-planner/blob/main/docs/sdd/11-api-contracts.md).
@@ -189,6 +230,11 @@ O banco de runtime é PostgreSQL. A aplicação executa automaticamente as migra
 | V5 | Campos de autoria e atualização |
 | V6 | Tabela e índices de auditoria |
 | V7 | Unicidade de e-mail sem diferenciar maiúsculas e minúsculas |
+| V8 | Confirmação de atendimento e histórico de remarcações |
+| V9 | Calendários pessoais únicos, papéis combinados e rodadas de aprovação |
+| V10 | Recorrência finita e identidade externa da importação |
+| V11 | Perfis configuráveis, permissões e associações por escopo |
+| V12 | Marcação de simulação financeira e proveniência de correções locais |
 
 Seeds de desenvolvimento não são migrations. Eles ficam na documentação do repositório de integração e devem ser executados somente de forma consciente no ambiente adequado.
 

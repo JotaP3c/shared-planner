@@ -86,6 +86,7 @@ describe('FinancePage', () => {
   };
 
   beforeEach(async () => {
+    localStorage.clear();
     currentUser = signal<UserResponse | null>(user('USER'));
 
     await TestBed.configureTestingModule({
@@ -374,6 +375,100 @@ describe('FinancePage', () => {
       })));
       expect([result.expectedAmount, result.receivedAmount, result.pendingAmount]).toEqual([990 * factor, 460 * factor, 580 * factor]);
     }
+  });
+
+  it('collapses filters without querying, preserves input values and summarizes the applied scope', async () => {
+    component.setReferenceDate('2026-11-12');
+    http.expectOne('/api/calendars').flush([calendar('finance', 'FINANCE')]);
+    await fixture.whenStable();
+    expectSummaryRequest('finance', '2026-11-01', '2026-11-30').flush(summary('finance', '2026-11-01', '2026-11-30'));
+    flushDetails();
+    component.toggleFilters(); fixture.detectChanges();
+    expect(component.filtersCollapsed()).toBe(true);
+    expect((fixture.nativeElement.querySelector('#finance-filter-controls') as HTMLElement).hidden).toBe(true);
+    expect(fixture.nativeElement.querySelector('[data-testid="finance-filter-summary"]')?.textContent).toContain('Agenda finance · Mensal · novembro de 2026');
+    component.toggleFilters(); fixture.detectChanges();
+    expect(component.referenceDate()).toBe('2026-11-12');
+    expect(component.summary()?.expectedAmount).toBe(1000);
+    http.expectNone(request => request.url.startsWith('/api/finance/'));
+  });
+
+  it('remembers chart and filter collapse preferences for the same user during navigation', async () => {
+    http.expectOne('/api/calendars').flush([]);
+    component.toggleCharts();
+    component.toggleFilters();
+    const next = TestBed.createComponent(FinancePage);
+    next.detectChanges();
+    http.expectOne('/api/calendars').flush([]);
+    expect(next.componentInstance.chartsCollapsed()).toBe(true);
+    expect(next.componentInstance.filtersCollapsed()).toBe(true);
+    next.destroy();
+  });
+
+  it('downloads XLSX with the exact applied filters and exposes loading until the response completes', async () => {
+    component.setReferenceDate('2026-11-12');
+    http.expectOne('/api/calendars').flush([calendar('finance', 'FINANCE')]);
+    await fixture.whenStable();
+    expectSummaryRequest('finance', '2026-11-01', '2026-11-30').flush(summary('finance', '2026-11-01', '2026-11-30'));
+    const downloaded = vi.spyOn(component as unknown as { downloadReport(blob: Blob, filename: string): void }, 'downloadReport').mockImplementation(() => {});
+    component.exportExcel(); fixture.detectChanges();
+    const request = http.expectOne(candidate => candidate.url === '/api/finance/export');
+    expect(request.request.responseType).toBe('blob');
+    expect(request.request.params.getAll('calendarIds')).toEqual(['finance']);
+    expect(request.request.params.get('startDate')).toBe('2026-11-01');
+    expect(request.request.params.get('endDate')).toBe('2026-11-30');
+    expect(component.isExporting()).toBe(true);
+    expect((fixture.nativeElement.querySelector('[data-testid="finance-export"]') as HTMLButtonElement).disabled).toBe(true);
+    const blob = new Blob(['xlsx-content'], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    request.flush(blob, { headers: { 'Content-Disposition': 'attachment; filename="shared-planner-financial-report-2026-11.xlsx"' } });
+    expect(downloaded).toHaveBeenCalledWith(blob, 'shared-planner-financial-report-2026-11.xlsx');
+    expect(component.isExporting()).toBe(false);
+    downloaded.mockRestore();
+  });
+
+  it('denies export when any selected calendar lacks FINANCE_EXPORT, even for a global admin', async () => {
+    currentUser.set(user('ADMIN'));
+    component.setReferenceDate('2026-11-12');
+    http.expectOne('/api/calendars').flush([{ ...calendar('finance', 'ADMIN'), permissions: ['FINANCE_VIEW'] }]);
+    await fixture.whenStable();
+    expectSummaryRequest('finance', '2026-11-01', '2026-11-30').flush(summary('finance', '2026-11-01', '2026-11-30'));
+    fixture.detectChanges();
+    expect(component.canExport()).toBe(false);
+    expect(fixture.nativeElement.querySelector('[data-testid="finance-export"]')).toBeNull();
+    component.exportExcel();
+    http.expectNone(request => request.url === '/api/finance/export');
+  });
+
+  it('reports export errors without starting a download or hiding the dashboard', async () => {
+    component.setReferenceDate('2026-11-12');
+    http.expectOne('/api/calendars').flush([calendar('finance', 'FINANCE')]);
+    await fixture.whenStable();
+    expectSummaryRequest('finance', '2026-11-01', '2026-11-30').flush(summary('finance', '2026-11-01', '2026-11-30'));
+    component.exportExcel();
+    http.expectOne(request => request.url === '/api/finance/export').flush(new Blob(['denied']), { status: 403, statusText: 'Forbidden' });
+    fixture.detectChanges();
+    expect(component.isExporting()).toBe(false);
+    expect(fixture.nativeElement.querySelector('[data-testid="finance-export-error"]')?.textContent).toContain('Não foi possível exportar');
+    expect(component.summary()?.expectedAmount).toBe(1000);
+  });
+
+  it('keeps reschedule history outside the exclusive confirmation donut denominator', () => {
+    http.expectOne('/api/calendars').flush([]);
+    const finance = summary('finance', '', '', { appointmentCount: 8, confirmedCount: 3,
+      awaitingConfirmationCount: 2, unscheduledCount: 1, rescheduledCount: 2, rescheduleOccurrences: 12 });
+    const slices = component.confirmationSlices(finance);
+    expect(slices.reduce((sum, slice) => sum + slice.value, 0)).toBe(8);
+    expect(slices.find(slice => slice.key === 'rescheduled')?.value).toBe(2);
+  });
+
+  it('identifies simulated development values without dropping the flag during consolidation', async () => {
+    component.setReferenceDate('2026-11-12');
+    http.expectOne('/api/calendars').flush([calendar('finance', 'FINANCE')]);
+    await fixture.whenStable();
+    expectSummaryRequest('finance', '2026-11-01', '2026-11-30').flush(summary('finance', '2026-11-01', '2026-11-30', { containsSimulatedData: true }));
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('[data-testid="finance-simulated-notice"]')?.textContent).toContain('valores simulados');
+    expect(consolidateSummaries([summary('real', '', ''), summary('test', '', '', { containsSimulatedData: true })]).containsSimulatedData).toBe(true);
   });
 
   function expectSummaryRequest(calendarId: string, startDate: string, endDate: string) {

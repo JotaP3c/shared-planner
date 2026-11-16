@@ -29,6 +29,12 @@ export class FinanceService {
     });
   }
 
+  exportReport(calendarIds: string[], startDate: string, endDate: string) {
+    let params = new HttpParams().set('startDate', startDate).set('endDate', endDate);
+    for (const calendarId of new Set(calendarIds)) params = params.append('calendarIds', calendarId);
+    return this.http.get(`${this.apiUrl}/export`, { params, responseType: 'blob', observe: 'response' });
+  }
+
   private rangeParams(calendarId: string, startDate: string, endDate: string): HttpParams {
     return new HttpParams()
       .set('calendarId', calendarId)

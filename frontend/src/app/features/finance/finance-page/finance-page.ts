@@ -1,4 +1,5 @@
-import { Component, OnInit, computed, effect, inject, signal, untracked } from '@angular/core';
+import { DOCUMENT } from '@angular/common';
+import { Component, DestroyRef, OnInit, computed, effect, inject, signal, untracked } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { Subscription, finalize, forkJoin } from 'rxjs';
 
@@ -6,6 +7,7 @@ import { CalendarService } from '../../../core/api/calendar.service';
 import { FinanceService } from '../../../core/api/finance.service';
 import { AuthService } from '../../../core/auth/auth.service';
 import { financeAuthorizedCalendars } from '../../../core/auth/finance-access';
+import { canCalendarPermission } from '../../../core/auth/calendar-permissions';
 import {
   AppointmentConfirmationStatus,
   CalendarResponse,
@@ -15,7 +17,7 @@ import {
   PaymentStatus,
   RevenuePeriod,
 } from '../../../core/models/shared-planner.models';
-import { BarChart, BarChartPoint } from '../../../shared/ui/charts/bar-chart';
+import { LineChart, LineChartPoint } from '../../../shared/ui/charts/line-chart';
 import { DonutChart, DonutSlice } from '../../../shared/ui/charts/donut-chart';
 import { Icon } from '../../../shared/ui/icon/icon';
 
@@ -26,9 +28,15 @@ interface DateRange {
   endDate: string;
 }
 
+interface AppliedFinanceFilters extends DateRange {
+  calendarIds: string[];
+  scopeLabel: string;
+  period: FinancePeriod;
+}
+
 @Component({
   selector: 'app-finance-page',
-  imports: [RouterLink, DonutChart, BarChart, Icon],
+  imports: [RouterLink, DonutChart, LineChart, Icon],
   templateUrl: './finance-page.html',
   styleUrl: './finance-page.scss',
 })
@@ -36,6 +44,8 @@ export class FinancePage implements OnInit {
   private readonly calendarService = inject(CalendarService);
   private readonly financeService = inject(FinanceService);
   private readonly authService = inject(AuthService);
+  private readonly document = inject(DOCUMENT);
+  private readonly destroyRef = inject(DestroyRef);
   private calendarRequestId = 0;
   private summaryRequestId = 0;
 
@@ -54,11 +64,33 @@ export class FinancePage implements OnInit {
   readonly consolidated = signal(false);
   readonly includedCalendarIds = signal<string[]>([]);
   readonly chartsCollapsed = signal(false);
+  readonly filtersCollapsed = signal(false);
+  readonly appliedFilters = signal<AppliedFinanceFilters | null>(null);
+  readonly isExporting = signal(false);
+  readonly exportError = signal('');
+  private exportSubscription: Subscription | null = null;
+  private exportRequestId = 0;
   readonly financeCalendarIds = computed(() => this.consolidated()
     ? this.authorizedCalendars().filter(calendar => this.includedCalendarIds().includes(calendar.id)).map(calendar => calendar.id)
     : [this.selectedCalendarId()].filter(Boolean));
   readonly calendarScopeLabel = computed(() => this.consolidated()
     ? `Consolidado · ${this.financeCalendarIds().length} calendários` : this.selectedCalendar()?.name ?? '');
+  readonly canExport = computed(() => {
+    const applied = this.appliedFilters();
+    return !!this.summary() && !!applied?.calendarIds.length && applied.calendarIds.every(id => {
+      const calendar = this.authorizedCalendars().find(item => item.id === id);
+      return !!calendar && canCalendarPermission(calendar, 'FINANCE_VIEW') && canCalendarPermission(calendar, 'FINANCE_EXPORT');
+    });
+  });
+  readonly compactFilterSummary = computed(() => {
+    const applied = this.appliedFilters();
+    if (!applied || !this.summary()) return 'Defina a agenda e o intervalo';
+    const period = this.periodOptions.find(item => item.value === applied.period)?.label ?? applied.period;
+    const range = applied.period === 'MONTHLY'
+      ? this.parseDate(applied.startDate)?.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })
+      : `${this.formatDate(applied.startDate)} a ${this.formatDate(applied.endDate)}`;
+    return `${applied.scopeLabel} · ${period} · ${range}`;
+  });
   readonly selectedPeriod = signal<FinancePeriod>('MONTHLY');
   readonly referenceDate = signal(this.localToday());
   readonly customStartDate = signal(this.localToday());
@@ -122,6 +154,17 @@ export class FinancePage implements OnInit {
   });
 
   constructor() {
+    this.destroyRef.onDestroy(() => {
+      this.exportRequestId++;
+      this.exportSubscription?.unsubscribe();
+    });
+    effect(() => {
+      if (!this.currentUser()?.id) return;
+      untracked(() => {
+        this.chartsCollapsed.set(this.readPreference('chartsCollapsed'));
+        this.filtersCollapsed.set(this.readPreference('filtersCollapsed'));
+      });
+    });
     effect(() => {
       if (!this.calendarsLoaded()) {
         return;
@@ -146,7 +189,55 @@ export class FinancePage implements OnInit {
   }
 
   ngOnInit(): void {
+    this.chartsCollapsed.set(this.readPreference('chartsCollapsed'));
+    this.filtersCollapsed.set(this.readPreference('filtersCollapsed'));
     this.loadCalendars();
+  }
+
+  toggleCharts(): void {
+    this.chartsCollapsed.update(value => !value);
+    this.writePreference('chartsCollapsed', this.chartsCollapsed());
+  }
+
+  toggleFilters(): void {
+    this.filtersCollapsed.update(value => !value);
+    this.writePreference('filtersCollapsed', this.filtersCollapsed());
+  }
+
+  exportExcel(): void {
+    const applied = this.appliedFilters();
+    if (!this.canExport() || !applied || this.isExporting()) return;
+    const requestId = ++this.exportRequestId;
+    this.exportError.set('');
+    this.isExporting.set(true);
+    this.exportSubscription = this.financeService.exportReport(applied.calendarIds, applied.startDate, applied.endDate)
+      .pipe(finalize(() => this.isExporting.set(false)))
+      .subscribe({
+        next: response => {
+          if (!response.body?.size) {
+            this.exportError.set('O relatório retornou vazio. Tente novamente.');
+            return;
+          }
+          const suggested = /filename="?([^";]+)"?/i.exec(response.headers.get('Content-Disposition') ?? '')?.[1];
+          const fallback = `shared-planner-financial-report-${applied.startDate}_${applied.endDate}.xlsx`;
+          const filename = suggested?.replace(/[^a-zA-Z0-9_.-]/g, '_');
+          try {
+            this.downloadReport(response.body, filename?.endsWith('.xlsx') ? filename : fallback);
+          } catch {
+            this.exportError.set('Não foi possível iniciar o download. Tente novamente.');
+          }
+        },
+        error: error => {
+          const fallback = 'Não foi possível exportar o relatório. Verifique seu acesso e tente novamente.';
+          this.exportError.set(this.errorText(error, fallback));
+          if (error.error instanceof Blob && typeof error.error.text === 'function') {
+            void error.error.text().then((body: string) => {
+              if (requestId !== this.exportRequestId) return;
+              try { this.exportError.set(this.errorText({ error: JSON.parse(body) }, fallback)); } catch { /* Keep the safe fallback. */ }
+            }).catch(() => { /* Preserve the safe message if the response body cannot be read. */ });
+          }
+        },
+      });
   }
 
   loadCalendars(): void {
@@ -255,7 +346,7 @@ export class FinancePage implements OnInit {
   }
 
   /** Rótulos da evolução: dia (dd/MM) ou mês (mmm/aa), conforme a granularidade do backend. */
-  readonly timelinePoints = computed<BarChartPoint[]>(() => {
+  readonly timelinePoints = computed<LineChartPoint[]>(() => {
     const timeline = this.timeline();
 
     if (!timeline) {
@@ -270,7 +361,7 @@ export class FinancePage implements OnInit {
           ? `${String(date.getDate()).padStart(2, '0')}/${String(date.getMonth() + 1).padStart(2, '0')}`
           : date.toLocaleDateString('pt-BR', { month: 'short', year: '2-digit' });
 
-      return { label, primary: Number(point.expectedAmount) || 0, secondary: Number(point.receivedAmount) || 0 };
+      return { date: point.date, label, primary: Number(point.expectedAmount) || 0, secondary: Number(point.receivedAmount) || 0 };
     });
   });
 
@@ -394,6 +485,7 @@ export class FinancePage implements OnInit {
           if (requestId === this.summaryRequestId) {
             const summary = consolidateSummaries(summaries);
             this.summary.set(summary);
+            this.appliedFilters.set({ ...range, calendarIds: [...calendarIds], scopeLabel: this.calendarScopeLabel(), period: this.selectedPeriod() });
 
             if ((summary.appointmentCount ?? 0) > 0) {
               this.loadDetails(calendarIds, range, requestId);
@@ -413,6 +505,7 @@ export class FinancePage implements OnInit {
   private invalidateSummary(): void {
     this.summaryRequestId++;
     this.summary.set(null);
+    this.appliedFilters.set(null);
     this.isLoadingSummary.set(false);
     this.clearDetails();
   }
@@ -424,6 +517,36 @@ export class FinancePage implements OnInit {
     this.appointments.set([]);
     this.detailsError.set('');
     this.isLoadingDetails.set(false);
+  }
+
+  private downloadReport(blob: Blob, filename: string): void {
+    const view = this.document.defaultView;
+    if (!view?.URL.createObjectURL) {
+      this.exportError.set('Seu navegador não permitiu baixar o relatório. Tente novamente em uma janela normal.');
+      return;
+    }
+    const url = view.URL.createObjectURL(blob);
+    const anchor = this.document.createElement('a');
+    anchor.href = url;
+    anchor.download = filename;
+    this.document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+    view.setTimeout(() => view.URL.revokeObjectURL(url), 0);
+  }
+
+  private preferenceKey(name: string): string {
+    return `shared-planner.finance.${this.currentUser()?.id ?? 'anonymous'}.${name}`;
+  }
+
+  private readPreference(name: string): boolean {
+    try { return this.document.defaultView?.localStorage.getItem(this.preferenceKey(name)) === 'true'; }
+    catch { return false; }
+  }
+
+  private writePreference(name: string, value: boolean): void {
+    try { this.document.defaultView?.localStorage.setItem(this.preferenceKey(name), String(value)); }
+    catch { /* Preferences remain valid for the current navigation without storage. */ }
   }
 
   private resolveDateRange(
@@ -543,7 +666,8 @@ export class FinancePage implements OnInit {
 
 /** Sum authoritative per-calendar metrics; pending is not derived from received. */
 export function consolidateSummaries(summaries: FinanceSummaryResponse[]): FinanceSummaryResponse {
-  const result = { ...summaries[0], calendarId: summaries.map(summary => summary.calendarId).join(',') };
+  const result = { ...summaries[0], calendarId: summaries.map(summary => summary.calendarId).join(','),
+    containsSimulatedData: summaries.some(summary => summary.containsSimulatedData === true) };
   const fields = ['expectedAmount', 'receivedAmount', 'pendingAmount', 'appointmentCount', 'paidCount', 'pendingCount',
     'partiallyPaidCount', 'refundedCount', 'confirmedAmount', 'unconfirmedAmount', 'unscheduledAmount',
     'confirmedCount', 'awaitingConfirmationCount', 'rescheduledCount', 'unscheduledCount', 'rescheduleOccurrences'] as const;

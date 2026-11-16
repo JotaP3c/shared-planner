@@ -6,7 +6,15 @@
       <p>Receitas, pagamentos e confirmação dos atendimentos de cliente de cada calendário.</p>
     </div>
 
-    <button
+    <div class="finance-actions">
+      @if (canExport()) {
+        <button class="primary-button" type="button" data-testid="finance-export"
+          [disabled]="isExporting()" [attr.aria-busy]="isExporting()" (click)="exportExcel()">
+          <sp-icon name="list" [size]="16" />
+          {{ isExporting() ? 'Gerando Excel...' : 'Exportar Excel' }}
+        </button>
+      }
+      <button
       class="secondary-button"
       type="button"
       [disabled]="!selectedCalendarId() || isLoadingSummary()"
@@ -14,8 +22,11 @@
     >
       <sp-icon name="refresh" [size]="16" />
       {{ isLoadingSummary() ? 'Atualizando...' : 'Atualizar dados' }}
-    </button>
+      </button>
+    </div>
   </header>
+
+  @if (exportError()) { <p class="page-feedback is-error" role="alert" data-testid="finance-export-error">{{ exportError() }}</p> }
 
   @if (isLoadingCalendars()) {
     <section class="state-card" aria-live="polite" aria-busy="true">
@@ -34,24 +45,28 @@
     <section class="state-card" data-testid="finance-no-access">
       <span class="state-icon lock" aria-hidden="true"></span>
       <strong>Sem acesso financeiro</strong>
-      <p>
-        Você precisa ser administrador global, Finance global membro da agenda,
-        ou membro ADMIN/FINANCE do calendário.
-      </p>
+      <p>Você precisa de permissão financeira em pelo menos um calendário.</p>
     </section>
   } @else if (authorizedCalendars().length) {
-    <form class="page-panel finance-filters" (submit)="$event.preventDefault(); applyFilters()">
+    <form class="page-panel finance-filters" [class.is-collapsed]="filtersCollapsed()" (submit)="$event.preventDefault(); applyFilters()">
       <div class="filter-heading">
         <div>
           <span>Filtros</span>
-          <strong>Defina a agenda e o intervalo</strong>
+          <strong data-testid="finance-filter-summary">{{ filtersCollapsed() ? compactFilterSummary() : 'Defina a agenda e o intervalo' }}</strong>
         </div>
-        <small>Datas inicial e final são inclusivas.</small>
+        <div class="filter-heading-actions">
+          @if (!filtersCollapsed()) { <small>Datas inicial e final são inclusivas.</small> }
+          <button class="secondary-button icon-control" type="button" data-testid="finance-filter-toggle"
+            [attr.aria-expanded]="!filtersCollapsed()" aria-controls="finance-filter-controls"
+            [attr.aria-label]="filtersCollapsed() ? 'Expandir filtros' : 'Recolher filtros'"
+            [title]="filtersCollapsed() ? 'Expandir filtros' : 'Recolher filtros'" (click)="toggleFilters()">
+            <sp-icon name="chevron-down" [class.is-expanded]="!filtersCollapsed()" [size]="16" />
+          </button>
+        </div>
       </div>
 
+      <div id="finance-filter-controls" [hidden]="filtersCollapsed()">
       <div class="filter-grid">
-        <label class="consolidation-option"><input type="checkbox" [checked]="consolidated()"
-          (change)="setConsolidated($any($event.target).checked)" /> Consolidar calendários</label>
         <label class="sp-field">
           Calendário
           <select
@@ -116,6 +131,9 @@
         </button>
       </div>
 
+      <div class="finance-scope-options">
+        <label class="consolidation-option"><input type="checkbox" [checked]="consolidated()"
+          (change)="setConsolidated($any($event.target).checked)" /> Consolidar calendários</label>
       @if (consolidated()) {
         <div class="finance-calendars" role="group" aria-label="Calendários do consolidado">
           @for (calendar of authorizedCalendars(); track calendar.id) {
@@ -124,11 +142,13 @@
           }
         </div>
       }
+      </div>
 
       <p class="active-period" aria-live="polite" data-testid="finance-active-period">
         <span aria-hidden="true"></span>
         Intervalo atual: <strong>{{ periodLabel() }}</strong>
       </p>
+      </div>
     </form>
 
     @if (errorMessage()) {
@@ -145,6 +165,11 @@
       </section>
     } @else if (summary(); as finance) {
       <section class="summary-section" aria-labelledby="values-title">
+        @if (finance.containsSimulatedData) {
+          <p class="page-feedback" role="status" data-testid="finance-simulated-notice">
+            <sp-icon name="inbox" [size]="16" /> Inclui valores simulados de desenvolvimento. Esses valores não representam cobranças reais.
+          </p>
+        }
         <header class="summary-heading">
           <div>
             <span>Visão geral</span>
@@ -218,8 +243,15 @@
             <p>Não há receitas de eventos CLIENT não cancelados neste intervalo.</p>
           </div>
         } @else {
-          <button class="secondary-button" type="button" [attr.aria-expanded]="!chartsCollapsed()" aria-controls="finance-charts"
-            (click)="chartsCollapsed.set(!chartsCollapsed())">{{ chartsCollapsed() ? 'Expandir gráficos' : 'Recolher gráficos' }}</button>
+          <div class="finance-chart-toolbar">
+            <h2><sp-icon name="chart" [size]="17" /> Análise do período</h2>
+            <button class="secondary-button icon-control" type="button" data-testid="finance-charts-toggle"
+              [attr.aria-expanded]="!chartsCollapsed()" aria-controls="finance-charts"
+              [attr.aria-label]="chartsCollapsed() ? 'Expandir gráficos' : 'Recolher gráficos'"
+              [title]="chartsCollapsed() ? 'Expandir gráficos' : 'Recolher gráficos'" (click)="toggleCharts()">
+              <sp-icon name="chevron-down" [class.is-expanded]="!chartsCollapsed()" [size]="16" />
+            </button>
+          </div>
           <div class="chart-grid" id="finance-charts" [hidden]="chartsCollapsed()">
             <article class="page-panel chart-panel wide" aria-labelledby="evolution-title">
               <header class="chart-header">
@@ -231,7 +263,7 @@
               } @else if (detailsError()) {
                 <p class="page-feedback is-error" role="alert">{{ detailsError() }}</p>
               } @else {
-                <sp-bar-chart
+                <sp-line-chart
                   data-testid="revenue-evolution-chart"
                   label="Evolução da receita prevista e recebida"
                   primaryLabel="Prevista"

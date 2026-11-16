@@ -40,7 +40,12 @@ export class AuthService {
 
     return this.http.get<unknown>(`${this.apiUrl}/auth/me`).pipe(
       tap(response => this.currentUser.set(this.normalizeUser(response))),
-      catchError(() => of(null)),
+      catchError(() => {
+        // Preserve the session/identity on a transient error, but do not retain
+        // grants whose current validity could not be resolved.
+        this.currentUser.update(user => user ? { ...user, permissions: [] } : null);
+        return of(null);
+      }),
     );
   }
 
@@ -119,6 +124,7 @@ export class AuthService {
       fullName: user.fullName?.trim() || user.email.split('@')[0] || 'User',
       email: user.email,
       role: user.role ?? 'USER',
+      permissions: Array.isArray(user.permissions) ? user.permissions : [],
       active: user.active ?? true,
       createdAt: user.createdAt ?? '',
       updatedAt: user.updatedAt ?? '',

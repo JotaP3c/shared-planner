@@ -4,6 +4,7 @@ import { CalendarService } from '../../../core/api/calendar.service';
 import { CalendarImportRequest, CalendarImportResult, CalendarImportService } from '../../../core/api/calendar-import.service';
 import { CalendarResponse } from '../../../core/models/shared-planner.models';
 import { DataChangeService } from '../../../core/state/data-change.service';
+import { canCalendarPermission } from '../../../core/auth/calendar-permissions';
 
 @Component({
   selector: 'app-calendar-import-page',
@@ -31,7 +32,7 @@ export class CalendarImportPage implements OnInit {
 
   ngOnInit(): void {
     this.calendarService.list().subscribe({
-      next: calendars => this.calendars.set(calendars.filter(calendar => calendar.canCreateEvents)),
+      next: calendars => this.calendars.set(calendars.filter(calendar => canCalendarPermission(calendar, 'CALENDAR_IMPORT'))),
       error: () => this.error.set('Não foi possível carregar os calendários autorizados.'),
     });
   }

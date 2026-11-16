@@ -1,10 +1,9 @@
 import { CalendarResponse, UserResponse } from '../models/shared-planner.models';
-import { calendarRoles, hasCalendarRole } from './calendar-permissions';
+import { canCalendarPermission } from './calendar-permissions';
 
 /**
- * Calendários em que o usuário tem capacidade financeira (BR-FIN-003), espelhando o backend:
- * ADMIN global vê todos; FINANCE global precisa ser membro; demais precisam de papel
- * ADMIN ou FINANCE no calendário. A API continua sendo a autoridade (403).
+ * Grants financeiros efetivos já combinam perfis globais, vínculo e contexto no backend.
+ * Nomes de papéis não ampliam esse resultado. A API continua sendo a autoridade (403).
  */
 export function financeAuthorizedCalendars(
   user: UserResponse | null,
@@ -14,13 +13,5 @@ export function financeAuthorizedCalendars(
     return [];
   }
 
-  if (user.role === 'ADMIN') {
-    return [...calendars];
-  }
-
-  if (user.role === 'FINANCE') {
-    return calendars.filter(calendar => calendarRoles(calendar).length > 0);
-  }
-
-  return calendars.filter(calendar => hasCalendarRole(calendar, 'ADMIN') || hasCalendarRole(calendar, 'FINANCE'));
+  return calendars.filter(calendar => canCalendarPermission(calendar, 'FINANCE_VIEW'));
 }

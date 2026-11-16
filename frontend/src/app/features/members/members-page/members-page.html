@@ -35,6 +35,8 @@
     <p class="page-hint">
       Adicionar membro dá acesso ao calendário a uma conta que já existe e está ativa. Para quem ainda
       não tem conta, um administrador global deve cadastrá-la em <strong>Administração › Usuários</strong>.
+      Alterar os papéis de um membro restaura os acessos padrão desses papéis. Para configurar
+      permissões personalizadas, use <strong>Gerenciar acessos</strong>.
     </p>
     <form class="page-form" (submit)="$event.preventDefault(); addMember()">
       <label class="sp-field">
@@ -69,6 +71,23 @@
     </form>
   }
 
+  @if (accessMember(); as member) {
+    <section class="page-form" aria-label="Gerenciar acessos do calendário">
+      <h2>Acessos de {{ member.userFullName }}</h2>
+      @if (accessLoading()) { <p role="status">Consultando permissões...</p> }
+      @if (!accessLoading() && effectiveAccess()) {
+        <p class="page-hint">{{ accessExplicit() ? 'Perfis personalizados' : 'Perfis padrão dos papéis atuais' }}. As permissões globais também limitam o resultado.</p>
+        <fieldset [disabled]="accessSaving()"><legend>Perfis deste calendário</legend>
+          @for (profile of accessProfiles(); track profile.id) { <label class="additional-roles"><input type="checkbox" [checked]="accessProfileIds().includes(profile.id)" [disabled]="!profile.active && !accessProfileIds().includes(profile.id)" (change)="toggleAccessProfile(profile.id, $any($event.target).checked)" />{{ profile.name }}{{ profile.active ? '' : ' (inativo)' }}</label> }
+        </fieldset>
+        <div><strong>Permissões efetivas</strong><p>{{ memberPermissionLabels().join(' · ') || 'Nenhuma permissão neste calendário.' }}</p></div>
+        <div class="page-actions"><button class="primary-button" type="button" (click)="saveAccess()" [disabled]="accessSaving()">Salvar acessos</button>
+          <button class="secondary-button" type="button" (click)="saveAccess(true)" [disabled]="accessSaving() || !accessExplicit()">Restaurar padrões</button></div>
+      }
+      <button class="secondary-button" type="button" (click)="closeAccess()" [disabled]="accessSaving()">Fechar</button>
+    </section>
+  }
+
   <div class="page-table-wrap">
     @if (isLoading()) {
       <p class="page-empty" role="status">Carregando membros...</p>
@@ -93,6 +112,9 @@
               </td>
               <td data-label="Papel">
                 @if (canManage() && !isOwner(member)) {
+                  @if (member.userId) {
+                    <button class="secondary-button" type="button" (click)="manageAccess(member)" [disabled]="accessSaving()">Gerenciar acessos</button>
+                  }
                   <select
                     [attr.aria-label]="'Papel de ' + member.userFullName"
                     [value]="member.role"

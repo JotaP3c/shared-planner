@@ -6,7 +6,8 @@ import { CalendarService } from '../../api/calendar.service';
 import { EventService } from '../../api/event.service';
 import { AuthService } from '../../auth/auth.service';
 import { financeAuthorizedCalendars } from '../../auth/finance-access';
-import { canRespondToApproval, hasCalendarRole } from '../../auth/calendar-permissions';
+import { canRespondToApproval, canCalendarPermission, canGlobalPermission } from '../../auth/calendar-permissions';
+import { Permission } from '../../models/access.models';
 import { SearchService } from '../../api/search.service';
 import { CalendarResponse, EventSearchResponse, EventType } from '../../models/shared-planner.models';
 import { DataChangeService } from '../../state/data-change.service';
@@ -31,6 +32,8 @@ export class AppShell implements OnInit, OnDestroy {
   private readonly dataChanges = inject(DataChangeService);
   private readonly layout = inject(LayoutPreferencesService);
   private pendingCountSubscription: Subscription | null = null;
+  private accessSubscription: Subscription | null = null;
+  private accessRequestId = 0;
   private searchDebounceId: ReturnType<typeof setTimeout> | null = null;
   private searchRequestId = 0;
   private searchSubscription: Subscription | null = null;
@@ -57,7 +60,13 @@ export class AppShell implements OnInit, OnDestroy {
       : parts[0].slice(0, 2).toUpperCase();
   });
 
-  readonly isAdmin = computed(() => this.currentUser()?.role === 'ADMIN');
+  readonly isAdmin = computed(() => this.financeAccessResolved() && canGlobalPermission(this.currentUser(), 'USERS_VIEW'));
+  readonly canManageProfiles = computed(() => this.financeAccessResolved() && canGlobalPermission(this.currentUser(), 'ROLES_MANAGE'));
+  readonly canViewSettings = computed(() => this.financeAccessResolved() && canGlobalPermission(this.currentUser(), 'SETTINGS_VIEW'));
+  readonly canViewCalendar = computed(() => this.hasContextPermission('CALENDAR_VIEW'));
+  readonly canApprove = computed(() => this.hasContextPermission('EVENT_APPROVE'));
+  readonly canViewMembers = computed(() => this.hasContextPermission('MEMBERS_VIEW'));
+  readonly canImportCalendar = computed(() => this.hasContextPermission('CALENDAR_IMPORT'));
   readonly financeCalendars = signal<CalendarResponse[]>([]);
   readonly financeAccessResolved = signal(false);
   readonly canAccessFinance = computed(() => {
@@ -71,10 +80,10 @@ export class AppShell implements OnInit, OnDestroy {
       return false;
     }
 
-    return user.role === 'ADMIN' || financeAuthorizedCalendars(user, this.financeCalendars()).length > 0;
+    return financeAuthorizedCalendars(user, this.financeCalendars()).length > 0;
   });
 
-  // BR-AUDIT-002: ADMIN global ou ADMIN de algum calendário. Mesma regra do auditAccessGuard.
+  // Mesmos grants globais/contextuais do auditAccessGuard.
   readonly canAccessAudit = computed(() => {
     if (!this.financeAccessResolved()) {
       return false;
@@ -86,12 +95,15 @@ export class AppShell implements OnInit, OnDestroy {
       return false;
     }
 
-    return user.role === 'ADMIN'
-      || this.financeCalendars().some(calendar => hasCalendarRole(calendar, 'ADMIN'));
+    return canGlobalPermission(user, 'AUDIT_VIEW_ALL') || this.hasContextPermission('AUDIT_VIEW');
   });
 
-  /** Mesma regra do backend para gerenciar membros: ADMIN global ou ADMIN de algum calendário. */
-  readonly canManageMembers = computed(() => this.canAccessAudit());
+  /** Gestão restrita aos calendários cujo grant efetivo permite gerenciar membros. */
+  readonly canManageMembers = computed(() => this.hasContextPermission('MEMBERS_MANAGE'));
+
+  private hasContextPermission(permission: Permission): boolean {
+    return this.financeAccessResolved() && this.financeCalendars().some(calendar => canCalendarPermission(calendar, permission));
+  }
 
   readonly roleLabel = computed(() => {
     const labels: Record<string, string> = { ADMIN: 'Administrador', FINANCE: 'Financeiro', USER: 'Usuário' };
@@ -116,7 +128,7 @@ export class AppShell implements OnInit, OnDestroy {
       const version = this.dataChanges.version();
       if (version !== lastSeenVersion) {
         lastSeenVersion = version;
-        untracked(() => this.refreshPendingApprovalCount());
+        untracked(() => this.refreshAccess());
       }
     });
   }
@@ -264,19 +276,7 @@ export class AppShell implements OnInit, OnDestroy {
   }
 
   ngOnInit(): void {
-    this.financeAccessResolved.set(false);
-    this.authService
-      .loadCurrentUser()
-      .pipe(
-        switchMap(user => user
-          ? this.calendarService.list().pipe(catchError(() => of([])))
-          : of([])),
-        finalize(() => this.financeAccessResolved.set(true)),
-      )
-      .subscribe(calendars => {
-        this.financeCalendars.set(calendars);
-        this.refreshPendingApprovalCount();
-      });
+    this.refreshAccess();
 
     // Fecha o menu lateral (mobile) e atualiza o contador a cada navegação.
     this.router.events
@@ -284,14 +284,36 @@ export class AppShell implements OnInit, OnDestroy {
       .subscribe(() => {
         this.closeSidebar();
         this.closeProfileMenu();
-        this.refreshPendingApprovalCount();
+        this.refreshAccess();
       });
+  }
+
+  private refreshAccess(): void {
+    const requestId = ++this.accessRequestId;
+    this.accessSubscription?.unsubscribe();
+    this.pendingCountSubscription?.unsubscribe();
+    this.financeAccessResolved.set(false);
+    this.financeCalendars.set([]);
+    this.pendingApprovalCount.set(0);
+    this.accessSubscription = this.authService.loadCurrentUser().pipe(
+      switchMap(user => user && this.currentUser()
+        ? this.calendarService.list().pipe(catchError(() => of([])))
+        : of([])),
+      finalize(() => {
+        if (requestId === this.accessRequestId) this.financeAccessResolved.set(true);
+      }),
+    ).subscribe(calendars => {
+      if (requestId !== this.accessRequestId) return;
+      this.financeCalendars.set(calendars);
+      this.financeAccessResolved.set(true);
+      this.refreshPendingApprovalCount();
+    });
   }
 
   private refreshPendingApprovalCount(): void {
     const email = this.currentUser()?.email?.toLowerCase();
 
-    if (!email) {
+    if (!email || !this.canApprove()) {
       this.pendingApprovalCount.set(0);
       return;
     }
@@ -313,6 +335,7 @@ export class AppShell implements OnInit, OnDestroy {
 
     this.searchSubscription?.unsubscribe();
     this.pendingCountSubscription?.unsubscribe();
+    this.accessSubscription?.unsubscribe();
   }
 
   logout(): void {

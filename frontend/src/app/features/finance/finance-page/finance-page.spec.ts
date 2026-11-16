@@ -38,6 +38,7 @@ describe('FinancePage', () => {
     ownerEmail: 'owner@example.com',
     memberRole,
     canCreateEvents: memberRole === 'ADMIN',
+    permissions: memberRole === 'ADMIN' || memberRole === 'FINANCE' ? ['CALENDAR_VIEW', 'FINANCE_VIEW', 'FINANCE_EXPORT'] : ['CALENDAR_VIEW'],
   });
 
   const summary = (
@@ -203,12 +204,12 @@ describe('FinancePage', () => {
       .toContain('11 de nov. de 2026');
   });
 
-  it('applies global ADMIN and global FINANCE membership rules before requesting finance', async () => {
+  it('uses effective calendar grants and revokes the selected scope without inferring access from global roles', async () => {
     currentUser.set(user('ADMIN'));
     component.setReferenceDate('2026-08-20');
     http.expectOne('/api/calendars').flush([
-      calendar('unlinked', null),
-      calendar('viewer', 'VIEWER'),
+      { ...calendar('unlinked', null), permissions: ['FINANCE_VIEW'] },
+      { ...calendar('viewer', 'VIEWER'), permissions: ['FINANCE_VIEW'] },
       calendar('finance', 'FINANCE'),
     ]);
     await fixture.whenStable();
@@ -222,6 +223,11 @@ describe('FinancePage', () => {
       .flush(summary('unlinked', '2026-08-01', '2026-08-31'));
 
     currentUser.set(user('FINANCE'));
+    component.calendars.set([
+      { ...calendar('unlinked', null), permissions: [] },
+      { ...calendar('viewer', 'VIEWER'), permissions: ['FINANCE_VIEW'] },
+      calendar('finance', 'FINANCE'),
+    ]);
     fixture.detectChanges();
     await fixture.whenStable();
 

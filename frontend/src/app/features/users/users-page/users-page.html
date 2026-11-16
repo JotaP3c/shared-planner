@@ -10,7 +10,7 @@
       <button class="secondary-button" type="button" (click)="loadUsers()" [disabled]="isLoading()">
         {{ isLoading() ? 'Atualizando...' : 'Atualizar' }}
       </button>
-      @if (!accessDenied()) {
+      @if (!accessDenied() && canManage()) {
         <button class="primary-button" type="button" (click)="openCreate()" data-testid="open-create-user">
           Novo usuário
         </button>
@@ -191,6 +191,7 @@
                   </span>
                 </td>
                 <td data-label="Ações">
+                  @if (canManage()) {
                   <div class="row-actions">
                     <button
                       class="icon-button"
@@ -230,6 +231,7 @@
                       </button>
                     }
                   </div>
+                  }
                 </td>
               </tr>
             }

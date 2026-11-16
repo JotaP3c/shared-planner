@@ -29,11 +29,13 @@
     </button>
 
     <nav class="navigation" aria-label="Módulos">
+      @if (canViewCalendar()) {
       <a class="nav-link" routerLink="/calendar" routerLinkActive="active"
          [attr.title]="sidebarCollapsed() ? 'Calendário' : null" aria-label="Calendário">
         <sp-icon name="calendar" />
         <span>Calendário</span>
       </a>
+      }
 
       <section class="nav-group">
         <button
@@ -52,17 +54,20 @@
 
         @if (isNavGroupOpen('admin') && !sidebarCollapsed()) {
           <div class="nav-subitems">
+            @if (canApprove()) {
             <a routerLink="/pending" routerLinkActive="active">
               Pendências
               @if (pendingApprovalCount() > 0) {
                 <span class="nav-badge">{{ pendingApprovalCount() }}</span>
               }
             </a>
-            <a routerLink="/members" routerLinkActive="active">Membros</a>
-            <a routerLink="/calendar-import" routerLinkActive="active">Importar calendário</a>
+            }
+            @if (canViewMembers()) { <a routerLink="/members" routerLinkActive="active">Membros</a> }
+            @if (canImportCalendar()) { <a routerLink="/calendar-import" routerLinkActive="active">Importar calendário</a> }
             @if (isAdmin()) {
               <a routerLink="/admin/users" routerLinkActive="active">Usuários</a>
             }
+            @if (canManageProfiles()) { <a routerLink="/admin/roles" routerLinkActive="active" data-testid="roles-navigation">Perfis e Permissões</a> }
             @if (canAccessAudit()) {
               <a routerLink="/audit" routerLinkActive="active" data-testid="audit-navigation">Auditoria</a>
             }
@@ -94,11 +99,13 @@
         </section>
       }
 
+      @if (canViewSettings()) {
       <a class="nav-link" routerLink="/settings" routerLinkActive="active"
          [attr.title]="sidebarCollapsed() ? 'Configurações' : null" aria-label="Configurações">
         <sp-icon name="settings" />
         <span>Configurações</span>
       </a>
+      }
     </nav>
 
     <section class="team-card">
@@ -113,7 +120,7 @@
           <sp-icon name="user-plus" [size]="18" />
           Adicionar membro
         </a>
-      } @else {
+      } @else if (canViewMembers()) {
         <a class="primary-button team-card-action" routerLink="/members">
           <sp-icon name="users" [size]="18" />
           Ver membros
@@ -262,10 +269,12 @@
                 </div>
               </div>
 
+              @if (canViewSettings()) {
               <a routerLink="/settings" class="profile-menu-item" role="menuitem" (click)="closeProfileMenu()">
                 <sp-icon name="settings" [size]="18" />
                 Configurações
               </a>
+              }
 
               <div class="profile-menu-divider"></div>
 

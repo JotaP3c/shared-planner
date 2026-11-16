@@ -5,7 +5,7 @@ import { provideRouter } from '@angular/router';
 
 import { CalendarPage } from './calendar-page';
 import { AuthService } from '../../../core/auth/auth.service';
-import { EventResponse } from '../../../core/models/shared-planner.models';
+import { CalendarResponse, EventResponse } from '../../../core/models/shared-planner.models';
 import { DataChangeService } from '../../../core/state/data-change.service';
 
 describe('CalendarPage', () => {
@@ -67,6 +67,8 @@ describe('CalendarPage', () => {
     TestBed.inject(AuthService).currentUser.set({
       id: 'admin', fullName: 'Admin', email: 'admin@example.com', role: 'ADMIN', active: true, createdAt: '', updatedAt: '',
     });
+    component.calendars.set([{ id: 'cal', name: 'Agenda', ownerEmail: 'admin@example.com', memberRole: 'ADMIN', canCreateEvents: true,
+      permissions: ['CALENDAR_VIEW', 'EVENT_EDIT', 'EVENT_EDIT_ALL', 'EVENT_CANCEL', 'FINANCE_VIEW', 'FINANCE_MANAGE'] }]);
     component.selectedEvent.set({
       id: 'e1', calendarId: 'cal', createdByEmail: 'admin@example.com', approvalRequestedFromEmail: null,
       approvedByEmail: null, eventType: 'CLIENT', status: 'SCHEDULED', title: 'joao teste', clientName: 'joao teste',
@@ -105,7 +107,7 @@ describe('CalendarPage', () => {
       id: 'admin', fullName: 'Admin', email: 'admin@example.com', role: 'ADMIN', active: true, createdAt: '', updatedAt: '',
     });
     component.calendars.set([{
-      id: 'cal', name: 'Agenda', ownerEmail: 'admin@example.com', memberRole: 'ADMIN', canCreateEvents: true,
+      id: 'cal', name: 'Agenda', ownerEmail: 'admin@example.com', memberRole: 'ADMIN', canCreateEvents: true, permissions: ['CALENDAR_VIEW', 'FINANCE_VIEW'],
     }]);
     TestBed.tick();
 
@@ -135,6 +137,8 @@ describe('CalendarPage', () => {
       createdAt: '',
       updatedAt: '',
     });
+    component.calendars.set([{ id: 'calendar', name: 'Agenda', ownerEmail: 'admin@example.com', memberRole: 'ADMIN', canCreateEvents: true,
+      permissions: ['EVENT_EDIT', 'EVENT_EDIT_ALL', 'EVENT_CANCEL'] }]);
 
     const cancelledEvent = {
       id: 'event',
@@ -236,8 +240,9 @@ describe('CalendarPage async states and validation (BLG-BUG-004/005/008, BLG-FE-
   let component: CalendarPage;
   let http: HttpTestingController;
 
-  const calendarA = { id: 'cal-a', name: 'Agenda A', ownerEmail: 'owner@example.com', memberRole: 'ADMIN' as const, canCreateEvents: true };
-  const calendarB = { id: 'cal-b', name: 'Agenda B', ownerEmail: 'owner@example.com', memberRole: 'ADMIN' as const, canCreateEvents: true };
+  const calendarA: CalendarResponse = { id: 'cal-a', name: 'Agenda A', ownerEmail: 'owner@example.com', memberRole: 'ADMIN', canCreateEvents: true,
+    permissions: ['CALENDAR_VIEW', 'EVENT_CREATE', 'EVENT_EDIT', 'EVENT_EDIT_ALL', 'EVENT_CANCEL', 'EVENT_APPROVE', 'FINANCE_VIEW', 'FINANCE_MANAGE'] };
+  const calendarB: CalendarResponse = { ...calendarA, id: 'cal-b', name: 'Agenda B' };
 
   function event(id: string, overrides: Partial<EventResponse> = {}): EventResponse {
     return {
@@ -432,7 +437,8 @@ describe('CalendarPage async states and validation (BLG-BUG-004/005/008, BLG-FE-
   });
 
   it('allows designated editors to answer a shared round without editing another creator’s event', () => {
-    component.calendars.set([{ ...calendarA, calendarType: 'SHARED', memberRole: 'EDITOR', memberRoles: ['EDITOR', 'FINANCE'] }]);
+    component.calendars.set([{ ...calendarA, calendarType: 'SHARED', memberRole: 'EDITOR', memberRoles: ['EDITOR', 'FINANCE'],
+      permissions: ['CALENDAR_VIEW', 'EVENT_CREATE', 'EVENT_EDIT', 'EVENT_CANCEL', 'EVENT_APPROVE', 'FINANCE_VIEW'] }]);
     const shared = event('shared', { createdByEmail: 'owner@example.com', approvals: [
       { userEmail: 'user@example.com', status: 'PENDING', round: 1, requestedAt: '', respondedAt: null },
     ] });
@@ -499,7 +505,7 @@ describe('CalendarPage async states and validation (BLG-BUG-004/005/008, BLG-FE-
     expect(update.request.params.get('fromEventId')).toBe('occurrence');
   });
 
-  it('loads holidays separately as read-only all-day events and lets the filter hide them', () => {
+  it('keeps read-only all-day holidays visible independently of calendar and event-type filters', () => {
     (component as unknown as { loadHolidays(start: Date, end: Date): void }).loadHolidays(new Date(2026, 11, 1), new Date(2027, 0, 1));
     const request = http.match(req => req.url === '/api/holidays')[0];
     expect(request).toBeDefined();
@@ -507,7 +513,41 @@ describe('CalendarPage async states and validation (BLG-BUG-004/005/008, BLG-FE-
     TestBed.tick();
     const visible = component.calendarOptions.events as Array<{ id: string; allDay: boolean; editable: boolean }>;
     expect(visible.find(item => item.id === 'christmas')).toMatchObject({ allDay: true, editable: false });
-    component.holidayVisible.set(false); TestBed.tick();
-    expect((component.calendarOptions.events as Array<{ id: string }>).some(item => item.id === 'christmas')).toBe(false);
+    component.selectedCalendarIds.set([]);
+    component.selectedEventTypes.set([]);
+    component.openFilterMenu.set('calendars');
+    TestBed.tick();
+    expect((component.calendarOptions.events as Array<{ id: string }>).some(item => item.id === 'christmas')).toBe(true);
+  });
+
+  it('does not display an equivalent imported holiday twice or hide an unrelated timed appointment', () => {
+    component.holidayEvents.set([{ id: 'christmas', title: 'Natal', start: '2026-12-25', end: '2026-12-26', allDay: true, editable: false }]);
+    component.events.set([
+      event('imported-holiday', { externalSource: 'GOOGLE_ICS', allDay: true, title: 'Natal', startsAt: '2026-12-25T00:00:00', endsAt: '2026-12-26T00:00:00' }),
+      event('appointment', { externalSource: 'GOOGLE_ICS', allDay: false, title: 'Natal', startsAt: '2026-12-25T10:00:00', endsAt: '2026-12-25T11:00:00' }),
+    ]);
+    TestBed.tick();
+    const visibleIds = (component.calendarOptions.events as Array<{ id: string }>).map(item => item.id);
+    expect(visibleIds).toContain('christmas');
+    expect(visibleIds).toContain('appointment');
+    expect(visibleIds).not.toContain('imported-holiday');
+    expect(component.events()).toHaveLength(2);
+  });
+
+  it('fails closed for unresolved or revoked calendar operations and keeps payment management independent', () => {
+    const own = event('own', { eventType: 'CLIENT', createdByEmail: 'user@example.com', amount: 100, paymentStatus: 'PENDING', receivedAmount: 0 });
+    component.calendars.set([{ ...calendarA, permissions: ['CALENDAR_VIEW', 'EVENT_EDIT', 'FINANCE_VIEW'] }]);
+    expect(component.canEditEvent(own)).toBe(true);
+    expect(component.canCancelEvent(own)).toBe(false);
+    expect(component.canManagePayment(own)).toBe(false);
+    component.calendars.set([{ ...calendarA, permissions: ['FINANCE_MANAGE'] }]);
+    expect(component.canEditEvent(own)).toBe(false);
+    expect(component.canManagePayment(own)).toBe(true);
+    component.calendars.set([{ ...calendarA, permissions: [] }]);
+    expect(component.canEditEvent(own)).toBe(false);
+    expect(component.canManagePayment(own)).toBe(false);
+    expect(component.canRespondToEvent(own)).toBe(false);
+    component.calendars.set([]);
+    expect(component.canEditEvent(own)).toBe(false);
   });
 });

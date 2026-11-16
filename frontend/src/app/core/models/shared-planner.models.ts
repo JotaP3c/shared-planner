@@ -1,3 +1,5 @@
+import { Permission } from './access.models';
+
 export type UserRole = 'ADMIN' | 'FINANCE' | 'USER';
 
 export type CalendarMemberRole =
@@ -32,7 +34,7 @@ export type PaymentMethod =
 
 export type RevenuePeriod = 'DAILY' | 'WEEKLY' | 'BIWEEKLY' | 'MONTHLY';
 
-export type AuditEntityType = 'USER' | 'CALENDAR' | 'CALENDAR_MEMBER' | 'EVENT';
+export type AuditEntityType = 'USER' | 'CALENDAR' | 'CALENDAR_MEMBER' | 'EVENT' | 'ACCESS_PROFILE' | 'ACCESS_ASSIGNMENT';
 
 export type AuditAction =
   | 'CREATED'
@@ -49,6 +51,7 @@ export type AuditAction =
   | 'APPOINTMENT_RESCHEDULED';
 
 export interface CalendarResponse {
+  permissions?: Permission[];
   id: string;
   name: string;
   ownerEmail: string;
@@ -70,6 +73,7 @@ export interface AddCalendarMemberRequest {
 }
 
 export interface CalendarMemberResponse {
+  userId?: string;
   id: string; calendarId: string; userEmail: string; userFullName: string;
   role: CalendarMemberRole; createdAt: string;
   roles?: CalendarMemberRole[];
@@ -78,6 +82,8 @@ export interface CalendarMemberResponse {
 export interface UpdateCalendarMemberRequest { role: CalendarMemberRole; roles?: CalendarMemberRole[]; }
 
 export interface EventResponse {
+  financialSimulation?: boolean;
+  simulationReferenceDate?: string | null;
   externalSource?: 'GOOGLE_ICS' | null;
   id: string;
   calendarId: string;
@@ -209,6 +215,7 @@ export interface UpdatePaymentRequest {
 }
 
 export interface FinanceSummaryResponse {
+  containsSimulatedData?: boolean;
   calendarId: string;
   startDate: string;
   endDate: string;
@@ -259,6 +266,7 @@ export interface FinanceAppointmentResponse {
 }
 
 export interface UserResponse {
+  permissions?: Permission[];
   id: string;
   fullName: string;
   email: string;

@@ -1,27 +1,34 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { Component } from '@angular/core';
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
-import { provideRouter } from '@angular/router';
+import { provideRouter, Router } from '@angular/router';
 
 import { AppShell } from './app-shell';
 import { AuthService } from '../../auth/auth.service';
 import { DataChangeService } from '../../state/data-change.service';
 import { EventSearchResponse } from '../../models/shared-planner.models';
 
+@Component({ template: '' })
+class TestRoute {}
+
 describe('AppShell', () => {
   let component: AppShell;
   let fixture: ComponentFixture<AppShell>;
 
   beforeEach(async () => {
+    localStorage.removeItem('sharedPlanner.token');
     await TestBed.configureTestingModule({
       imports: [AppShell],
-      providers: [provideRouter([]), provideHttpClient(), provideHttpClientTesting()],
+      providers: [provideRouter([{ path: 'test-route', component: TestRoute }]), provideHttpClient(), provideHttpClientTesting()],
     }).compileComponents();
 
     fixture = TestBed.createComponent(AppShell);
     component = fixture.componentInstance;
     await fixture.whenStable();
   });
+
+  afterEach(() => { TestBed.inject(HttpTestingController).verify({ ignoreCancelled: true }); localStorage.removeItem('sharedPlanner.token'); });
 
   it('should create', () => {
     expect(component).toBeTruthy();
@@ -50,6 +57,7 @@ describe('AppShell', () => {
       ownerEmail: 'owner@example.com',
       memberRole: 'VIEWER',
       canCreateEvents: false,
+      permissions: ['CALENDAR_VIEW'],
     }]);
     component.financeAccessResolved.set(true);
     fixture.detectChanges();
@@ -62,6 +70,7 @@ describe('AppShell', () => {
       ownerEmail: 'owner@example.com',
       memberRole: 'FINANCE',
       canCreateEvents: false,
+      permissions: ['CALENDAR_VIEW', 'FINANCE_VIEW'],
     }]);
     fixture.detectChanges();
 
@@ -76,13 +85,13 @@ describe('AppShell', () => {
     expect(navigation?.textContent).not.toContain('Relatórios');
   });
 
-  it('shows the audit link only to global ADMIN or a calendar ADMIN (BLG-FE-002)', () => {
+  it('shows the audit link only for an explicit effective AUDIT_VIEW grant', () => {
     const authService = TestBed.inject(AuthService);
     authService.currentUser.set({
       id: 'user', fullName: 'User', email: 'user@example.com', role: 'USER', active: true, createdAt: '', updatedAt: '',
     });
     component.financeCalendars.set([{
-      id: 'editor-calendar', name: 'Editor', ownerEmail: 'owner@example.com', memberRole: 'EDITOR', canCreateEvents: true,
+      id: 'editor-calendar', name: 'Editor', ownerEmail: 'owner@example.com', memberRole: 'EDITOR', canCreateEvents: true, permissions: [],
     }]);
     component.financeAccessResolved.set(true);
     fixture.detectChanges();
@@ -90,7 +99,7 @@ describe('AppShell', () => {
     expect(fixture.nativeElement.querySelector('[data-testid="audit-navigation"]')).toBeNull();
 
     component.financeCalendars.set([{
-      id: 'admin-calendar', name: 'Admin', ownerEmail: 'user@example.com', memberRole: 'ADMIN', canCreateEvents: true,
+      id: 'admin-calendar', name: 'Admin', ownerEmail: 'user@example.com', memberRole: 'ADMIN', canCreateEvents: true, permissions: ['AUDIT_VIEW'],
     }]);
     fixture.detectChanges();
 
@@ -99,6 +108,10 @@ describe('AppShell', () => {
 
   it('collapses the sidebar to icons, keeps navigation reachable and persists the choice (INC-06)', () => {
     localStorage.removeItem('sharedPlanner.layout');
+    component.financeCalendars.set([{ id: 'calendar', name: 'Agenda', ownerEmail: 'owner@example.com', memberRole: 'VIEWER', canCreateEvents: false,
+      permissions: ['CALENDAR_VIEW', 'MEMBERS_VIEW'] }]);
+    component.financeAccessResolved.set(true);
+    fixture.detectChanges();
     const element: HTMLElement = fixture.nativeElement;
     const toggle = element.querySelector('[data-testid="sidebar-collapse"]') as HTMLButtonElement;
     expect(toggle.getAttribute('aria-expanded')).toBe('true');
@@ -124,15 +137,82 @@ describe('AppShell', () => {
     TestBed.inject(AuthService).currentUser.set({
       id: 'user', fullName: 'User', email: 'user@example.com', role: 'USER', active: true, createdAt: '', updatedAt: '',
     });
+    localStorage.setItem('sharedPlanner.token', 'test-session');
 
     TestBed.inject(DataChangeService).notify();
     TestBed.tick();
+
+    http.expectOne('/api/auth/me').flush({ id: 'user', email: 'user@example.com', permissions: [] });
+    http.expectOne('/api/calendars').flush([{ id: 'c', name: 'c', permissions: ['EVENT_APPROVE'] }]);
 
     http.expectOne('/api/events/pending-approvals').flush([
       { id: 'a', status: 'PENDING_APPROVAL', approvalRequestedFromEmail: 'USER@example.com' },
       { id: 'b', status: 'PENDING_APPROVAL', approvalRequestedFromEmail: 'other@example.com' },
     ]);
     expect(component.pendingApprovalCount()).toBe(1);
+  });
+
+  it('refreshes access on navigation and cancels a stale permission refresh after a data change', async () => {
+    const http = TestBed.inject(HttpTestingController), auth = TestBed.inject(AuthService);
+    const user = { id: 'u', fullName: 'Pessoa', email: 'u@example.invalid', role: 'ADMIN' as const, active: true, createdAt: '', updatedAt: '' };
+    localStorage.setItem('sharedPlanner.token', 'test-session');
+    auth.currentUser.set({ ...user, permissions: ['ROLES_MANAGE', 'SETTINGS_VIEW'] });
+    component.financeCalendars.set([{ id: 'c', name: 'c', ownerEmail: user.email, memberRole: 'ADMIN', canCreateEvents: true, permissions: ['FINANCE_VIEW'] }]);
+    component.financeAccessResolved.set(true); fixture.detectChanges();
+    component.toggleProfileMenu(); fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('[data-testid="finance-navigation"]')).not.toBeNull();
+    expect(fixture.nativeElement.querySelector('.profile-menu a[routerLink="/settings"]')).not.toBeNull();
+    TestBed.inject(DataChangeService).notify(); TestBed.tick();
+    const stale = http.expectOne('/api/auth/me');
+    expect(component.canAccessFinance()).toBe(false);
+    await TestBed.inject(Router).navigateByUrl('/test-route');
+    expect(stale.cancelled).toBe(true);
+    http.expectOne('/api/auth/me').flush({ ...user, permissions: [] });
+    http.expectOne('/api/calendars').flush([{ id: 'c', name: 'c', ownerEmail: user.email, memberRole: 'ADMIN', canCreateEvents: false, permissions: [] }]);
+    component.toggleProfileMenu();
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('[data-testid="finance-navigation"]')).toBeNull();
+    expect(fixture.nativeElement.querySelector('.profile-menu a[routerLink="/settings"]')).toBeNull();
+    expect(fixture.nativeElement.querySelector('[data-testid="roles-navigation"]')).toBeNull();
+    expect(component.pendingApprovalCount()).toBe(0);
+    http.expectNone('/api/events/pending-approvals');
+  });
+
+  it('hides unresolved menus after an access refresh error while preserving the session', () => {
+    const http = TestBed.inject(HttpTestingController), auth = TestBed.inject(AuthService);
+    localStorage.setItem('sharedPlanner.token', 'test-session');
+    auth.currentUser.set({ id: 'u', fullName: 'Pessoa', email: 'u@example.invalid', role: 'ADMIN', permissions: ['ROLES_MANAGE'], active: true, createdAt: '', updatedAt: '' });
+    TestBed.inject(DataChangeService).notify(); TestBed.tick();
+    http.expectOne('/api/auth/me').flush({ detail: 'Unavailable' }, { status: 500, statusText: 'Server Error' });
+    fixture.detectChanges();
+    expect(auth.getToken()).toBe('test-session');
+    expect(component.canManageProfiles()).toBe(false); expect(component.canAccessFinance()).toBe(false);
+    http.expectNone('/api/calendars'); http.expectNone('/api/events/pending-approvals');
+  });
+
+  it('does not resolve contextual grants when a successful user response has no usable identity', () => {
+    const http = TestBed.inject(HttpTestingController);
+    localStorage.setItem('sharedPlanner.token', 'test-session');
+    TestBed.inject(DataChangeService).notify(); TestBed.tick();
+    http.expectOne('/api/auth/me').flush({ permissions: ['ROLES_MANAGE'] });
+    expect(component.currentUser()).toBeNull(); expect(component.canViewCalendar()).toBe(false);
+    http.expectNone('/api/calendars'); http.expectNone('/api/events/pending-approvals');
+  });
+
+  it('updates visible global and contextual modules after explicit grants are revoked', () => {
+    const auth = TestBed.inject(AuthService);
+    const user = { id: 'user', fullName: 'User', email: 'user@example.invalid', role: 'USER' as const, active: true, createdAt: '', updatedAt: '' };
+    auth.currentUser.set({ ...user, permissions: ['ROLES_MANAGE'] });
+    component.financeCalendars.set([{ id: 'scope', name: 'Agenda', ownerEmail: user.email, memberRole: 'VIEWER', canCreateEvents: false,
+      permissions: ['CALENDAR_VIEW', 'FINANCE_VIEW'] }]);
+    component.financeAccessResolved.set(true); fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('[data-testid="roles-navigation"]')).not.toBeNull();
+    expect(fixture.nativeElement.querySelector('[data-testid="finance-navigation"]')).not.toBeNull();
+    auth.currentUser.set({ ...user, role: 'ADMIN', permissions: [] });
+    component.financeCalendars.update(calendars => calendars.map(calendar => ({ ...calendar, permissions: [] })));
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('[data-testid="roles-navigation"]')).toBeNull();
+    expect(fixture.nativeElement.querySelector('[data-testid="finance-navigation"]')).toBeNull();
   });
 
   describe('global search (BLG-BUG-007)', () => {

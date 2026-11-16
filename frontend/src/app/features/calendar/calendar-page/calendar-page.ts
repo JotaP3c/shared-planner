@@ -14,7 +14,8 @@ import { Subscription, catchError, distinctUntilChanged, finalize, forkJoin, map
 import { CalendarService } from '../../../core/api/calendar.service';
 import { EventService } from '../../../core/api/event.service';
 import { EventSeriesService } from '../../../core/api/event-series.service';
-import { canRespondToApproval, hasCalendarRole } from '../../../core/auth/calendar-permissions';
+import { canRespondToApproval, canCalendarPermission } from '../../../core/auth/calendar-permissions';
+import { Permission } from '../../../core/models/access.models';
 import { formatBrazilianPhone, phoneDigits } from '../../../shared/forms/brazilian-phone';
 import { RecurrenceEditor } from '../recurrence-editor/recurrence-editor';
 import { CalendarCreator } from '../calendar-creator/calendar-creator';
@@ -70,7 +71,6 @@ export class CalendarPage implements OnInit, AfterViewInit {
   readonly seriesNotice = signal('');
   readonly approvalHistory = signal<EventApproval[] | null>(null);
   readonly approvalHistoryError = signal('');
-  readonly holidayVisible = signal(true);
   readonly holidayEvents = signal<EventInput[]>([]);
   readonly holidayError = signal('');
   private readonly loadedHolidayYears = new Set<number>();
@@ -246,7 +246,7 @@ export class CalendarPage implements OnInit, AfterViewInit {
   });
 
   readonly creatableCalendars = computed(() =>
-    this.calendars().filter(calendar => calendar.canCreateEvents),
+    this.calendars().filter(calendar => canCalendarPermission(calendar, 'EVENT_CREATE')),
   );
 
   readonly canCreateEvents = computed(() => this.creatableCalendars().length > 0);
@@ -297,7 +297,7 @@ export class CalendarPage implements OnInit, AfterViewInit {
     const event = this.selectedEvent();
     const currentUser = this.currentUser();
 
-    return !!event && canRespondToApproval(event, currentUser?.email);
+    return !!event && this.canRespondToEvent(event);
   });
 
   readonly periodChip = computed(() => {
@@ -395,7 +395,7 @@ export class CalendarPage implements OnInit, AfterViewInit {
     effect(() => {
       this.calendarOptions = {
         ...this.calendarOptions,
-        events: [...this.toCalendarEvents(this.filteredEvents()), ...(this.holidayVisible() ? this.holidayEvents() : [])],
+        events: [...this.toCalendarEvents(this.filteredEvents().filter(event => !this.isImportedHolidayDuplicate(event))), ...this.holidayEvents()],
       };
     });
 
@@ -705,7 +705,6 @@ export class CalendarPage implements OnInit, AfterViewInit {
   }
 
   selectAllCalendars(): void {
-    this.holidayVisible.set(true);
     this.selectedCalendarIds.set(this.calendars().map(calendar => calendar.id));
     this.loadEvents();
   }
@@ -743,7 +742,6 @@ export class CalendarPage implements OnInit, AfterViewInit {
   }
 
   clearFilters(): void {
-    this.holidayVisible.set(true);
     this.searchService.clear();
     this.selectedCalendarIds.set(this.calendars().map(calendar => calendar.id));
     this.selectAllEventTypes();
@@ -1070,7 +1068,7 @@ export class CalendarPage implements OnInit, AfterViewInit {
   deleteSelectedEvent(): void {
     const event = this.selectedEvent();
 
-    if (!event) {
+    if (!event || !this.canCancelEvent(event)) {
       return;
     }
 
@@ -1141,7 +1139,7 @@ export class CalendarPage implements OnInit, AfterViewInit {
   togglePaymentForm(event: EventResponse): void {
     this.paymentFormError.set('');
 
-    if (event.eventType !== 'CLIENT' || !this.hasFinancialDetails(event) || !this.canEditEvent(event)) {
+    if (event.eventType !== 'CLIENT' || !this.hasFinancialDetails(event) || !this.canManagePayment(event)) {
       this.isPaymentFormOpen.set(false);
       return;
     }
@@ -1162,7 +1160,7 @@ export class CalendarPage implements OnInit, AfterViewInit {
       !event
       || event.eventType !== 'CLIENT'
       || !this.hasFinancialDetails(event)
-      || !this.canEditEvent(event)
+      || !this.canManagePayment(event)
     ) {
       return;
     }
@@ -1286,7 +1284,8 @@ export class CalendarPage implements OnInit, AfterViewInit {
   canRespondToEvent(event: EventResponse): boolean {
     const currentUser = this.currentUser();
 
-    return canRespondToApproval(event, currentUser?.email);
+    return canCalendarPermission(this.calendars().find(c => c.id === event.calendarId), 'EVENT_APPROVE')
+      && canRespondToApproval(event, currentUser?.email);
   }
 
   isPendingRead(eventId: string): boolean {
@@ -1352,6 +1351,22 @@ export class CalendarPage implements OnInit, AfterViewInit {
   }
 
   canEditEvent(event: EventResponse): boolean {
+    return this.canOperateEvent(event, 'EVENT_EDIT');
+  }
+
+  canCancelEvent(event: EventResponse): boolean {
+    return this.canOperateEvent(event, 'EVENT_CANCEL');
+  }
+
+  canManagePayment(event: EventResponse): boolean {
+    const calendar = this.calendars().find(c => c.id === event.calendarId);
+    if (!calendar || event.eventType !== 'CLIENT' || event.status === 'CANCELLED') return false;
+    return canCalendarPermission(calendar, 'FINANCE_MANAGE')
+      || (canCalendarPermission(calendar, 'FINANCE_MANAGE_OWN')
+        && event.createdByEmail.toLowerCase() === this.currentUser()?.email.toLowerCase());
+  }
+
+  private canOperateEvent(event: EventResponse, permission: Permission): boolean {
     if (event.status === 'CANCELLED') {
       return false;
     }
@@ -1362,27 +1377,22 @@ export class CalendarPage implements OnInit, AfterViewInit {
       return false;
     }
 
-    if (currentUser.role === 'ADMIN') {
-      return true;
-    }
-
     const calendar = this.calendars().find(currentCalendar => currentCalendar.id === event.calendarId);
 
-    if (!calendar) {
+    if (!calendar || !canCalendarPermission(calendar, permission)) {
       return false;
     }
 
-    if (hasCalendarRole(calendar, 'ADMIN')) {
+    if (canCalendarPermission(calendar, 'EVENT_EDIT_ALL')) {
       return true;
     }
 
-    if (hasCalendarRole(calendar, 'EDITOR')
-        && event.createdByEmail.toLowerCase() === currentUser.email.toLowerCase()) {
+    if (event.createdByEmail.toLowerCase() === currentUser.email.toLowerCase()) {
       return true;
     }
 
     return event.eventType === 'SHARED'
-      && calendar.canCreateEvents
+      && canCalendarPermission(calendar, 'EVENT_EDIT')
       && (!calendar.calendarType || calendar.calendarType === 'LEGACY')
       && !event.approvals?.length
       && event.approvalRequestedFromEmail?.toLowerCase() === currentUser.email.toLowerCase();
@@ -1443,6 +1453,15 @@ export class CalendarPage implements OnInit, AfterViewInit {
     return ({ PENDING: 'Pendente', APPROVED: 'Aprovado', REJECTED: 'Recusado' } as Record<string, string>)[status] ?? status;
   }
 
+  /** Suppress only an equivalent imported all-day display; keep its persisted record intact. */
+  private isImportedHolidayDuplicate(event: EventResponse): boolean {
+    if (event.externalSource !== 'GOOGLE_ICS' || !event.allDay) return false;
+    const normalize = (value: string) => value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLowerCase();
+    return this.holidayEvents().some(holiday => typeof holiday.start === 'string'
+      && holiday.start === event.startsAt.slice(0, 10)
+      && normalize(holiday.title ?? '') === normalize(event.title));
+  }
+
   private loadHolidays(start: Date, end: Date): void {
     // The official dataset currently covers 2026 only; no dates are guessed for other years.
     if (start.getFullYear() > 2026 || end.getFullYear() < 2026 || this.loadedHolidayYears.has(2026)) return;
@@ -1476,7 +1495,7 @@ export class CalendarPage implements OnInit, AfterViewInit {
   }
 
   private canCreateInCalendar(calendarId: string): boolean {
-    return this.calendars().some(calendar => calendar.id === calendarId && calendar.canCreateEvents);
+    return this.calendars().some(calendar => calendar.id === calendarId && canCalendarPermission(calendar, 'EVENT_CREATE'));
   }
 
   private buildLocalDateTime(date: string, time: string): Date {

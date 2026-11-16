@@ -1,6 +1,16 @@
-import { CalendarMemberRole, CalendarResponse, EventResponse } from '../models/shared-planner.models';
+import { CalendarMemberRole, CalendarResponse, EventResponse, UserResponse } from '../models/shared-planner.models';
+import { Permission } from '../models/access.models';
 
-/** Roles array is authoritative; singular role keeps older API/test fixtures compatible. */
+/** Backend effective grants are authoritative; unresolved or empty grants deny access. */
+export function canCalendarPermission(calendar: CalendarResponse | null | undefined, permission: Permission): boolean {
+  return calendar?.permissions?.includes(permission) === true;
+}
+
+export function canGlobalPermission(user: UserResponse | null | undefined, permission: Permission): boolean {
+  return user?.permissions?.includes(permission) === true;
+}
+
+/** Legacy roles for display; operation authorization uses effective permissions above. */
 export function calendarRoles(calendar: CalendarResponse): CalendarMemberRole[] {
   return calendar.memberRoles ?? (calendar.memberRole ? [calendar.memberRole] : []);
 }

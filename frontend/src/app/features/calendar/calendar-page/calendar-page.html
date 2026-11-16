@@ -109,10 +109,6 @@
                 </header>
 
                 <div class="filter-options">
-                  <label class="filter-option">
-                    <input type="checkbox" [checked]="holidayVisible()" (change)="holidayVisible.set(!holidayVisible())" />
-                    <span class="cal-dot holiday-dot"></span><span>Feriados no Brasil · 2026</span>
-                  </label>
                   @for (calendar of calendars(); track calendar.id) {
                     <label class="filter-option">
                       <input
@@ -784,7 +780,7 @@
             </button>
           }
 
-          @if (canEditEvent(event)) {
+          @if (canCancelEvent(event)) {
             <!-- Ação destrutiva separada à esquerda; secundárias à direita. -->
             <button
               class="danger-button detail-destructive"
@@ -795,8 +791,9 @@
               <sp-icon class="action-icon delete-action-icon" name="trash" [size]="16" />
               {{ isDeletingEvent() ? 'Cancelando...' : 'Cancelar evento' }}
             </button>
+          }
 
-            @if (event.eventType === 'CLIENT' && hasFinancialDetails(event)) {
+            @if (canManagePayment(event) && hasFinancialDetails(event)) {
               <button
                 class="secondary-button"
                 type="button"
@@ -809,6 +806,7 @@
               </button>
             }
 
+          @if (canEditEvent(event)) {
             <button class="secondary-button" type="button" [disabled]="isUpdatingApproval()" (click)="openEditEventModal(event)">
               <sp-icon class="action-icon edit-action-icon" name="edit" [size]="16" />
               Editar evento

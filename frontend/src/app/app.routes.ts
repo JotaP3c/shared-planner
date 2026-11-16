@@ -1,6 +1,6 @@
 import { Routes } from '@angular/router';
 import { authGuard } from './core/guards/auth.guard';
-import { auditAccessGuard, systemAdminGuard } from './core/guards/role.guard';
+import { auditAccessGuard, permissionGuard, systemAdminGuard } from './core/guards/role.guard';
 
 export const routes: Routes = [
   {
@@ -25,6 +25,7 @@ export const routes: Routes = [
       },
       {
         path: 'calendar',
+        canActivate: [permissionGuard('CALENDAR_VIEW', true)],
         loadComponent: () =>
           import('./features/calendar/calendar-page/calendar-page').then(
             m => m.CalendarPage,
@@ -32,6 +33,7 @@ export const routes: Routes = [
       },
       {
         path: 'pending',
+        canActivate: [permissionGuard('EVENT_APPROVE', true)],
         loadComponent: () =>
           import('./features/pending/pending-page/pending-page').then(
             m => m.PendingPage,
@@ -39,10 +41,12 @@ export const routes: Routes = [
       },
       {
         path: 'calendar-import',
+        canActivate: [permissionGuard('CALENDAR_IMPORT', true)],
         loadComponent: () => import('./features/calendar/calendar-import-page/calendar-import-page').then(m => m.CalendarImportPage),
       },
       {
         path: 'finance',
+        canActivate: [permissionGuard('FINANCE_VIEW', true)],
         loadComponent: () =>
           import('./features/finance/finance-page/finance-page').then(
             m => m.FinancePage,
@@ -50,6 +54,7 @@ export const routes: Routes = [
       },
       {
         path: 'members',
+        canActivate: [permissionGuard('MEMBERS_VIEW', true)],
         loadComponent: () =>
           import('./features/members/members-page/members-page').then(
             m => m.MembersPage,
@@ -72,7 +77,17 @@ export const routes: Routes = [
           ),
       },
       {
+        path: 'admin/roles',
+        canActivate: [permissionGuard('ROLES_MANAGE')],
+        loadComponent: () => import('./features/access/access-page').then(m => m.AccessPage),
+      },
+      {
+        path: 'access-denied',
+        loadComponent: () => import('./features/access/access-denied').then(m => m.AccessDenied),
+      },
+      {
         path: 'settings',
+        canActivate: [permissionGuard('SETTINGS_VIEW')],
         loadComponent: () =>
           import('./features/settings/settings-page/settings-page').then(
             m => m.SettingsPage,

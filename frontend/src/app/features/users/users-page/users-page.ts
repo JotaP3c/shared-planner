@@ -4,6 +4,7 @@ import { finalize } from 'rxjs';
 
 import { UserService } from '../../../core/api/user.service';
 import { AuthService } from '../../../core/auth/auth.service';
+import { canGlobalPermission } from '../../../core/auth/calendar-permissions';
 import { UserResponse, UserRole } from '../../../core/models/shared-planner.models';
 import { Icon } from '../../../shared/ui/icon/icon';
 
@@ -23,6 +24,7 @@ export class UsersPage implements OnInit {
 
   readonly roles: UserRole[] = ['ADMIN', 'FINANCE', 'USER'];
   readonly currentUser = this.authService.currentUser;
+  readonly canManage = computed(() => canGlobalPermission(this.currentUser(), 'USERS_MANAGE'));
   readonly users = signal<UserResponse[]>([]);
   readonly searchTerm = signal('');
   readonly isLoading = signal(false);
@@ -121,6 +123,7 @@ export class UsersPage implements OnInit {
   }
 
   openCreate(): void {
+    if (!this.canManage()) return;
     this.clearFeedback();
     this.createForm.reset({ fullName: '', email: '', password: '', role: 'USER' });
     this.editingUser.set(null);
@@ -128,6 +131,7 @@ export class UsersPage implements OnInit {
   }
 
   openEdit(user: UserResponse): void {
+    if (!this.canManage()) return;
     this.clearFeedback();
     this.editForm.reset({ fullName: user.fullName, role: user.role, active: user.active });
     this.editingUser.set(user);
@@ -150,6 +154,7 @@ export class UsersPage implements OnInit {
   }
 
   submitCreate(): void {
+    if (!this.canManage()) return;
     if (this.isSaving()) {
       return;
     }
@@ -183,6 +188,7 @@ export class UsersPage implements OnInit {
   }
 
   submitEdit(): void {
+    if (!this.canManage()) return;
     const user = this.editingUser();
 
     if (!user || this.isSaving()) {
@@ -224,6 +230,7 @@ export class UsersPage implements OnInit {
    * auditoria e cadastros que referenciam o usuário. Reativação usa o mesmo contrato.
    */
   setActive(user: UserResponse, active: boolean): void {
+    if (!this.canManage()) return;
     if (this.isSaving() || (!active && this.isSelf(user))) {
       return;
     }

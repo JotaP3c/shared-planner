@@ -36,13 +36,14 @@ describe('AuthService', () => {
     localStorage.clear();
   });
 
-  it('preserves the existing session when loading the user fails with a non-401 error', () => {
+  it('preserves the session and identity but invalidates unresolved grants after a non-401 error', () => {
     localStorage.setItem('sharedPlanner.token', 'still-valid-until-proven-otherwise');
     const existingUser = {
       id: 'user',
       fullName: 'Existing User',
       email: 'existing@example.com',
       role: 'USER' as const,
+      permissions: ['ROLES_MANAGE' as const],
       active: true,
       createdAt: '',
       updatedAt: '',
@@ -58,7 +59,7 @@ describe('AuthService', () => {
 
     expect(result).toBeNull();
     expect(service.getToken()).toBe('still-valid-until-proven-otherwise');
-    expect(service.currentUser()).toEqual(existingUser);
+    expect(service.currentUser()).toEqual({ ...existingUser, permissions: [] });
     expect(router.navigate).not.toHaveBeenCalled();
   });
 
@@ -81,5 +82,24 @@ describe('AuthService', () => {
     expect(service.currentUser()).toBeNull();
     expect(router.navigate).toHaveBeenCalledTimes(1);
     expect(router.navigate).toHaveBeenCalledWith(['/login']);
+  });
+
+  it('replaces effective grants on refresh so a revoked permission is not retained from the previous session state', () => {
+    localStorage.setItem('sharedPlanner.token', 'test-session');
+    const user = { id: 'u', fullName: 'Pessoa', email: 'person@example.invalid', role: 'ADMIN', permissions: ['ROLES_MANAGE'] };
+    service.loadCurrentUser().subscribe();
+    http.expectOne('/api/auth/me').flush(user);
+    expect(service.currentUser()?.permissions).toEqual(['ROLES_MANAGE']);
+    service.loadCurrentUser().subscribe();
+    http.expectOne('/api/auth/me').flush({ ...user, permissions: [] });
+    expect(service.currentUser()?.role).toBe('ADMIN');
+    expect(service.currentUser()?.permissions).toEqual([]);
+  });
+
+  it('does not infer administrative permissions from a legacy role-only response', () => {
+    localStorage.setItem('sharedPlanner.token', 'test-session');
+    service.loadCurrentUser().subscribe();
+    http.expectOne('/api/auth/me').flush({ email: 'person@example.invalid', role: 'ADMIN' });
+    expect(service.currentUser()?.permissions).toEqual([]);
   });
 });

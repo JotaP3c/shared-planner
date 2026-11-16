@@ -30,7 +30,7 @@ describe('UsersPage', () => {
       providers: [provideHttpClient(), provideHttpClientTesting()],
     }).compileComponents();
 
-    TestBed.inject(AuthService).currentUser.set(user('admin', { role: 'ADMIN', fullName: 'Admin' }));
+    TestBed.inject(AuthService).currentUser.set(user('admin', { role: 'ADMIN', fullName: 'Admin', permissions: ['USERS_VIEW', 'USERS_MANAGE'] }));
     http = TestBed.inject(HttpTestingController);
     fixture = TestBed.createComponent(UsersPage);
     component = fixture.componentInstance;

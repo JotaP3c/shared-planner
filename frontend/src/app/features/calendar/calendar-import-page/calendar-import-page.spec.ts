@@ -11,8 +11,8 @@ describe('CalendarImportPage', () => {
     const http = TestBed.inject(HttpTestingController);
     fixture.detectChanges();
     http.expectOne('/api/calendars').flush([
-      { id: 'mine', name: 'Minha agenda', ownerEmail: 'me@example.test', memberRole: 'ADMIN', canCreateEvents: true },
-      { id: 'viewer', name: 'Somente leitura', memberRole: 'VIEWER', canCreateEvents: false },
+      { id: 'mine', name: 'Minha agenda', ownerEmail: 'me@example.test', memberRole: 'ADMIN', canCreateEvents: true, permissions: ['CALENDAR_IMPORT'] },
+      { id: 'viewer', name: 'Somente leitura', memberRole: 'VIEWER', canCreateEvents: false, permissions: [] },
     ]);
     expect(page.calendars().map(calendar => calendar.id)).toEqual(['mine']);
     await page.readFile({ name: 'calendar.ics', size: 40, text: async () => 'BEGIN:VCALENDAR\nEND:VCALENDAR' } as File);

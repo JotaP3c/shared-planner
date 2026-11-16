@@ -13,6 +13,7 @@ describe('AuditPage', () => {
 
   const user = (role: UserResponse['role']): UserResponse => ({
     id: 'u', fullName: 'User', email: 'user@example.com', role, active: true, createdAt: '', updatedAt: '',
+    permissions: role === 'ADMIN' ? ['AUDIT_VIEW_ALL'] : [],
   });
 
   const log = (id: string): AuditLogResponse => ({
@@ -46,7 +47,7 @@ describe('AuditPage', () => {
   it('loads real audit records for a global admin without exposing snapshots', async () => {
     await setup('ADMIN');
     http.expectOne('/api/calendars').flush([
-      { id: 'cal', name: 'Agenda Principal', ownerEmail: 'admin@example.com', memberRole: null, canCreateEvents: true },
+      { id: 'cal', name: 'Agenda Principal', ownerEmail: 'admin@example.com', memberRole: null, canCreateEvents: true, permissions: ['AUDIT_VIEW'] },
     ]);
     const request = http.expectOne(candidate => candidate.url === '/api/audit-logs');
     expect(request.request.params.has('calendarId')).toBe(false);
@@ -63,8 +64,8 @@ describe('AuditPage', () => {
   it('scopes a calendar admin to their own calendar and applies filters', async () => {
     await setup('USER');
     http.expectOne('/api/calendars').flush([
-      { id: 'mine', name: 'Minha', ownerEmail: 'user@example.com', memberRole: 'ADMIN', canCreateEvents: true },
-      { id: 'other', name: 'Outra', ownerEmail: 'x@example.com', memberRole: 'VIEWER', canCreateEvents: false },
+      { id: 'mine', name: 'Minha', ownerEmail: 'user@example.com', memberRole: 'ADMIN', canCreateEvents: true, permissions: ['AUDIT_VIEW'] },
+      { id: 'other', name: 'Outra', ownerEmail: 'x@example.com', memberRole: 'VIEWER', canCreateEvents: false, permissions: [] },
     ]);
     expect(component.calendarOptions().map(item => item.id)).toEqual(['mine']);
     http.expectOne(candidate => candidate.url === '/api/audit-logs' && candidate.params.get('calendarId') === 'mine')

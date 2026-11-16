@@ -78,7 +78,8 @@ public class FinanceService {
                 safeCount(totals.getAwaitingConfirmationCount()),
                 safeCount(totals.getRescheduledCount()),
                 safeCount(totals.getUnscheduledCount()),
-                safeCount(totals.getRescheduleOccurrences())
+                safeCount(totals.getRescheduleOccurrences()),
+                safeCount(totals.getSimulatedCount()) > 0
         );
     }
 

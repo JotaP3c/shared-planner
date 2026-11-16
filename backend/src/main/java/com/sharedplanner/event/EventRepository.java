@@ -147,7 +147,8 @@ public interface EventRepository extends JpaRepository<Event, UUID> {
                 then 1 else 0 end) as rescheduledCount,
             sum(case when e.confirmationStatus = com.sharedplanner.event.AppointmentConfirmationStatus.CANCELLED
                 then 1 else 0 end) as unscheduledCount,
-            coalesce(sum(e.rescheduleCount), 0) as rescheduleOccurrences
+            coalesce(sum(e.rescheduleCount), 0) as rescheduleOccurrences,
+            sum(case when e.financialSimulation = true then 1 else 0 end) as simulatedCount
         from Event e
         where e.calendar.id = :calendarId
           and e.eventType = com.sharedplanner.event.EventType.CLIENT

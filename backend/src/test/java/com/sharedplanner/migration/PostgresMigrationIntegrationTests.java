@@ -16,7 +16,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 @EnabledIfEnvironmentVariable(named = "PLANNER_MIGRATION_TEST_URL", matches = ".+")
 class PostgresMigrationIntegrationTests {
     @Test
-    void migratesLegacyDataThroughV8PersonalCalendarsRolesAndImportTablesWithoutLoss() throws Exception {
+    void migratesLegacyDataThroughPermissionsAndCorrectionProvenanceWithoutLoss() throws Exception {
         String url = System.getenv("PLANNER_MIGRATION_TEST_URL");
         assertThat(url).startsWith("jdbc:postgresql://127.0.0.1:54629/audit_migration_test");
         String schema = "audit_" + UUID.randomUUID().toString().replace("-", "");
@@ -68,8 +68,29 @@ class PostgresMigrationIntegrationTests {
             assertThat(scalar(connection, "SELECT count(*) FROM calendar_members m JOIN calendars c ON c.id=m.calendar_id WHERE c.calendar_type='PERSONAL' AND m.user_id=c.owner_user_id AND m.member_role='ADMIN'"))
                     .isEqualTo("3");
             assertThat(scalar(connection, "SELECT count(*) FROM calendar_member_roles")).isEqualTo("4");
-            assertThat(scalar(connection, "SELECT count(*) FROM flyway_schema_history WHERE version IN ('8','9','10') AND success=true"))
-                    .isEqualTo("3");
+            assertThat(scalar(connection, "SELECT count(*) FROM flyway_schema_history WHERE version IN ('8','9','10','11','12') AND success=true"))
+                    .isEqualTo("5");
+            assertThat(scalar(connection, "SELECT count(*) FROM flyway_schema_history WHERE success=true AND version IS NOT NULL"))
+                    .isEqualTo("12");
+            assertThat(scalar(connection, "SELECT max(version::integer) FROM flyway_schema_history WHERE success=true"))
+                    .isEqualTo("12");
+            assertThat(scalar(connection, "SELECT count(*) FROM events WHERE financial_simulation=false AND simulation_reference_date IS NULL"))
+                    .isEqualTo("2");
+            assertThat(scalar(connection, "SELECT count(*) FROM development_event_corrections")).isEqualTo("0");
+            assertThatThrownBy(() -> {
+                try (var statement = connection.createStatement()) {
+                    statement.executeUpdate("UPDATE events SET financial_simulation=true WHERE id='" + client + "'");
+                }
+            }).isInstanceOfSatisfying(SQLException.class,
+                    exception -> assertThat(exception.getSQLState()).isEqualTo("23514"));
+            assertThat(scalar(connection, "SELECT amount FROM events WHERE id='" + client + "'"))
+                    .isEqualTo("100.00");
+            assertThat(scalar(connection, "SELECT count(*) FROM events WHERE financial_simulation=false AND simulation_reference_date IS NULL"))
+                    .isEqualTo("2");
+            assertThat(scalar(connection, "SELECT count(*) FROM access_profiles WHERE built_in=true AND active=true")).isEqualTo("7");
+            assertThat(scalar(connection, "SELECT count(*) FROM access_assignments")).isEqualTo("0");
+            assertThat(scalar(connection, "SELECT count(*) FROM access_profile_permissions pp JOIN access_profiles p ON p.id=pp.profile_id WHERE p.code='USER' AND pp.permission IN ('USERS_MANAGE','ROLES_MANAGE','AUDIT_VIEW_ALL')")).isEqualTo("0");
+            assertThat(scalar(connection, "SELECT count(*) FROM access_profile_permissions pp JOIN access_profiles p ON p.id=pp.profile_id WHERE p.code='CALENDAR_FINANCE' AND pp.permission IN ('FINANCE_VIEW','FINANCE_EXPORT')")).isEqualTo("2");
             assertThatThrownBy(() -> {
                 try (var statement = connection.createStatement()) {
                     statement.executeUpdate("INSERT INTO calendars(id,name,owner_user_id,calendar_type) VALUES ('"

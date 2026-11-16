@@ -33,6 +33,7 @@ public record FinanceSummaryResponse(
         Long awaitingConfirmationCount,
         Long rescheduledCount,
         Long unscheduledCount,
-        Long rescheduleOccurrences
+        Long rescheduleOccurrences,
+        boolean containsSimulatedData
 ) {
 }

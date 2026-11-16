@@ -35,4 +35,6 @@ public interface FinanceTotals {
     Long getUnscheduledCount();
 
     Long getRescheduleOccurrences();
+
+    Long getSimulatedCount();
 }

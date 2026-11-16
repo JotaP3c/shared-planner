@@ -7,6 +7,7 @@ import org.hibernate.annotations.BatchSize;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.time.LocalDate;
 import java.util.UUID;
 import java.util.List;
 import java.util.ArrayList;
@@ -76,6 +77,12 @@ public class Event {
 
     @Column(name = "amount", precision = 12, scale = 2)
     private BigDecimal amount;
+
+    @Column(name = "financial_simulation", nullable = false)
+    private boolean financialSimulation;
+
+    @Column(name = "simulation_reference_date")
+    private LocalDate simulationReferenceDate;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "payment_status", nullable = false, length = 30)
@@ -179,6 +186,12 @@ public class Event {
     public String getDescription() { return description; }
     public String getWorkDescription() { return workDescription; }
     public BigDecimal getAmount() { return amount; }
+    public boolean isFinancialSimulation() { return financialSimulation; }
+    public LocalDate getSimulationReferenceDate() { return simulationReferenceDate; }
+    public void markFinancialSimulation(LocalDate referenceDate) {
+        financialSimulation = true;
+        simulationReferenceDate = java.util.Objects.requireNonNull(referenceDate);
+    }
     public LocalDateTime getStartsAt() { return startsAt; }
     public LocalDateTime getEndsAt() { return endsAt; }
     public LocalDateTime getCreatedAt() { return createdAt; }

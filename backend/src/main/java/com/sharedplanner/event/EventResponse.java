@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.time.LocalDate;
 import java.util.UUID;
 import java.util.List;
 
@@ -49,7 +50,9 @@ public record EventResponse(
         boolean allDay,
         List<String> approvalRequestedFromEmails,
         List<EventApprovalResponse> approvals,
-        String externalSource
+        String externalSource,
+        @JsonInclude(JsonInclude.Include.NON_NULL) Boolean financialSimulation,
+        @JsonInclude(JsonInclude.Include.NON_NULL) LocalDate simulationReferenceDate
 ) {
     static EventResponse from(Event event, boolean includeFinancialData) {
         boolean client = event.getEventType() == EventType.CLIENT;
@@ -86,7 +89,9 @@ public record EventResponse(
                         ? event.getApprovalRequestedFrom() == null ? List.of() : List.of(event.getApprovalRequestedFrom().getEmail())
                         : event.getCurrentApprovals().stream().map(item -> item.getUser().getEmail()).toList(),
                 event.getCurrentApprovals().stream().map(EventApprovalResponse::from).toList(),
-                event.getExternalSource()
+                event.getExternalSource(),
+                includeFinancialData ? event.isFinancialSimulation() : null,
+                includeFinancialData ? event.getSimulationReferenceDate() : null
         );
     }
 }

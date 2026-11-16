@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, input, signal } from '@angular/core';
 
 export interface DonutSlice {
   key: string;
@@ -21,7 +21,7 @@ const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     @if (total() > 0) {
-      <div class="sp-donut">
+      <div class="sp-donut" (mouseleave)="activeKey.set(null)">
         <svg viewBox="0 0 120 120" role="img" [attr.aria-label]="ariaSummary()" focusable="false">
           <g transform="rotate(-90 60 60)">
             <circle class="sp-donut-track" cx="60" cy="60" [attr.r]="radius" />
@@ -35,6 +35,9 @@ const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
                   [attr.r]="radius"
                   [attr.stroke-dasharray]="segment.dash + ' ' + (circumference - segment.dash)"
                   [attr.stroke-dashoffset]="-segment.offset"
+                  tabindex="0"
+                  [attr.aria-label]="segment.label + ': ' + segment.value + ' (' + segment.percentLabel + ')'"
+                  (mouseenter)="activeKey.set(segment.key)" (focus)="activeKey.set(segment.key)" (blur)="activeKey.set(null)"
                 >
                   <title>{{ segment.label }}: {{ segment.value }} ({{ segment.percentLabel }})</title>
                 </circle>
@@ -47,7 +50,9 @@ const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
 
         <ul class="sp-chart-legend">
           @for (segment of segments(); track segment.key) {
-            <li [attr.data-testid]="'donut-legend-' + segment.key">
+            <li [attr.data-testid]="'donut-legend-' + segment.key" [class.is-highlighted]="activeKey() === segment.key"
+              [title]="segment.label + ': ' + segment.value + ' (' + segment.percentLabel + ')'"
+              (mouseenter)="activeKey.set(segment.key)">
               <i [class]="'sp-swatch tone-' + segment.tone" aria-hidden="true"></i>
               <span class="legend-label">{{ segment.label }}</span>
               <strong>{{ segment.value }}</strong>
@@ -66,6 +71,7 @@ export class DonutChart {
   readonly centerLabel = input('total');
   readonly label = input('Distribuição');
   readonly emptyMessage = input('Sem dados no período.');
+  readonly activeKey = signal<string | null>(null);
 
   protected readonly radius = RADIUS;
   protected readonly circumference = CIRCUMFERENCE;

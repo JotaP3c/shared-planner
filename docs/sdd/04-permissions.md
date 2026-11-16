@@ -1,5 +1,14 @@
 # 04 — Permissões
 
+## Matriz vigente — RBAC configurável, 12/11/2026
+
+O catálogo único, as regras de interseção global/contextual e a matriz nativa estão
+no [design do complemento](roles-calendar-finance-enhancements/design.md).
+Papéis legados são mapeamentos para perfis nativos; AuthorizationService usa um
+único resolvedor. Grants explícitos governam backend e consumidores; dados de um
+calendário exigem contexto resolvido. Ausência/revogação nega. As tabelas abaixo
+documentam a baseline anterior, sem substituir a configuração atual do catálogo.
+
 ## Matriz vigente — evolução de calendários (11/11/2026)
 
 Papéis globais continuam `ADMIN`, `FINANCE`, `USER`; os nomes SYSTEM_* do requisito

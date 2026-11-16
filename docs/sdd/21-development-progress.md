@@ -1,5 +1,21 @@
 # 21 — Development Progress
 
+## Publicação autorizada — 16/11/2026
+
+Concluída a conferência dos testes, da matriz SDD e da paridade. Commits agrupados
+por rotina no monorepo e nos dois standalones; ver
+[relatório de publicação](roles-calendar-finance-enhancements/publication-report.md).
+As referências abaixo a nenhum commit/push descrevem o checkpoint anterior à
+autorização de publicação dada posteriormente pelo dono.
+
+## Complemento — 12/11/2026, perfis e financeiro
+
+RBAC-01..03, DATA-01..03, REC/HOL/SIM/FIN e XLSX do novo complemento implementados.
+45 entradas corrigidas no desenvolvimento, repetição com zero alterações, backup
+restaurado antes da aplicação e proveniência auditada. Ver
+[relatório atual](roles-calendar-finance-enhancements/validation-report.md) para
+testes, matriz, valores simulados e limites. Nenhum novo commit/push nesta rodada.
+
 ## Entrega 12/11/2026 — auditoria e importação real
 
 Implementados CAL/APP/CLI/REC/IMP/HOL/FIN do complemento. Carga oficial autorizada

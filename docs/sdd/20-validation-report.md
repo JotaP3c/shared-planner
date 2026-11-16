@@ -1,5 +1,19 @@
 # 20 — Functional Validation Report — até 2026-08-22
 
+## Fechamento de publicação — 16/11/2026
+
+Ver [relatório de publicação](roles-calendar-finance-enhancements/publication-report.md):
+150 testes backend e 165 frontend nos dois contextos, 10 da CLI e builds aprovados.
+O código testado em 13/11 foi conferido sem alterações em 16/11; paridade 149/124 PASS.
+
+## Complemento vigente — 12/11/2026
+
+Ver [validação de perfis, calendários e financeiro](roles-calendar-finance-enhancements/validation-report.md).
+Revisão do prompt em13/11: backend150/150, incluindo migrations PostgreSQL V1–V12;
+frontend165/165 e build
+sem warnings. Importação corretiva local idempotente; XLSX aberto no Microsoft Excel
+com quatro abas e três gráficos nativos. Evidências abaixo são checkpoints anteriores.
+
 ## Validação vigente — 12/11/2026
 
 Relatório completo, matriz e intercorrências em

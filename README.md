@@ -2,7 +2,15 @@
 
 Shared Planner é uma aplicação de agenda compartilhada com autenticação, calendários multiusuário, eventos pessoais, atendimentos de clientes, aprovação de eventos compartilhados, pagamentos, financeiro e auditoria.
 
-## Entrega atual — 12/11/2026
+## Entrega atual — publicação de 16/11/2026
+
+Testes aprovados e commits separados por rotina nos três repositórios:
+ver [relatório de publicação](docs/sdd/roles-calendar-finance-enhancements/publication-report.md).
+
+O complemento de [perfis, calendários e financeiro](docs/sdd/roles-calendar-finance-enhancements/validation-report.md)
+adiciona RBAC configurável, correção local de novembro com proveniência, marcação
+de valores simulados, filtros recolhíveis e exportação XLSX com gráficos nativos.
+As evidências de auditoria/importação abaixo pertencem ao checkpoint anterior.
 
 Calendário pessoal automático por usuário, calendários compartilhados/auxiliares,
 papéis combinados, aprovações por participantes, telefone de cliente, recorrência,

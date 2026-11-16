@@ -1,5 +1,22 @@
 # 01 — Current State (AS-IS)
 
+## Fechamento da entrega — 16/11/2026
+
+Ver [publicação de perfis, calendários e financeiro](roles-calendar-finance-enhancements/publication-report.md).
+A regressão de 13/11 permanece válida: código conferido sem alterações em 16/11,
+150 testes backend e 165 frontend nos dois contextos, builds e paridade aprovados.
+Os estados Git e de execução abaixo são checkpoints das respectivas datas.
+
+## Complemento vigente — perfis e financeiro, 12/11/2026
+
+Ver [roles-calendar-finance-enhancements/](roles-calendar-finance-enhancements/validation-report.md):
+catálogo único de 22 permissões, perfis/associações configuráveis, grants efetivos,
+revogação revalidada e controles por operação; V11/V12 aditivas. Feriados permanentes,
+Finance com linhas/áreas e painéis recolhíveis, XLSX com quatro abas e três gráficos
+nativos. Correção autorizada de 45 entradas em novembro: 44 atualizações e um derivado.
+Dados simulados identificados; outubro, dezembro, identidades externas e séries intactos.
+Os blocos seguintes são checkpoints anteriores, preservados para rastreabilidade.
+
 ## Estado vigente — 12/11/2026
 
 Revalidação para commits e pushes autorizados: ver

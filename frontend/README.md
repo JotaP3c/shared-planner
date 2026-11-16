@@ -9,6 +9,19 @@ papéis combinados, consentimento por participantes, telefone CLIENT, recorrênc
 finita, prévia de importação ICS, feriados oficiais BR/2026 e Finance consolidado.
 Login/tema e os fluxos de pagamento/confirmação existentes foram preservados.
 
+O complemento de perfis e financeiro adiciona `/admin/roles` (Perfis e Permissões),
+associação de perfis contextuais em Membros e controles baseados nos grants efetivos
+retornados pelo backend. Arrays de permissões vazios ou ausentes negam acesso; os
+nomes dos papéis não concedem autorização no frontend. Há painel de acesso negado
+para URLs sem permissão, além da validação definitiva em cada chamada REST.
+
+Feriados nacionais aparecem sempre na grade e deixam de ser uma opção do seletor.
+O Financeiro usa gráfico de linhas/áreas com tooltips, filtros e gráficos recolhíveis
+com preferência por usuário, indicação de valores simulados de desenvolvimento e
+download XLSX. O download usa os filtros aplicados e exige FINANCE_VIEW e
+FINANCE_EXPORT em todos os calendários selecionados; o arquivo inclui quatro abas
+e três gráficos nativos do Excel, gerados pelo backend.
+
 O proxy de desenvolvimento usa `http://127.0.0.1:8080`; `npm.cmd start` publica em
 `http://localhost:4200`. Build pré-renderiza somente `/login`.
 `tests/browser-smoke.cjs` usa fixtures sintéticas somente no processo de teste;
@@ -37,9 +50,10 @@ Essa distinção permite combinar agenda, colaboração e controle financeiro ma
 
 ## Estado funcional
 
-O frontend possui autenticação, agenda, Finance, Usuários, Auditoria e aparência
-operacionais. Código integrado e standalone estão em paridade de 115/115 arquivos,
-com 130 testes em 21 arquivos e build de produção aprovados nos dois contextos.
+O frontend possui autenticação, agenda, Finance, Usuários, Perfis e Permissões,
+Auditoria e aparência operacionais. As contagens de testes e paridade da baseline
+anterior são históricas; os resultados do complemento estão em
+`docs/sdd/roles-calendar-finance-enhancements/validation-report.md` no monorepo.
 
 | Área | Estado atual |
 |---|---|
@@ -63,9 +77,15 @@ uma decisão separada. A importação de eventos recebe arquivo ICS e mapa expl�
 
 ## Papéis e autorização
 
-O produto combina papéis globais (`ADMIN`, `FINANCE`, `USER`) com papéis por calendário (`ADMIN`, `FINANCE`, `EDITOR`, `VIEWER`). Eles controlam administração global, criação e edição de eventos, gestão de membros, acesso financeiro e visibilidade.
+O produto preserva os papéis globais (`ADMIN`, `FINANCE`, `USER`) e contextuais
+(`ADMIN`, `FINANCE`, `EDITOR`, `VIEWER`) como mapeamentos de compatibilidade para
+perfis nativos. Perfis personalizados configuram as permissões explícitas; o backend
+calcula o resultado da habilitação global e do vínculo/perfil em cada calendário.
 
-O frontend usa `authGuard` para exigir uma sessão nas rotas internas e adapta parte da navegação à identidade atual. O grupo Finance só aparece quando a combinação de papel global e membership concede capacidade; a rota direta apresenta no-access quando necessário. A decisão final é sempre do backend, que valida JWT e permissões contextuais em cada requisição; ocultar um botão não substitui autorização no servidor.
+O frontend usa `authGuard` e guards de permissões para as rotas internas. Menus,
+calendários autorizados e operações consultam os grants efetivos de `/auth/me` e
+`/calendars`, sem ampliar acesso quando não puderem ser resolvidos. A decisão final
+é do backend; ocultar um botão não substitui a autorização no servidor.
 
 ## Arquitetura
 

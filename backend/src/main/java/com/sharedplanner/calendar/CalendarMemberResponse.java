@@ -11,7 +11,8 @@ public record CalendarMemberResponse(
         String userFullName,
         CalendarMemberRole role,
         LocalDateTime createdAt,
-        Set<CalendarMemberRole> roles
+        Set<CalendarMemberRole> roles,
+        UUID userId
 ) {
     public static CalendarMemberResponse from(CalendarMember member) {
         return new CalendarMemberResponse(
@@ -21,7 +22,8 @@ public record CalendarMemberResponse(
                 member.getUser().getFullName(),
                 member.getRole(),
                 member.getCreatedAt(),
-                member.getRoles()
+                member.getRoles(),
+                member.getUser().getId()
         );
     }
 }

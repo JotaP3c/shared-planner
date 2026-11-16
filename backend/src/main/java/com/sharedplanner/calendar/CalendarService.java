@@ -4,6 +4,9 @@ import com.sharedplanner.audit.AuditAction;
 import com.sharedplanner.audit.AuditEntityType;
 import com.sharedplanner.audit.AuditService;
 import com.sharedplanner.config.AuthorizationService;
+import com.sharedplanner.access.AccessAssignmentRepository;
+import com.sharedplanner.access.AccessAssignment;
+import com.sharedplanner.access.Permission;
 import com.sharedplanner.user.User;
 import com.sharedplanner.user.UserRepository;
 import com.sharedplanner.user.UserRole;
@@ -27,23 +30,27 @@ public class CalendarService {
     private final UserRepository userRepository;
     private final AuthorizationService authorizationService;
     private final AuditService auditService;
+    private final AccessAssignmentRepository accessAssignments;
 
     public CalendarService(
             SharedCalendarRepository calendarRepository,
             CalendarMemberRepository memberRepository,
             UserRepository userRepository,
             AuthorizationService authorizationService,
-            AuditService auditService
+            AuditService auditService,
+            AccessAssignmentRepository accessAssignments
     ) {
         this.calendarRepository = calendarRepository;
         this.memberRepository = memberRepository;
         this.userRepository = userRepository;
         this.authorizationService = authorizationService;
         this.auditService = auditService;
+        this.accessAssignments = accessAssignments;
     }
 
     @Transactional
     public CalendarResponse create(CreateCalendarRequest request, Authentication authentication) {
+        authorizationService.ensureCanCreateCalendar(authentication);
         User currentUser = currentUser(authentication);
         CalendarType type = request.calendarType() == null ? CalendarType.SHARED : request.calendarType();
         if (type != CalendarType.SHARED && type != CalendarType.IMPORTED) {
@@ -75,7 +82,8 @@ public class CalendarService {
                 currentUser
         );
 
-        return CalendarResponse.from(calendar, CalendarMemberRole.ADMIN);
+        return CalendarResponse.from(calendar, CalendarMemberRole.ADMIN)
+                .withPermissions(authorizationService.calendarPermissions(calendar.getId(), authentication));
     }
 
     /** Called in the user registration transaction; never moves legacy events. */
@@ -106,7 +114,9 @@ public class CalendarService {
 
         return memberRepository.findByUserEmailIgnoreCase(currentUser.getEmail())
                 .stream()
-                .map(member -> CalendarResponse.from(member.getCalendar(), member.getRoles()))
+                .map(member -> CalendarResponse.from(member.getCalendar(), member.getRoles())
+                        .withPermissions(authorizationService.memberPermissions(currentUser, member)))
+                .filter(calendar -> calendar.permissions().contains(Permission.CALENDAR_VIEW))
                 .toList();
     }
 
@@ -135,7 +145,9 @@ public class CalendarService {
         }
 
         try {
-            addNewMember(calendar, newMember, requestedRoles(request.role(), request.roles(), true), currentUser);
+            Set<CalendarMemberRole> roles = requestedRoles(request.role(), request.roles(), true);
+            authorizationService.ensureCanDelegateCalendarRoles(calendarId, roles, authentication);
+            addNewMember(calendar, newMember, roles, currentUser);
             memberRepository.flush();
         } catch (DataIntegrityViolationException exception) {
             // Corrida entre duas adições simultâneas: a constraint única decide.
@@ -145,7 +157,7 @@ public class CalendarService {
 
     @Transactional(readOnly = true)
     public List<CalendarMemberResponse> listMembers(UUID calendarId, Authentication authentication) {
-        authorizationService.ensureCalendarVisible(calendarId, authentication);
+        authorizationService.ensureCanViewMembers(calendarId, authentication);
         return memberRepository.findByCalendarIdOrderByCreatedAtAsc(calendarId)
                 .stream()
                 .map(CalendarMemberResponse::from)
@@ -166,6 +178,8 @@ public class CalendarService {
         String oldValue = memberSnapshot(member);
         Set<CalendarMemberRole> roles = requestedRoles(request.role(), request.roles(), false);
         ensureOwnerRemainsAdmin(member, roles);
+        authorizationService.ensureCanDelegateCalendarRoles(calendarId, roles, authentication);
+        accessAssignments.deleteByUserIdAndContextKey(member.getUser().getId(), AccessAssignment.key(calendarId));
         member.changeRoles(roles, currentUser);
 
         auditService.log(
@@ -210,6 +224,7 @@ public class CalendarService {
                 currentUser
         );
 
+        accessAssignments.deleteByUserIdAndContextKey(member.getUser().getId(), AccessAssignment.key(calendarId));
         memberRepository.delete(member);
     }
 

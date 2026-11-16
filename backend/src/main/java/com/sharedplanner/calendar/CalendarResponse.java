@@ -2,6 +2,7 @@ package com.sharedplanner.calendar;
 
 import java.util.UUID;
 import java.util.Set;
+import com.sharedplanner.access.Permission;
 
 public record CalendarResponse(
         UUID id,
@@ -10,7 +11,8 @@ public record CalendarResponse(
         CalendarMemberRole memberRole,
         boolean canCreateEvents,
         CalendarType calendarType,
-        Set<CalendarMemberRole> memberRoles
+        Set<CalendarMemberRole> memberRoles,
+        Set<Permission> permissions
 ) {
     static CalendarResponse from(SharedCalendar calendar) {
         return from(calendar, Set.of());
@@ -32,11 +34,16 @@ public record CalendarResponse(
                 memberRole,
                 roles.stream().anyMatch(CalendarMemberRole::canCreateEvents),
                 calendar.getCalendarType(),
-                roles
+                roles,
+                Set.of()
         );
     }
 
     static CalendarResponse fromSystemAdmin(SharedCalendar calendar) {
-        return from(calendar, CalendarMemberRole.ADMIN);
+        return from(calendar, CalendarMemberRole.ADMIN).withPermissions(Set.of(Permission.values()));
+    }
+
+    public CalendarResponse withPermissions(Set<Permission> values) {
+        return new CalendarResponse(id,name,ownerEmail,memberRole,values.contains(Permission.EVENT_CREATE),calendarType,memberRoles,values);
     }
 }

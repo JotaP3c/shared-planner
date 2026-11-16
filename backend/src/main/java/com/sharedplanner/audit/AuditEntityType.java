@@ -4,5 +4,7 @@ public enum AuditEntityType {
     USER,
     CALENDAR,
     CALENDAR_MEMBER,
-    EVENT
+    EVENT,
+    ACCESS_PROFILE,
+    ACCESS_ASSIGNMENT
 }

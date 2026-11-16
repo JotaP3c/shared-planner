@@ -3,6 +3,8 @@ package com.sharedplanner.config;
 import com.sharedplanner.calendar.CalendarMember;
 import com.sharedplanner.calendar.CalendarMemberRepository;
 import com.sharedplanner.calendar.CalendarMemberRole;
+import com.sharedplanner.access.Permission;
+import com.sharedplanner.access.PermissionResolver;
 import com.sharedplanner.event.Event;
 import com.sharedplanner.event.EventStatus;
 import com.sharedplanner.event.EventType;
@@ -20,6 +22,7 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -35,6 +38,9 @@ class AuthorizationServiceTests {
 
     @Mock
     private CalendarMemberRepository memberRepository;
+
+    @Mock
+    private PermissionResolver permissionResolver;
 
     @Mock
     private Authentication authentication;
@@ -56,7 +62,7 @@ class AuthorizationServiceTests {
         when(userRepository.findByEmailIgnoreCaseAndActiveTrue(email)).thenReturn(Optional.of(editor));
         when(memberRepository.findByCalendarIdAndUserEmailIgnoreCase(calendarId, email))
                 .thenReturn(Optional.of(membership));
-        when(membership.canCreateEvents()).thenReturn(true);
+        when(permissionResolver.contextual(editor, membership)).thenReturn(Set.of(Permission.CALENDAR_VIEW, Permission.FINANCE_VIEW_OWN));
 
         AuthorizationService.EventFinancialAccess access = authorizationService
                 .resolveEventFinancialAccess(calendarId, authentication);

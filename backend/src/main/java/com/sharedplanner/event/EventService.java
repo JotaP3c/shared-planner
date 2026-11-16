@@ -9,6 +9,7 @@ import com.sharedplanner.calendar.SharedCalendarRepository;
 import com.sharedplanner.calendar.CalendarType;
 import com.sharedplanner.config.AuthorizationService;
 import com.sharedplanner.config.AuthorizationService.EventFinancialAccess;
+import com.sharedplanner.access.Permission;
 import com.sharedplanner.user.User;
 import com.sharedplanner.user.UserRepository;
 import com.sharedplanner.user.UserRole;
@@ -168,6 +169,7 @@ public class EventService {
         } else {
             List<UUID> visibleCalendarIds = memberRepository.findByUserEmailIgnoreCase(currentUser.getEmail())
                     .stream()
+                    .filter(member -> authorizationService.memberPermissions(currentUser, member).contains(Permission.CALENDAR_VIEW))
                     .map(member -> member.getCalendar().getId())
                     .distinct()
                     .toList();
@@ -314,7 +316,7 @@ public class EventService {
     @Transactional
     public void delete(UUID eventId, Authentication authentication) {
         Event event = mutableEvent(eventId);
-        authorizationService.ensureCanEditEvent(event, authentication);
+        authorizationService.ensureCanCancelEvent(event, authentication);
         ensureNotCancelled(event);
 
         User currentUser = currentUser(authentication);
@@ -339,6 +341,7 @@ public class EventService {
         Event event = mutableEvent(eventId);
         User currentUser = currentUser(authentication);
         ensureApprovalTarget(event, currentUser);
+        authorizationService.ensureCanApproveEvent(event.getCalendar().getId(), authentication);
         String oldValue = eventSnapshot(event);
 
         decideApproval(event, currentUser, true);
@@ -362,6 +365,7 @@ public class EventService {
         Event event = mutableEvent(eventId);
         User currentUser = currentUser(authentication);
         ensureApprovalTarget(event, currentUser);
+        authorizationService.ensureCanApproveEvent(event.getCalendar().getId(), authentication);
         String oldValue = eventSnapshot(event);
 
         decideApproval(event, currentUser, false);
@@ -384,7 +388,7 @@ public class EventService {
     public EventResponse updatePayment(UUID eventId, UpdatePaymentRequest request, Authentication authentication) {
         Event event = mutableEvent(eventId);
 
-        authorizationService.ensureCanEditEvent(event, authentication);
+        authorizationService.ensureCanManagePayment(event, authentication);
         ensureNotCancelled(event);
         User currentUser = currentUser(authentication);
 
@@ -473,6 +477,9 @@ public class EventService {
         }
 
         Event event = appointmentForConfirmationChange(eventId, authentication);
+        if (request.reason() != UnscheduleReason.RESCHEDULE) {
+            authorizationService.ensureCanCancelEvent(event, authentication);
+        }
         AppointmentConfirmationStatus previous = event.effectiveConfirmationStatus();
 
         if (previous == AppointmentConfirmationStatus.CANCELLED) {
@@ -603,8 +610,11 @@ public class EventService {
         }
 
         Map<UUID, EventFinancialAccess> financialAccessByCalendar = new HashMap<>();
+        Map<UUID, java.util.Set<Permission>> permissionsByCalendar = new HashMap<>();
 
         return events.stream()
+                .filter(event -> permissionsByCalendar.computeIfAbsent(event.getCalendar().getId(),
+                        calendarId -> authorizationService.calendarPermissions(calendarId, authentication)).contains(Permission.EVENT_APPROVE))
                 .map(event -> response(
                         event,
                         financialAccessByCalendar.computeIfAbsent(

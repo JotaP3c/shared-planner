@@ -2,6 +2,8 @@ package com.sharedplanner.user;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
+import java.util.Set;
+import com.sharedplanner.access.Permission;
 
 public record UserResponse(
         UUID id,
@@ -10,7 +12,8 @@ public record UserResponse(
         UserRole role,
         Boolean active,
         LocalDateTime createdAt,
-        LocalDateTime updatedAt
+        LocalDateTime updatedAt,
+        Set<Permission> permissions
 ) {
     public static UserResponse from(User user) {
         return new UserResponse(
@@ -20,7 +23,12 @@ public record UserResponse(
                 user.getRole(),
                 user.getActive(),
                 user.getCreatedAt(),
-                user.getUpdatedAt()
+                user.getUpdatedAt(),
+                Set.of()
         );
+    }
+
+    public UserResponse withPermissions(Set<Permission> values) {
+        return new UserResponse(id,fullName,email,role,active,createdAt,updatedAt,values);
     }
 }

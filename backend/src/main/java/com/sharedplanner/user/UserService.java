@@ -5,6 +5,9 @@ import com.sharedplanner.audit.AuditEntityType;
 import com.sharedplanner.audit.AuditService;
 import com.sharedplanner.config.AuthorizationService;
 import com.sharedplanner.calendar.CalendarService;
+import com.sharedplanner.access.Permission;
+import com.sharedplanner.access.AccessAssignmentRepository;
+import com.sharedplanner.access.AccessAssignment;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
@@ -25,24 +28,27 @@ public class UserService {
     private final AuthorizationService authorizationService;
     private final AuditService auditService;
     private final CalendarService calendarService;
+    private final AccessAssignmentRepository accessAssignments;
 
     public UserService(
             UserRepository userRepository,
             PasswordEncoder passwordEncoder,
             AuthorizationService authorizationService,
             AuditService auditService,
-            CalendarService calendarService
+            CalendarService calendarService,
+            AccessAssignmentRepository accessAssignments
     ) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.authorizationService = authorizationService;
         this.auditService = auditService;
         this.calendarService = calendarService;
+        this.accessAssignments = accessAssignments;
     }
 
     @Transactional(readOnly = true)
     public List<UserResponse> list(Authentication authentication) {
-        authorizationService.ensureSystemAdmin(authentication);
+        authorizationService.ensureGlobalPermission(Permission.USERS_VIEW, authentication);
         return userRepository.findAllByOrderByFullNameAsc()
                 .stream()
                 .map(UserResponse::from)
@@ -54,6 +60,10 @@ public class UserService {
         authorizationService.ensureSystemAdmin(authentication);
 
         User currentUser = currentUser(authentication);
+        if (request.role() == UserRole.ADMIN && currentUser.getRole() != UserRole.ADMIN) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only an essential administrator can appoint an essential administrator");
+        }
+        authorizationService.ensureCanDelegateSystemRole(request.role(), authentication);
         String email = request.email().trim().toLowerCase(Locale.ROOT);
         String fullName = request.fullName().trim();
 
@@ -102,12 +112,16 @@ public class UserService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
 
+        if ((user.getRole() == UserRole.ADMIN || request.role() == UserRole.ADMIN) && currentUser.getRole() != UserRole.ADMIN) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Essential administrator access is protected");
+        }
+
         if (user.getId().equals(currentUser.getId())) {
             if (!request.active()) {
                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "You cannot deactivate your own user");
             }
 
-            if (request.role() != UserRole.ADMIN) {
+            if (request.role() != user.getRole()) {
                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "You cannot remove your own admin role");
             }
         }
@@ -118,11 +132,17 @@ public class UserService {
         boolean removesActiveAdmin = user.getRole() == UserRole.ADMIN
                 && Boolean.TRUE.equals(user.getActive())
                 && (request.role() != UserRole.ADMIN || !request.active());
-        if (removesActiveAdmin && userRepository.countByRoleAndActiveTrue(UserRole.ADMIN) <= 1) {
+        // Lock the active administrator set so concurrent cross-deactivations cannot remove all admins.
+        if (removesActiveAdmin && userRepository.findActiveAdministratorsForUpdate(UserRole.ADMIN).size() <= 1) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "At least one active administrator is required");
         }
 
         String oldValue = userSnapshot(user);
+
+        if (request.role() != user.getRole()) {
+            authorizationService.ensureCanDelegateSystemRole(request.role(), authentication);
+            accessAssignments.deleteByUserIdAndContextKey(user.getId(), AccessAssignment.key(null));
+        }
 
         user.updateProfile(
                 request.fullName().trim(),

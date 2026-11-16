@@ -43,6 +43,7 @@ public class CalendarImportService {
         return process(request,authentication,true);
     }
     private ImportResponse process(CalendarImportRequest request,Authentication authentication,boolean apply) {
+        authorization.ensureCanImportCalendar(request.targetCalendarId(),authentication);
         authorization.ensureCanCreateEvent(request.targetCalendarId(),authentication);
         SharedCalendar target=apply?entityManager.find(SharedCalendar.class,request.targetCalendarId(),LockModeType.PESSIMISTIC_WRITE):entityManager.find(SharedCalendar.class,request.targetCalendarId());
         if(target==null)throw new ResponseStatusException(HttpStatus.NOT_FOUND,"Calendário não encontrado.");

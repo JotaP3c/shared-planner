@@ -340,8 +340,7 @@ public class EventService {
     public EventResponse approve(UUID eventId, Authentication authentication) {
         Event event = mutableEvent(eventId);
         User currentUser = currentUser(authentication);
-        ensureApprovalTarget(event, currentUser);
-        authorizationService.ensureCanApproveEvent(event.getCalendar().getId(), authentication);
+        ensureApprovalTarget(event, currentUser, authentication);
         String oldValue = eventSnapshot(event);
 
         decideApproval(event, currentUser, true);
@@ -364,8 +363,7 @@ public class EventService {
     public EventResponse reject(UUID eventId, Authentication authentication) {
         Event event = mutableEvent(eventId);
         User currentUser = currentUser(authentication);
-        ensureApprovalTarget(event, currentUser);
-        authorizationService.ensureCanApproveEvent(event.getCalendar().getId(), authentication);
+        ensureApprovalTarget(event, currentUser, authentication);
         String oldValue = eventSnapshot(event);
 
         decideApproval(event, currentUser, false);
@@ -663,7 +661,12 @@ public class EventService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Calendar not found"));
     }
 
-    private void ensureApprovalTarget(Event event, User currentUser) {
+    private void ensureApprovalTarget(Event event, User currentUser, Authentication authentication) {
+        // Revalidate access before revealing the approval state, including after a race.
+        if (!memberRepository.existsByCalendarIdAndUserId(event.getCalendar().getId(), currentUser.getId())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Approval target is no longer a calendar member");
+        }
+        authorizationService.ensureCanApproveEvent(event.getCalendar().getId(), authentication);
         if (event.getStatus() != EventStatus.PENDING_APPROVAL) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Event is not pending approval");
         }
@@ -676,13 +679,6 @@ public class EventService {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "This event is not waiting for your approval");
         }
 
-        if (!memberRepository.existsByCalendarIdAndUserId(
-                event.getCalendar().getId(), currentUser.getId())) {
-            throw new ResponseStatusException(
-                    HttpStatus.FORBIDDEN,
-                    "Approval target is no longer a calendar member"
-            );
-        }
     }
 
     private User approvalUser(EventType eventType, String email, UUID calendarId, String currentUserEmail) {

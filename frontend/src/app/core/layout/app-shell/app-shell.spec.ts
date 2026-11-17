@@ -34,6 +34,37 @@ describe('AppShell', () => {
     expect(component).toBeTruthy();
   });
 
+  it('closes the mobile navigation on Escape and returns focus to its trigger', async () => {
+    const trigger = fixture.nativeElement.querySelector('.menu-button') as HTMLButtonElement;
+    trigger.focus();
+    component.openSidebar();
+    await fixture.whenStable();
+    await new Promise<void>(resolve => requestAnimationFrame(() => resolve()));
+    const close = fixture.nativeElement.querySelector('.sidebar-close') as HTMLButtonElement;
+    expect(document.activeElement).toBe(close);
+    expect(fixture.nativeElement.querySelector('.workspace').hasAttribute('inert')).toBe(true);
+    close.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    fixture.detectChanges();
+    expect(component.isSidebarOpen()).toBe(false);
+    expect(fixture.nativeElement.querySelector('.workspace').hasAttribute('inert')).toBe(false);
+    await fixture.whenStable();
+    expect(document.activeElement).toBe(trigger);
+  });
+
+  it('moves focus inside the profile menu with arrows and restores it on Escape', async () => {
+    const trigger = fixture.nativeElement.querySelector('.profile-trigger') as HTMLButtonElement;
+    trigger.focus(); trigger.click();
+    await fixture.whenStable();
+    const choices = fixture.nativeElement.querySelectorAll('.profile-menu [role="menuitemradio"]') as NodeListOf<HTMLButtonElement>;
+    expect(document.activeElement).toBe(choices[0]);
+    choices[0].dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }));
+    expect(document.activeElement).toBe(choices[1]);
+    choices[1].dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    fixture.detectChanges();
+    expect(component.showProfileMenu()).toBe(false);
+    expect(document.activeElement).toBe(trigger);
+  });
+
   it('keeps the ICS title in search without applying an owner-name heuristic to legacy events', () => {
     const imported = { eventType: 'PERSONAL', title: 'Academia', personName: 'Pessoa proprietária', externalSource: 'GOOGLE_ICS' } as EventSearchResponse;
     expect(component.searchResultTitle(imported)).toBe('Academia');

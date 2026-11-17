@@ -55,4 +55,19 @@ describe('SettingsPage', () => {
     (fixture.nativeElement.querySelector('[data-testid="theme-light"]') as HTMLElement).click();
     expect(document.documentElement.dataset['theme']).toBe('light');
   });
+
+  it('uses arrow keys and Home to select and focus the appearance radio choices', () => {
+    const system = fixture.nativeElement.querySelector('[data-testid="theme-system"]') as HTMLButtonElement;
+    system.focus();
+    system.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }));
+    fixture.detectChanges();
+    const light = fixture.nativeElement.querySelector('[data-testid="theme-light"]') as HTMLButtonElement;
+    expect(component.preference()).toBe('light');
+    expect(document.activeElement).toBe(light);
+    light.dispatchEvent(new KeyboardEvent('keydown', { key: 'End', bubbles: true }));
+    fixture.detectChanges();
+    expect(component.preference()).toBe('system');
+    expect(document.activeElement).toBe(system);
+    expect(fixture.nativeElement.querySelectorAll('[role="radio"][tabindex="0"]').length).toBe(1);
+  });
 });

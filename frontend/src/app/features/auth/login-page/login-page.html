@@ -92,17 +92,20 @@
     <section class="form-side">
       <div class="login-card">
         <div class="login-theme" role="radiogroup" aria-label="Tema da interface">
-          @for (option of themeOptions; track option.value) {
+          @for (option of themeOptions; track option.value; let index = $index) {
             <button
+              spButton variant="ghost" size="sm"
               type="button"
               role="radio"
               class="login-theme-option"
               [class.is-selected]="themePreference() === option.value"
               [attr.aria-checked]="themePreference() === option.value"
+              [attr.tabindex]="themePreference() === option.value ? 0 : -1"
               [attr.aria-label]="'Tema ' + option.label"
               [attr.title]="'Tema ' + option.label"
               [attr.data-testid]="'login-theme-' + option.value"
               (click)="setTheme(option.value)"
+              (keydown)="onThemeKeydown($event, index)"
             >
               <sp-icon [name]="option.icon" [size]="16" />
             </button>
@@ -124,12 +127,14 @@
           <div class="input-field" [class.invalid]="emailError">
             <sp-icon name="mail" [size]="18" />
             <input
+              spInput
               id="login-email"
               type="email"
               formControlName="email"
               placeholder="seu@email.com"
               autocomplete="email"
               [attr.aria-invalid]="!!emailError"
+              [error]="!!emailError"
               [attr.aria-describedby]="emailError ? 'login-email-error' : null"
             />
           </div>
@@ -141,19 +146,23 @@
           <div class="input-field" [class.invalid]="passwordError">
             <sp-icon name="lock" [size]="18" />
             <input
+              spInput
               id="login-password"
               [type]="showPassword() ? 'text' : 'password'"
               formControlName="password"
               placeholder="Sua senha"
               autocomplete="current-password"
               [attr.aria-invalid]="!!passwordError"
+              [error]="!!passwordError"
               [attr.aria-describedby]="passwordError ? 'login-password-error' : null"
             />
             <button
+              spButton variant="ghost" size="sm"
               class="password-toggle"
               type="button"
               [attr.aria-label]="showPassword() ? 'Ocultar senha' : 'Mostrar senha'"
               [attr.aria-pressed]="showPassword()"
+              [spTooltip]="showPassword() ? 'Ocultar senha' : 'Mostrar senha'"
               (click)="togglePasswordVisibility()"
             >
               <sp-icon [name]="showPassword() ? 'eye-off' : 'eye'" [size]="18" />
@@ -167,7 +176,7 @@
             <p class="error" role="alert" data-testid="login-error"><sp-icon name="alert" [size]="16" />{{ errorMessage }}</p>
           }
 
-          <button class="primary-button submit-button" type="submit" [disabled]="isSubmitting">
+          <button spButton class="primary-button submit-button" type="submit" [disabled]="isSubmitting" [loading]="isSubmitting">
             {{ isSubmitting ? 'Entrando...' : 'Entrar' }}
           </button>
         </form>

@@ -3,63 +3,49 @@
     <div>
       <span class="eyebrow">Preferências</span>
       <h1 id="settings-title">Configurações</h1>
-      <p>Ajuste a aparência e consulte os dados da sua conta.</p>
+      <p>Uma experiência do seu jeito, em qualquer dispositivo.</p>
     </div>
   </header>
 
-  <article class="page-panel" aria-labelledby="appearance-title">
-    <header class="page-panel-head">
-      <div>
-        <strong id="appearance-title">Aparência</strong>
-        <span>Tema atual: {{ resolvedTheme() === 'dark' ? 'escuro' : 'claro' }}</span>
-      </div>
-    </header>
+  <div class="settings-grid">
+    <sp-card class="appearance-panel" aria-labelledby="appearance-title">
+      <header class="settings-section-heading">
+        <span class="settings-icon" aria-hidden="true"><sp-icon name="monitor" [size]="22" /></span>
+        <div><h2 id="appearance-title">Aparência</h2><p>Escolha como o Shared Planner será exibido.</p></div>
+      </header>
 
-    <div class="theme-options" role="radiogroup" aria-labelledby="appearance-title">
-      @for (option of themeOptions; track option.value) {
-        <button
-          type="button"
-          role="radio"
-          class="theme-option"
-          [class.is-selected]="preference() === option.value"
-          [attr.aria-checked]="preference() === option.value"
-          [attr.data-testid]="'theme-' + option.value"
-          (click)="setTheme(option.value)"
-        >
-          <strong>{{ option.label }}</strong>
-          <small>{{ option.hint }}</small>
-        </button>
+      <div class="theme-options" role="radiogroup" aria-labelledby="appearance-title">
+        @for (option of themeOptions; track option.value; let index = $index) {
+          <button type="button" role="radio" class="theme-option"
+            [class.is-selected]="preference() === option.value"
+            [attr.aria-checked]="preference() === option.value"
+            [attr.tabindex]="preference() === option.value ? 0 : -1"
+            [attr.data-testid]="'theme-' + option.value"
+            (click)="setTheme(option.value)" (keydown)="onThemeKeydown($event, index)">
+            <span class="theme-preview" aria-hidden="true"><span class="preview-sidebar"></span><span class="preview-content"><span></span><span></span><span></span></span></span>
+            <span class="theme-option-label"><sp-icon [name]="option.icon" [size]="18" /><strong>{{ option.label }}</strong><span class="theme-choice-mark" aria-hidden="true"></span></span>
+            <small>{{ option.hint }}</small>
+          </button>
+        }
+      </div>
+      <p class="appearance-current" role="status"><sp-icon name="check" [size]="16" /> Tema atual: {{ resolvedTheme() === 'dark' ? 'escuro' : 'claro' }}. A preferência é salva automaticamente.</p>
+    </sp-card>
+
+    <sp-card class="account-panel" aria-labelledby="account-title">
+      <header class="settings-section-heading">
+        <span class="settings-icon" aria-hidden="true"><sp-icon name="user" [size]="22" /></span>
+        <div><h2 id="account-title">Sua conta</h2><p>Informações de acesso ao Shared Planner.</p></div>
+      </header>
+      @if (currentUser(); as user) {
+        <dl class="account-list" data-testid="account-info">
+          <div><dt>Nome</dt><dd>{{ user.fullName }}</dd></div>
+          <div><dt>E-mail</dt><dd>{{ user.email }}</dd></div>
+          <div><dt>Papel</dt><dd><sp-badge variant="info">{{ roleLabel() }}</sp-badge></dd></div>
+        </dl>
+        <p class="account-readonly"><sp-icon name="shield" [size]="16" /> Dados somente leitura. Para alterações de acesso, fale com o administrador.</p>
+      } @else {
+        <sp-empty-state title="Dados da conta indisponíveis." description="Sua identidade não pôde ser exibida neste momento." icon="user" />
       }
-    </div>
-  </article>
-
-  <article class="page-panel" aria-labelledby="account-title">
-    <header class="page-panel-head">
-      <div>
-        <strong id="account-title">Conta</strong>
-        <span>Dados somente leitura. A edição de perfil não está disponível.</span>
-      </div>
-    </header>
-
-    @if (currentUser(); as user) {
-      <dl class="account-list" data-testid="account-info">
-        <div>
-          <dt>Nome</dt>
-          <dd>{{ user.fullName }}</dd>
-        </div>
-        <div>
-          <dt>E-mail</dt>
-          <dd>{{ user.email }}</dd>
-        </div>
-        <div>
-          <dt>Papel</dt>
-          <dd>{{ roleLabel() }}</dd>
-        </div>
-      </dl>
-    } @else {
-      <div class="page-empty" role="status">
-        <strong>Dados da conta indisponíveis.</strong>
-      </div>
-    }
-  </article>
+    </sp-card>
+  </div>
 </section>

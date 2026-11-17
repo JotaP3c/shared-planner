@@ -1,4 +1,4 @@
-import { Component, DestroyRef, computed, effect, inject, OnDestroy, OnInit, signal, untracked } from '@angular/core';
+import { Component, DestroyRef, ElementRef, Injector, afterNextRender, computed, effect, inject, OnDestroy, OnInit, signal, untracked } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { Subscription, catchError, filter, finalize, of, switchMap } from 'rxjs';
@@ -14,14 +14,19 @@ import { DataChangeService } from '../../state/data-change.service';
 import { LayoutPreferencesService } from '../layout-preferences.service';
 import { ThemePreference, ThemeService } from '../../theme/theme.service';
 import { Icon } from '../../../shared/ui/icon/icon';
+import { SpButtonDirective, SpInputDirective, SpTooltip } from '../../../shared/ui/design-system';
 
 @Component({
   selector: 'app-app-shell',
-  imports: [RouterOutlet, RouterLink, RouterLinkActive, Icon],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, Icon, SpButtonDirective, SpInputDirective, SpTooltip],
+  host: { '(document:keydown.escape)': 'onEscape()' },
   templateUrl: './app-shell.html',
   styleUrl: './app-shell.scss',
 })
 export class AppShell implements OnInit, OnDestroy {
+  private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
+  private readonly injector = inject(Injector);
+  private sidebarReturnFocus: HTMLElement | null = null;
   private readonly authService = inject(AuthService);
   private readonly calendarService = inject(CalendarService);
   private readonly searchService = inject(SearchService);
@@ -134,11 +139,43 @@ export class AppShell implements OnInit, OnDestroy {
   }
 
   openSidebar(): void {
+    this.sidebarReturnFocus = this.host.nativeElement.ownerDocument.activeElement as HTMLElement | null;
     this.isSidebarOpen.set(true);
+    afterNextRender(() => {
+      // The drawer starts visibility:hidden; focus after its visible style is painted.
+      this.host.nativeElement.ownerDocument.defaultView?.requestAnimationFrame(() => {
+        if (this.isSidebarOpen()) this.host.nativeElement.querySelector<HTMLButtonElement>('.sidebar-close')?.focus();
+      });
+    }, { injector: this.injector });
   }
 
   closeSidebar(): void {
+    const wasOpen = this.isSidebarOpen();
     this.isSidebarOpen.set(false);
+    const returnTarget = this.sidebarReturnFocus;
+    if (wasOpen) afterNextRender(() => {
+      if (!this.isSidebarOpen() && returnTarget?.isConnected) returnTarget.focus();
+    }, { injector: this.injector });
+  }
+
+  onSidebarKeydown(event: KeyboardEvent): void {
+    if (!this.isSidebarOpen() || event.key !== 'Tab') return;
+    const sidebar = event.currentTarget as HTMLElement;
+    const controls = Array.from(sidebar.querySelectorAll<HTMLElement>('a[href], button:not(:disabled)'))
+      .filter(element => element.getAttribute('tabindex') !== '-1' && element.ownerDocument.defaultView?.getComputedStyle(element).visibility !== 'hidden');
+    if (!controls.length) return;
+    const first = controls[0], last = controls[controls.length - 1];
+    if (event.shiftKey && sidebar.ownerDocument.activeElement === first) { event.preventDefault(); last.focus(); }
+    else if (!event.shiftKey && sidebar.ownerDocument.activeElement === last) { event.preventDefault(); first.focus(); }
+  }
+
+  onEscape(): void {
+    if (this.showProfileMenu()) this.closeProfileMenu(true);
+    if (this.isSidebarOpen()) this.closeSidebar();
+  }
+
+  focusWorkspace(): void {
+    this.host.nativeElement.querySelector<HTMLElement>('.content')?.focus();
   }
 
   setTheme(preference: ThemePreference): void {
@@ -183,10 +220,38 @@ export class AppShell implements OnInit, OnDestroy {
 
   toggleProfileMenu(): void {
     this.showProfileMenu.set(!this.showProfileMenu());
+    if (this.showProfileMenu()) afterNextRender(() => this.profileMenuItems()[0]?.focus(), { injector: this.injector });
   }
 
-  closeProfileMenu(): void {
+  closeProfileMenu(restoreFocus = false): void {
     this.showProfileMenu.set(false);
+    if (restoreFocus) this.host.nativeElement.querySelector<HTMLButtonElement>('.profile-trigger')?.focus();
+  }
+
+  onProfileMenuKeydown(event: KeyboardEvent): void {
+    const items = this.profileMenuItems();
+    if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); this.closeProfileMenu(true); return; }
+    if (event.key === 'Tab') { this.closeProfileMenu(true); return; }
+    if (!['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key) || !items.length) return;
+    event.preventDefault();
+    const current = items.findIndex(item => item === this.host.nativeElement.ownerDocument.activeElement);
+    const next = event.key === 'Home' ? 0 : event.key === 'End' ? items.length - 1
+      : (current + (event.key === 'ArrowUp' ? -1 : 1) + items.length) % items.length;
+    items[next].focus();
+  }
+
+  onProfileTriggerKeydown(event: KeyboardEvent): void {
+    if (!['ArrowDown', 'ArrowUp'].includes(event.key)) return;
+    event.preventDefault();
+    this.showProfileMenu.set(true);
+    afterNextRender(() => {
+      const items = this.profileMenuItems();
+      (event.key === 'ArrowUp' ? items.at(-1) : items[0])?.focus();
+    }, { injector: this.injector });
+  }
+
+  private profileMenuItems(): HTMLElement[] {
+    return Array.from(this.host.nativeElement.querySelectorAll<HTMLElement>('.profile-menu [role="menuitem"], .profile-menu [role="menuitemradio"]'));
   }
 
   onSearch(value: string): void {

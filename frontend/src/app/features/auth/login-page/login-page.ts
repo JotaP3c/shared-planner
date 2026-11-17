@@ -4,10 +4,11 @@ import { Router } from '@angular/router';
 import { AuthService } from '../../../core/auth/auth.service';
 import { ThemePreference, ThemeService } from '../../../core/theme/theme.service';
 import { Icon, IconName } from '../../../shared/ui/icon/icon';
+import { SpButtonDirective, SpInputDirective, SpTooltip } from '../../../shared/ui/design-system';
 
 @Component({
   selector: 'app-login-page',
-  imports: [ReactiveFormsModule, Icon],
+  imports: [ReactiveFormsModule, Icon, SpButtonDirective, SpInputDirective, SpTooltip],
   templateUrl: './login-page.html',
   styleUrl: './login-page.scss',
 })
@@ -31,6 +32,15 @@ export class LoginPage {
 
   setTheme(preference: ThemePreference): void {
     this.themeService.setPreference(preference);
+  }
+
+  onThemeKeydown(event: KeyboardEvent, index: number): void {
+    if (!['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End'].includes(event.key)) return;
+    event.preventDefault();
+    const next = event.key === 'Home' ? 0 : event.key === 'End' ? this.themeOptions.length - 1
+      : (index + (['ArrowLeft', 'ArrowUp'].includes(event.key) ? -1 : 1) + this.themeOptions.length) % this.themeOptions.length;
+    this.setTheme(this.themeOptions[next].value);
+    (event.currentTarget as HTMLElement).parentElement?.querySelectorAll<HTMLButtonElement>('[role="radio"]')[next]?.focus();
   }
 
   // "Lembrar de mim", "Esqueci minha senha", Google e cadastro foram removidos:

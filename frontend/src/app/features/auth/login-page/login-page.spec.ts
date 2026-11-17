@@ -108,4 +108,19 @@ describe('LoginPage', () => {
     expect(['light', 'dark']).toContain(root.dataset['theme']);
     expect(element().querySelector('[data-testid="login-theme-system"]')?.getAttribute('aria-checked')).toBe('true');
   });
+
+  it('navigates the theme radio group with the keyboard and keeps one tab stop', () => {
+    const system = element().querySelector<HTMLButtonElement>('[data-testid="login-theme-system"]')!;
+    system.focus();
+    system.dispatchEvent(new KeyboardEvent('keydown', { key: 'Home', bubbles: true }));
+    fixture.detectChanges();
+    const light = element().querySelector<HTMLButtonElement>('[data-testid="login-theme-light"]')!;
+    expect(TestBed.inject(ThemeService).preference()).toBe('light');
+    expect(document.activeElement).toBe(light);
+    expect(element().querySelectorAll('[role="radio"][tabindex="0"]').length).toBe(1);
+    light.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowLeft', bubbles: true }));
+    expect(TestBed.inject(ThemeService).preference()).toBe('system');
+    expect(document.activeElement).toBe(system);
+    http.expectNone('/api/auth/login');
+  });
 });

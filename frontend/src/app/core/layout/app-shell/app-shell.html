@@ -1,9 +1,10 @@
 <div class="app-shell" [class.sidebar-open]="isSidebarOpen()" [class.sidebar-collapsed]="sidebarCollapsed()">
+  <button class="workspace-skip-link" type="button" [disabled]="isSidebarOpen()" (click)="focusWorkspace()">Ir para o conteúdo</button>
   @if (isSidebarOpen()) {
     <div class="sidebar-backdrop" (click)="closeSidebar()" aria-hidden="true"></div>
   }
 
-  <aside class="sidebar" id="app-sidebar" aria-label="Navegação principal">
+  <aside class="sidebar" id="app-sidebar" aria-label="Navegação principal" [attr.role]="isSidebarOpen() ? 'dialog' : null" [attr.aria-modal]="isSidebarOpen() ? 'true' : null" (keydown)="onSidebarKeydown($event)">
     <header class="brand">
       <div class="brand-mark" aria-hidden="true">
         <sp-icon name="calendar-check" [size]="24" />
@@ -21,7 +22,7 @@
       aria-controls="app-sidebar"
       [attr.aria-expanded]="!sidebarCollapsed()"
       [attr.aria-label]="sidebarCollapsed() ? 'Expandir menu lateral' : 'Recolher menu lateral'"
-      [title]="sidebarCollapsed() ? 'Expandir menu' : 'Recolher menu'"
+      [spTooltip]="sidebarCollapsed() ? 'Expandir menu' : 'Recolher menu'"
       (click)="toggleSidebarCollapsed()"
     >
       <sp-icon [name]="sidebarCollapsed() ? 'chevron-right' : 'chevron-left'" [size]="16" />
@@ -30,7 +31,7 @@
 
     <nav class="navigation" aria-label="Módulos">
       @if (canViewCalendar()) {
-      <a class="nav-link" routerLink="/calendar" routerLinkActive="active"
+      <a class="nav-link" routerLink="/calendar" routerLinkActive="active" ariaCurrentWhenActive="page"
          [attr.title]="sidebarCollapsed() ? 'Calendário' : null" aria-label="Calendário">
         <sp-icon name="calendar" />
         <span>Calendário</span>
@@ -100,7 +101,7 @@
       }
 
       @if (canViewSettings()) {
-      <a class="nav-link" routerLink="/settings" routerLinkActive="active"
+      <a class="nav-link" routerLink="/settings" routerLinkActive="active" ariaCurrentWhenActive="page"
          [attr.title]="sidebarCollapsed() ? 'Configurações' : null" aria-label="Configurações">
         <sp-icon name="settings" />
         <span>Configurações</span>
@@ -144,9 +145,10 @@
     </div>
   </aside>
 
-  <section class="workspace">
+  <section class="workspace" [attr.inert]="isSidebarOpen() ? '' : null">
     <header class="topbar">
       <button
+        spButton variant="ghost"
         class="icon-button menu-button"
         type="button"
         aria-label="Abrir menu"
@@ -161,6 +163,7 @@
         <div class="search-box" [class.search-active]="isSearchPanelOpen()">
           <sp-icon name="search" [size]="18" />
           <input
+            spInput
             type="search"
             aria-label="Buscar eventos"
             placeholder="Buscar eventos, clientes ou descrições..."
@@ -171,7 +174,7 @@
           />
 
           @if (searchTerm()) {
-            <button class="search-clear-button" type="button" aria-label="Limpar busca" (click)="clearSearch()">
+            <button spButton variant="ghost" size="sm" class="search-clear-button" type="button" aria-label="Limpar busca" (click)="clearSearch()">
               <sp-icon name="x" [size]="16" />
             </button>
           }
@@ -213,7 +216,7 @@
           class="notification-button"
           routerLink="/pending"
           [attr.aria-label]="pendingApprovalCount() + ' aprovação(ões) aguardando você'"
-          title="Aprovações pendentes"
+          spTooltip="Aprovações pendentes"
         >
           <sp-icon name="bell" />
           @if (pendingApprovalCount() > 0) {
@@ -227,8 +230,10 @@
             type="button"
             aria-haspopup="menu"
             [attr.aria-expanded]="showProfileMenu()"
+            [attr.aria-controls]="showProfileMenu() ? 'profile-menu' : null"
             [class.open]="showProfileMenu()"
             (click)="toggleProfileMenu()"
+            (keydown)="onProfileTriggerKeydown($event)"
             aria-label="Menu do usuário"
           >
             <span class="avatar">{{ userInitials() }}</span>
@@ -238,7 +243,7 @@
 
           @if (showProfileMenu()) {
             <div class="profile-backdrop" (click)="closeProfileMenu()"></div>
-            <div class="profile-menu" role="menu" (keydown.escape)="closeProfileMenu()">
+            <div class="profile-menu" id="profile-menu" role="menu" aria-label="Opções do usuário" (keydown)="onProfileMenuKeydown($event)">
               <div class="profile-menu-header">
                 <span class="avatar avatar-lg">{{ userInitials() }}</span>
                 <div>
@@ -254,15 +259,15 @@
                   Tema
                 </span>
                 <div class="theme-options">
-                  <button type="button" role="menuitemradio" [attr.aria-checked]="themePreference() === 'light'"
+                  <button type="button" role="menuitemradio" tabindex="-1" [attr.aria-checked]="themePreference() === 'light'"
                           [class.active]="themePreference() === 'light'" (click)="setTheme('light')">
                     <sp-icon name="sun" [size]="15" /> Claro
                   </button>
-                  <button type="button" role="menuitemradio" [attr.aria-checked]="themePreference() === 'dark'"
+                  <button type="button" role="menuitemradio" tabindex="-1" [attr.aria-checked]="themePreference() === 'dark'"
                           [class.active]="themePreference() === 'dark'" (click)="setTheme('dark')">
                     <sp-icon name="moon" [size]="15" /> Escuro
                   </button>
-                  <button type="button" role="menuitemradio" [attr.aria-checked]="themePreference() === 'system'"
+                  <button type="button" role="menuitemradio" tabindex="-1" [attr.aria-checked]="themePreference() === 'system'"
                           [class.active]="themePreference() === 'system'" (click)="setTheme('system')">
                     <sp-icon name="monitor" [size]="15" /> Sistema
                   </button>
@@ -270,7 +275,7 @@
               </div>
 
               @if (canViewSettings()) {
-              <a routerLink="/settings" class="profile-menu-item" role="menuitem" (click)="closeProfileMenu()">
+              <a routerLink="/settings" class="profile-menu-item" role="menuitem" tabindex="-1" (click)="closeProfileMenu()">
                 <sp-icon name="settings" [size]="18" />
                 Configurações
               </a>
@@ -278,7 +283,7 @@
 
               <div class="profile-menu-divider"></div>
 
-              <button type="button" class="profile-menu-item danger" role="menuitem" (click)="logout()">
+              <button type="button" class="profile-menu-item danger" role="menuitem" tabindex="-1" (click)="logout()">
                 <sp-icon name="logout" [size]="18" />
                 Sair
               </button>
@@ -288,7 +293,7 @@
       </div>
     </header>
 
-    <main class="content">
+    <main class="content" tabindex="-1">
       <router-outlet />
     </main>
   </section>

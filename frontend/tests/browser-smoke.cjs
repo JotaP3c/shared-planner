@@ -8,7 +8,7 @@ const http = require('node:http');
 const path = require('node:path');
 const os = require('node:os');
 const { chromium } = require(process.env.PLANNER_PLAYWRIGHT_MODULE || 'playwright');
-const root = path.resolve(__dirname, '../dist/shared-planner-frontend/browser');
+const root = path.resolve(process.env.PLANNER_BROWSER_BUILD_DIR || path.resolve(__dirname, '../dist/shared-planner-frontend/browser'));
 const output = process.env.PLANNER_QA_OUTPUT || path.join(os.tmpdir(), 'shared-planner-browser-smoke');
 const exportFixture = path.resolve(__dirname, '../../backend/target/finance-export/financial-report-synthetic.xlsx');
 fs.mkdirSync(output, { recursive: true });
@@ -25,7 +25,7 @@ const calendars = [
 const summary = (url) => ({ calendarId: url.searchParams.get('calendarId'), startDate: url.searchParams.get('startDate'), endDate: url.searchParams.get('endDate'),
   expectedAmount: 100, receivedAmount: 40, pendingAmount: 60, appointmentCount: 1, paidCount: 0, pendingCount: 0, partiallyPaidCount: 1, refundedCount: 0,
   confirmedAmount: 0, unconfirmedAmount: 100, unscheduledAmount: 0, confirmedCount: 0, awaitingConfirmationCount: 1, rescheduledCount: 0, unscheduledCount: 0, rescheduleOccurrences: 0 });
-const mime = { '.js': 'text/javascript', '.css': 'text/css', '.html': 'text/html', '.ico': 'image/x-icon', '.svg': 'image/svg+xml' };
+const mime = { '.js': 'text/javascript', '.css': 'text/css', '.html': 'text/html', '.ico': 'image/x-icon', '.svg': 'image/svg+xml', '.woff2': 'font/woff2' };
 const server = http.createServer((request, response) => {
   const requested = path.resolve(root, '.' + new URL(request.url, 'http://localhost').pathname);
   if (requested !== root && !requested.startsWith(root + path.sep)) { response.writeHead(403).end(); return; }
@@ -228,4 +228,7 @@ async function run() {
     await new Promise(resolve => server.close(resolve));
   }
 }
-run().catch(error => { console.error(error.message); server.close(); process.exitCode = 1; });
+module.exports = { fixtures, user, calendars, adminCalendarPermissions, summary };
+if (require.main === module) {
+  run().catch(error => { console.error(error.message); server.close(); process.exitCode = 1; });
+}

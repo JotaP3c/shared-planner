@@ -36,6 +36,12 @@ export class DialogFocusDirective implements AfterViewInit, OnDestroy {
       element.setAttribute('tabindex', '-1');
     }
 
+    this.focusInitial();
+  }
+
+  /** Native dialogs become focusable only after showModal(); reuse the same policy then. */
+  focusInitial(): void {
+    const element = this.host.nativeElement;
     const preferred = element.querySelector<HTMLElement>('[autofocus], [data-autofocus]')
       ?? this.focusable().find(item => item.tagName !== 'BUTTON' || !item.classList.contains('icon-button'))
       ?? element;

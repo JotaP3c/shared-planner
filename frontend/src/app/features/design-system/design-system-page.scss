@@ -1,0 +1,42 @@
+.ds-page { display: block; height: 100dvh; overflow-y: auto; line-height: var(--sp-line-height-normal); }
+.ds-wrap { max-width: 1200px; margin: auto; padding: 0 var(--sp-space-8); }
+.ds-topbar { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-space-4); min-height: 88px; border-bottom: var(--sp-border-width) solid var(--sp-border); }
+.ds-brand { display: inline-flex; align-items: center; gap: var(--sp-space-3); color: var(--sp-text); text-decoration: none; font-weight: var(--sp-font-weight-bold); }
+.ds-brand sp-icon { color: var(--sp-primary); }
+.ds-theme, .ds-row, .ds-checkbox-label { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-space-3); }
+.ds-hero { padding: var(--sp-space-12) 0 var(--sp-space-8); max-width: 780px; }
+.ds-page h1 { font-size: clamp(2.5rem, 5vw, 4rem); letter-spacing: -.045em; line-height: var(--sp-line-height-tight); margin: var(--sp-space-5) 0 var(--sp-space-4); }
+.ds-lead { font-size: var(--sp-font-size-xl); font-weight: var(--sp-font-weight-medium); }
+.ds-muted, .ds-intro, .ds-type-caption, .ds-footer, .ds-announcement, .ds-nav a { color: var(--sp-content-secondary); }
+.ds-nav { display: flex; gap: var(--sp-space-2); flex-wrap: wrap; padding: var(--sp-space-4) 0; border-block: var(--sp-border-width) solid var(--sp-border); }
+.ds-nav a { padding: var(--sp-space-2) var(--sp-space-3); text-decoration: none; border-radius: var(--sp-radius-sm); }
+.ds-nav a:hover { color: var(--sp-text); background: var(--sp-surface-2); }
+.ds-section { display: grid; gap: var(--sp-space-6); padding-top: var(--sp-space-10); scroll-margin-top: var(--sp-space-4); }
+.ds-grid, .ds-form { display: grid; gap: var(--sp-space-5); min-width: 0; }
+.ds-grid { grid-template-columns: repeat(auto-fit, minmax(min(100%, 22rem), 1fr)); }
+.ds-grid-three { grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr)); }
+.ds-palette { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: var(--sp-space-3); }
+.ds-palette sp-card { display: grid; gap: var(--sp-space-2); align-content: start; }
+.ds-palette code { overflow-wrap: anywhere; }
+.ds-type-caption, .ds-footer, .ds-palette code { font-size: var(--sp-font-size-xs); }
+.ds-swatch { height: 80px; border-radius: var(--sp-radius-sm); border: var(--sp-border-width) solid var(--sp-control-border); }
+.ds-page h3 { margin: 0 0 var(--sp-space-3); font-weight: var(--sp-font-weight-semibold); }
+.ds-page p { margin-top: 0; }
+.ds-type-display { font-size: var(--sp-font-size-2xl); font-weight: var(--sp-font-weight-bold); letter-spacing: -.025em; }
+.ds-type-heading { font-size: var(--sp-font-size-lg); font-weight: var(--sp-font-weight-semibold); }
+.ds-spaces { display: flex; flex-wrap: wrap; gap: var(--sp-space-4); align-items: end; }
+.ds-spaces div { display: grid; gap: var(--sp-space-2); font-size: var(--sp-font-size-xs); }
+.ds-spaces span { display: block; height: var(--sp-space-4); min-width: 4px; background: var(--sp-action-bg); border-radius: var(--sp-space-1); }
+.ds-divider { height: var(--sp-border-width); background: var(--sp-border); margin-block: var(--sp-space-6); }
+.ds-form > button { justify-self: start; }
+.ds-announcement { margin-top: var(--sp-space-6); min-height: 1.5em; }
+.ds-footer { display: flex; flex-wrap: wrap; justify-content: space-between; gap: var(--sp-space-3); padding-block: var(--sp-space-6); border-top: var(--sp-border-width) solid var(--sp-border); }
+.ds-skip { position: fixed; top: -100px; left: var(--sp-space-4); padding: var(--sp-space-3); z-index: var(--sp-z-modal); background: var(--sp-surface); color: var(--sp-text); }
+.ds-skip:focus { top: var(--sp-space-4); }
+@media (max-width: 900px) { .ds-palette { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (max-width: 600px) {
+  .ds-wrap { padding-inline: var(--sp-space-4); }
+  .ds-topbar { align-items: start; flex-direction: column; padding-block: var(--sp-space-4); }
+  .ds-palette { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .ds-hero { padding-top: var(--sp-space-8); }
+}

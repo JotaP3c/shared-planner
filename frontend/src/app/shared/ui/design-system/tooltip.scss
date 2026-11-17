@@ -1,0 +1,20 @@
+// Body-mounted tooltip: scope by class so existing screens remain unchanged.
+.sp-ds-tooltip {
+  position: fixed;
+  z-index: var(--sp-z-tooltip);
+  max-width: min(28ch, calc(100vw - var(--sp-space-8)));
+  padding: var(--sp-space-2) var(--sp-space-3);
+  border: var(--sp-border-width) solid var(--sp-tooltip-text);
+  border-radius: var(--sp-radius-sm);
+  background: var(--sp-tooltip-bg);
+  color: var(--sp-tooltip-text);
+  font-family: var(--sp-font);
+  font-size: var(--sp-font-size-xs);
+  line-height: var(--sp-line-height-normal);
+  overflow-wrap: anywhere;
+  box-shadow: var(--sp-shadow-sm);
+}
+
+@media (forced-colors: active) {
+  .sp-ds-tooltip { color: CanvasText; background: Canvas; border-color: CanvasText; }
+}

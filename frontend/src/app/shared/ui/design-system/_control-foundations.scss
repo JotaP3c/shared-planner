@@ -1,0 +1,70 @@
+// One visual source for native Angular directives and retained legacy selectors.
+%sp-button-base {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-space-2);
+  min-height: var(--sp-control-height-md);
+  padding: var(--sp-space-2) var(--sp-space-4);
+  border: var(--sp-border-width) solid transparent;
+  border-radius: var(--sp-radius-control);
+  font-family: var(--sp-font);
+  font-size: var(--sp-font-size-sm);
+  font-weight: var(--sp-font-weight-semibold);
+  line-height: var(--sp-line-height-tight);
+  text-decoration: none;
+  cursor: pointer;
+  transition: background var(--sp-duration-fast) var(--sp-ease), border-color var(--sp-duration-fast) var(--sp-ease), color var(--sp-duration-fast) var(--sp-ease), box-shadow var(--sp-duration-fast) var(--sp-ease);
+  &:disabled { opacity: var(--sp-disabled-opacity); cursor: not-allowed; }
+  &:focus-visible { outline: 2px solid var(--sp-focus-color); outline-offset: 3px; }
+}
+
+%sp-button-primary {
+  background: var(--sp-action-bg);
+  color: var(--sp-text-on-primary);
+  box-shadow: var(--sp-shadow-sm);
+  &:hover:not(:disabled) { background: var(--sp-action-hover); }
+}
+
+%sp-button-secondary {
+  background: var(--sp-surface);
+  color: var(--sp-text);
+  border-color: var(--sp-control-border);
+  &:hover:not(:disabled) { background: var(--sp-surface-hover); }
+}
+
+%sp-button-ghost {
+  background: transparent;
+  color: var(--sp-text);
+  &:hover:not(:disabled) { background: var(--sp-surface-2); }
+}
+
+%sp-button-danger {
+  background: var(--sp-danger-bg);
+  color: var(--sp-feedback-danger-text);
+  border-color: var(--sp-danger);
+  &:hover:not(:disabled) { background: color-mix(in srgb, var(--sp-danger-bg), var(--sp-danger) 12%); }
+}
+
+%sp-input-base {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  min-height: var(--sp-control-height-md);
+  padding: var(--sp-space-2) var(--sp-space-3);
+  border: var(--sp-border-width) solid var(--sp-control-border);
+  border-radius: var(--sp-radius-control);
+  background: var(--sp-surface);
+  color: var(--sp-text);
+  font-family: var(--sp-font);
+  font-size: var(--sp-font-size-sm);
+  font-weight: var(--sp-font-weight-normal);
+  line-height: var(--sp-line-height-normal);
+  transition: border-color var(--sp-duration-fast) var(--sp-ease), box-shadow var(--sp-duration-fast) var(--sp-ease);
+  &::placeholder { color: var(--sp-content-secondary); opacity: 1; }
+  &:hover:not(:disabled) { border-color: var(--sp-focus-color); }
+  &:focus { border-color: var(--sp-focus-color); box-shadow: var(--sp-focus); }
+  &:focus-visible { outline: 2px solid var(--sp-focus-color); outline-offset: 2px; }
+  &[aria-invalid='true'], &.ng-invalid.ng-touched { border-color: var(--sp-danger); }
+  &:disabled { opacity: var(--sp-disabled-opacity); cursor: not-allowed; background: var(--sp-surface-2); }
+}

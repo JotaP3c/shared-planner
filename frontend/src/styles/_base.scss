@@ -1,3 +1,5 @@
+@use '../app/shared/ui/design-system/control-foundations';
+
 // Base, tipografia e componentes compartilhados (botões, campos, cards, pills).
 *,
 *::before,
@@ -14,10 +16,15 @@ body {
   color: var(--sp-text);
   font-family: var(--sp-font);
   -webkit-font-smoothing: antialiased;
+  line-height: var(--sp-line-height-normal);
+  font-optical-sizing: auto;
 }
 
 // O shell rola dentro de .content; telas sem shell (login) rolam por conta própria.
+html { font-size: 100%; }
+
 body {
+  font-size: var(--sp-font-size-sm);
   overflow: hidden;
 }
 
@@ -35,7 +42,7 @@ textarea {
 }
 
 :focus-visible {
-  outline: 2px solid var(--sp-primary);
+  outline: 2px solid var(--sp-focus-color);
   outline-offset: 2px;
 }
 
@@ -48,101 +55,44 @@ textarea {
   white-space: nowrap;
 }
 
-// ---- Botões -------------------------------------------------------------
-.primary-button,
-.save-button,
-.secondary-button,
-.ghost-button,
-.danger-button {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  min-height: 40px;
-  padding: 0 16px;
-  border: 1px solid transparent;
-  border-radius: 10px;
-  font-size: 14px;
-  font-weight: 650;
-  line-height: 1;
-  white-space: nowrap;
-  cursor: pointer;
-  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
-
-  &:disabled {
-    opacity: 0.55;
-    cursor: not-allowed;
-  }
+// Compatibility selectors share the same Sass foundations as Angular controls.
+.primary-button, .save-button, .secondary-button, .ghost-button, .danger-button {
+  @extend %sp-button-base;
 }
-
-.primary-button,
-.save-button {
-  background: var(--sp-primary);
-  color: var(--sp-text-on-primary);
-  box-shadow: 0 6px 16px rgba(37, 99, 235, 0.25);
-
-  &:hover:not(:disabled) {
-    background: var(--sp-primary-hover);
-  }
-}
-
-.secondary-button,
-.ghost-button {
-  background: var(--sp-surface);
-  border-color: var(--sp-border);
-  color: var(--sp-text);
-
-  &:hover:not(:disabled) {
-    background: var(--sp-surface-hover);
-    border-color: var(--sp-border-strong);
-  }
-}
-
-.danger-button {
-  background: var(--sp-danger-bg);
-  border-color: transparent;
-  color: var(--sp-danger);
-
-  &:hover:not(:disabled) {
-    background: var(--sp-danger);
-    color: #fff;
-  }
-}
+.primary-button, .save-button { @extend %sp-button-primary; }
+.secondary-button { @extend %sp-button-secondary; }
+.ghost-button { @extend %sp-button-ghost; }
+.danger-button { @extend %sp-button-danger; }
 
 .icon-button {
   display: inline-grid;
   place-items: center;
-  width: 38px;
-  height: 38px;
-  border: 1px solid var(--sp-border);
-  border-radius: 10px;
+  width: var(--sp-control-height-md);
+  height: var(--sp-control-height-md);
+  padding: 0;
+  border: var(--sp-border-width) solid var(--sp-control-border);
+  border-radius: var(--sp-radius-control);
   background: var(--sp-surface);
-  color: var(--sp-text-2);
+  color: var(--sp-content-secondary);
   cursor: pointer;
-
-  &:hover:not(:disabled) {
-    color: var(--sp-primary);
-    border-color: var(--sp-border-strong);
-  }
+  transition: background var(--sp-duration-fast) var(--sp-ease);
+  &:hover:not(:disabled) { color: var(--sp-personal-text); background: var(--sp-surface-hover); }
+  &:disabled { opacity: var(--sp-disabled-opacity); cursor: not-allowed; }
 }
-
 .link-button {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: var(--sp-space-1);
   padding: 0;
   border: 0;
   background: none;
-  color: var(--sp-primary);
-  font-size: 13px;
-  font-weight: 650;
+  color: var(--sp-personal-text);
+  font-size: var(--sp-font-size-sm);
+  font-weight: var(--sp-font-weight-semibold);
   text-decoration: none;
   cursor: pointer;
-
-  &:disabled {
-    color: var(--sp-text-muted);
-    cursor: not-allowed;
-  }
+  &:hover:not(:disabled) { text-decoration: underline; }
+  &:disabled { color: var(--sp-disabled-text); cursor: not-allowed; }
 }
 
 // ---- Feedback ----------------------------------------------------------
@@ -157,7 +107,7 @@ textarea {
   border: 1px solid color-mix(in srgb, var(--sp-danger) 25%, transparent);
   border-radius: 10px;
   background: var(--sp-danger-bg);
-  color: var(--sp-danger);
+  color: var(--sp-feedback-danger-text);
   font-size: 13px;
   font-weight: 600;
 
@@ -193,24 +143,25 @@ textarea {
 .type-shared { background: var(--sp-shared-bg); color: var(--sp-shared-text); }
 .status-pending { background: var(--sp-pending-bg); color: var(--sp-pending-text); }
 .status-rejected { background: var(--sp-rejected-bg); color: var(--sp-rejected-text); }
-.status-approved { background: var(--sp-success-bg); color: var(--sp-success); }
+.status-approved { background: var(--sp-success-bg); color: var(--sp-feedback-success-text); }
 .status-cancelled { background: var(--sp-cancelled-bg); color: var(--sp-cancelled-text); }
 
 // Confirmação do atendimento e pagamento (dimensões independentes).
 .confirmation-pending_confirmation { background: var(--sp-pending-bg); color: var(--sp-pending-text); }
-.confirmation-confirmed { background: var(--sp-success-bg); color: var(--sp-success); }
+.confirmation-confirmed { background: var(--sp-success-bg); color: var(--sp-feedback-success-text); }
 .confirmation-cancelled { background: var(--sp-cancelled-bg); color: var(--sp-cancelled-text); }
 .confirmation-rescheduled { background: var(--sp-shared-bg); color: var(--sp-shared-text); }
 .payment-pending { background: var(--sp-pending-bg); color: var(--sp-pending-text); }
 .payment-partially_paid { background: var(--sp-personal-bg); color: var(--sp-personal-text); }
-.payment-paid { background: var(--sp-success-bg); color: var(--sp-success); }
+.payment-paid { background: var(--sp-success-bg); color: var(--sp-feedback-success-text); }
 .payment-refunded { background: var(--sp-cancelled-bg); color: var(--sp-cancelled-text); }
 
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
   *::after {
-    transition-duration: 0.01ms !important;
+    // Zero also avoids implicit visibility transitions delaying focus in drawers.
+    transition-duration: 0s !important;
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     scroll-behavior: auto !important;
@@ -236,44 +187,19 @@ textarea {
   gap: 6px;
   color: var(--sp-text);
   font-size: 13px;
-  font-weight: 650;
+  font-weight: var(--sp-font-weight-semibold);
 
   .req {
-    color: var(--sp-danger);
+    color: var(--sp-feedback-danger-text);
   }
 }
 
 .sp-input,
-.sp-field input,
+.sp-field input:not([type='checkbox']):not([type='radio']),
 .sp-field select,
-.sp-field textarea {
-  width: 100%;
-  min-height: 42px;
-  padding: 9px 12px;
-  border: 1px solid var(--sp-border);
-  border-radius: 10px;
-  background: var(--sp-surface);
-  color: var(--sp-text);
-  font-size: 14px;
-  font-weight: 500;
-  outline: none;
-  transition: border-color 0.15s ease, box-shadow 0.15s ease;
-
-  &::placeholder {
-    color: var(--sp-text-muted);
-  }
-
-  &:focus {
-    border-color: var(--sp-primary);
-    box-shadow: var(--sp-focus);
-  }
-
-  &.ng-invalid.ng-touched {
-    border-color: var(--sp-danger);
-  }
-}
+.sp-field textarea { @extend %sp-input-base; }
 
 .sp-field textarea {
-  min-height: 76px;
+  min-height: calc(var(--sp-control-height-md) * 2);
   resize: vertical;
 }

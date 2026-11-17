@@ -1,0 +1,105 @@
+<main class="ds-page" id="ds-main" data-showcase="SP_DESIGN_SYSTEM_SHOWCASE">
+  <a class="ds-skip" href="design-system#foundations">Ir para os componentes</a>
+  <div class="ds-wrap">
+    <header class="ds-topbar">
+      <a class="ds-brand" routerLink="/calendar"><sp-icon name="calendar-check" [size]="24" /> Shared Planner</a>
+      <div class="ds-theme" role="group" aria-label="Tema da demonstração">
+        @for (mode of themes; track mode.value) {
+          <button spButton size="sm" [variant]="theme.preference() === mode.value ? 'primary' : 'ghost'"
+            [attr.aria-pressed]="theme.preference() === mode.value" (click)="theme.setPreference(mode.value)">{{ mode.label }}</button>
+        }
+      </div>
+    </header>
+
+    <section class="ds-hero" aria-labelledby="ds-title">
+      <sp-badge variant="info">Foundation · Somente desenvolvimento</sp-badge>
+      <h1 id="ds-title">Design System</h1>
+      <p class="ds-lead">Uma linguagem visual para planejar juntos.</p>
+      <p class="ds-intro">Fundamentos e componentes do Shared Planner. Uma base consistente, acessível e pronta para evoluir com cada tela.</p>
+    </section>
+
+    <nav class="ds-nav" aria-label="Seções do Design System">
+      @for (section of sections; track section.id) { <a [href]="'design-system#' + section.id">{{ section.label }}</a> }
+    </nav>
+
+    <section id="foundations" tabindex="-1" class="ds-section" aria-label="Fundamentos visuais">
+      <sp-page-header [headingLevel]="2" title="Fundamentos" eyebrow="01 · A base" description="Azul para orientar. Navy para dar profundidade. Espaço para deixar o conteúdo respirar." />
+      <div class="ds-palette">
+        @for (color of palette; track color.token) {
+          <sp-card padding="sm"><div class="ds-swatch" [style.background]="'var(' + color.token + ')'" aria-hidden="true"></div><strong>{{ color.name }}</strong><span class="ds-muted">{{ color.label }}</span><code>{{ color.token }}</code></sp-card>
+        }
+      </div>
+      <div class="ds-grid ds-grid-two">
+        <sp-card>
+          <h3>Tipografia</h3><p class="ds-muted">Inter, com fallback para as fontes do sistema. Sem requisições externas.</p>
+          <p class="ds-type-display">Clareza em cada detalhe.</p><p class="ds-type-heading">Um lugar para seus planos</p><p>Texto de corpo com hierarquia, ritmo e legibilidade nos dois temas.</p><p class="ds-type-caption">Texto auxiliar · rótulos e contexto</p>
+        </sp-card>
+        <sp-card><h3>Espaçamento e forma</h3><p class="ds-muted">Escala de 4 px. Raios, sombras e alturas de controle com uma única origem.</p>
+          <div class="ds-spaces">@for (space of spacing; track space) { <div><span [style.width]="'var(--sp-space-' + space + ')'" aria-hidden="true"></span><code>{{ space * 4 }} px</code></div> }</div>
+        </sp-card>
+      </div>
+    </section>
+
+    <section id="buttons" tabindex="-1" class="ds-section" aria-label="Botões e ações">
+      <sp-page-header [headingLevel]="2" title="Ações com intenção" eyebrow="02 · Botões" description="Uma ação principal por contexto. Variações discretas para as ações de apoio." />
+      <sp-card><h3>Variantes</h3><div class="ds-row"><button spButton (click)="feedback.set('Ação principal demonstrada.')"><sp-icon name="plus" [size]="16" /> Principal</button><button spButton variant="secondary" (click)="feedback.set('Ação secundária demonstrada.')">Secundário</button><button spButton variant="ghost" (click)="feedback.set('Ação discreta demonstrada.')">Discreto</button><button spButton variant="danger" (click)="feedback.set('Ação de atenção demonstrada, sem excluir dados.')">Excluir exemplo</button></div>
+        <div class="ds-divider"></div><h3>Tamanhos e estados</h3><div class="ds-row"><button spButton size="sm">Pequeno</button><button spButton>Regular</button><button spButton size="lg">Grande</button><button spButton disabled>Desabilitado</button><button spButton [loading]="true">Salvando exemplo</button><sp-icon-button icon="plus" label="Adicionar exemplo" (click)="feedback.set('Botão de ícone acionado.')" /><sp-icon-button icon="trash" label="Excluir indisponível" [disabled]="true" /></div>
+      </sp-card>
+    </section>
+
+    <section id="forms" tabindex="-1" class="ds-section" aria-label="Formulários e validação">
+      <sp-page-header [headingLevel]="2" title="Formulários claros" eyebrow="03 · Controles" description="Rótulos explícitos, controles nativos e mensagens que ajudam a continuar." />
+      <div class="ds-grid ds-grid-two">
+        <sp-card><h3>Formulário de exemplo</h3><form [formGroup]="form" (ngSubmit)="submitExample()" class="ds-form" novalidate>
+          <sp-form-field label="Nome do exemplo" controlId="ds-name" hint="Use qualquer nome para experimentar a validação." [error]="nameError()" [required]="true"><input spInput id="ds-name" formControlName="name" placeholder="Ex.: Planejamento da semana" [error]="!!nameError()" /></sp-form-field>
+          <sp-form-field label="Calendário de exemplo" controlId="ds-calendar"><select spSelect id="ds-calendar" formControlName="calendar"><option value="personal">Pessoal</option><option value="shared">Compartilhado</option></select></sp-form-field>
+          <label class="ds-checkbox-label"><input type="checkbox" spCheckbox formControlName="notifications" /> Receber lembretes de exemplo</label>
+          <button spButton type="submit">Validar exemplo</button>
+        </form></sp-card>
+        <sp-card><h3>Estados dos campos</h3><div class="ds-form">
+          <sp-form-field label="Campo desabilitado" controlId="ds-disabled" hint="O estado nativo permanece acessível."><input spInput id="ds-disabled" value="Sem edição" disabled /></sp-form-field>
+          <sp-form-field label="Mensagem de validação" controlId="ds-invalid" error="Informe um e-mail válido."><input spInput id="ds-invalid" type="email" value="email-incompleto" [error]="true" /></sp-form-field>
+          <sp-form-field label="Seleção indisponível" controlId="ds-select-disabled"><select spSelect id="ds-select-disabled" disabled><option>Sem opções disponíveis</option></select></sp-form-field>
+          <div class="ds-row"><label class="ds-checkbox-label"><input type="checkbox" spCheckbox [indeterminate]="true" /> Seleção parcial</label><label class="ds-checkbox-label"><input type="checkbox" spCheckbox disabled /> Indisponível</label></div>
+        </div></sp-card>
+      </div>
+    </section>
+
+    <section id="surfaces" tabindex="-1" class="ds-section" aria-label="Cards e badges">
+      <sp-page-header [headingLevel]="2" title="Conteúdo em primeiro plano" eyebrow="04 · Superfícies" description="Agrupamentos simples e estados reconhecíveis, sem depender apenas de cor." />
+      <div class="ds-grid ds-grid-three"><sp-card><sp-icon name="calendar" [size]="24" /><h3>Card padrão</h3><p class="ds-muted">Superfície elevada para agrupar um conteúdo ou conjunto de ações.</p><sp-badge variant="info">Informação</sp-badge></sp-card><sp-card variant="outlined"><sp-icon name="shield" [size]="24" /><h3>Card com borda</h3><p class="ds-muted">Delimitação discreta, sem competir com o conteúdo principal.</p><sp-badge variant="success">Concluído</sp-badge></sp-card><sp-card variant="muted"><sp-icon name="layers" [size]="24" /><h3>Card de apoio</h3><p class="ds-muted">Contexto secundário com a mesma hierarquia e linguagem.</p><sp-badge variant="neutral">Rascunho</sp-badge></sp-card></div>
+      <sp-card><h3>Badges semânticos</h3><div class="ds-row"><sp-badge>Neutro</sp-badge><sp-badge variant="info">Informação</sp-badge><sp-badge variant="success">Confirmado</sp-badge><sp-badge variant="warning">Aguardando</sp-badge><sp-badge variant="danger">Precisa de atenção</sp-badge></div></sp-card>
+      <sp-card>
+        <h3>Tabs e tabelas</h3>
+        <sp-tabs id="ds-example-tabs" label="Organização do exemplo" [items]="exampleTabs" [value]="exampleTab()" (valueChange)="exampleTab.set($event)" />
+        <div id="ds-overview-panel" role="tabpanel" tabindex="0" aria-labelledby="ds-example-tabs-overview" [hidden]="exampleTab() !== 'overview'">
+          <p>Use tabs para alternar entre painéis relacionados. Os seletores de visualização usam botões de alternância.</p>
+        </div>
+        <div id="ds-details-panel" role="tabpanel" tabindex="0" aria-labelledby="ds-example-tabs-details" [hidden]="exampleTab() !== 'details'">
+          <p>Setas, Home e End movem o foco entre as tabs disponíveis.</p>
+        </div>
+        <div class="page-table-wrap">
+          <table spTable density="compact"><caption class="sr-only">Catálogo de peças do exemplo</caption><thead><tr><th scope="col">Peça</th><th scope="col">Uso recomendado</th></tr></thead><tbody><tr><td>Tabs</td><td>Painéis relacionados</td></tr><tr><td>Tabela</td><td>Dados comparáveis em colunas</td></tr></tbody></table>
+        </div>
+      </sp-card>
+    </section>
+
+    <section id="overlays" tabindex="-1" class="ds-section" aria-label="Modal, tooltip e dropdown">
+      <sp-page-header [headingLevel]="2" title="Interações previsíveis" eyebrow="05 · Contexto" description="Teclado, foco e retorno ao ponto de origem fazem parte do componente." />
+      <sp-card><div class="ds-row"><button spButton (click)="modalOpen.set(true)">Abrir modal de exemplo</button><button spButton variant="secondary" spTooltip="Informação de apoio. Também aparece ao focar pelo teclado.">Conhecer o tooltip</button><sp-dropdown label="Ações do exemplo" [items]="menuItems" (selected)="selectExample($event)" /><sp-dropdown label="Menu indisponível" [items]="menuItems" [disabled]="true" /></div><p class="ds-muted">Experimente Tab, Shift+Tab, as setas e Escape. Informações essenciais continuam visíveis fora do tooltip.</p></sp-card>
+    </section>
+
+    <section id="states" tabindex="-1" class="ds-section" aria-label="Estados vazios e de carregamento">
+      <sp-page-header [headingLevel]="2" title="Cada estado tem uma resposta" eyebrow="06 · Feedback" description="Conteúdo vazio orienta. Carregamento informa, sem mudar a hierarquia da página." />
+      <div class="ds-grid ds-grid-two"><sp-card><sp-empty-state title="Nenhum plano por aqui" description="Quando houver conteúdo, ele aparecerá neste espaço." icon="calendar"><button spButton variant="secondary" (click)="feedback.set('Ação do estado vazio demonstrada.')">Criar um exemplo</button></sp-empty-state></sp-card><sp-card><h3>Carregamento</h3><sp-loading-state label="Carregando seus planos de exemplo…" /><div class="ds-divider"></div><sp-loading-state label="Atualizando detalhes…" size="sm" /></sp-card></div>
+    </section>
+
+    <p class="ds-announcement" role="status" aria-live="polite">{{ feedback() }}</p>
+    <footer class="ds-footer"><span>Shared Planner · Design System Foundation</span><span>Catálogo de desenvolvimento. Nenhum dado real é enviado.</span></footer>
+  </div>
+  <sp-modal [open]="modalOpen()" title="Um espaço para decidir" description="Exemplo de diálogo com gerenciamento de foco e navegação por teclado." (closed)="modalOpen.set(false)">
+    <p>Use este componente quando uma decisão precisar de contexto e atenção. O fechamento devolve o foco ao botão que abriu o diálogo.</p>
+    <sp-form-field label="Anotação de exemplo" controlId="ds-modal-note"><input spInput id="ds-modal-note" placeholder="Experimente navegar com Tab" /></sp-form-field>
+    <div spModalFooter class="ds-row"><button spButton variant="secondary" (click)="modalOpen.set(false)">Cancelar</button><button spButton (click)="modalOpen.set(false); feedback.set('Confirmação demonstrada. Nenhum dado foi enviado.')">Confirmar exemplo</button></div>
+  </sp-modal>
+</main>

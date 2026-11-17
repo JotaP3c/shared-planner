@@ -2,7 +2,10 @@
 // Camadas globais com escopo por tela (.app-shell, .calendar-page, .login-page) mantêm
 // cada componente abaixo do budget de 8 kB do Angular.
 @use 'styles/tokens';
+@use 'styles/typography';
 @use 'styles/base';
+@use 'app/shared/ui/design-system/controls';
+@use 'app/shared/ui/design-system/tooltip';
 @use 'styles/shell';
 @use 'styles/calendar';
 @use 'styles/fullcalendar';

@@ -1,8 +1,10 @@
 import { Routes } from '@angular/router';
 import { authGuard } from './core/guards/auth.guard';
 import { auditAccessGuard, permissionGuard, systemAdminGuard } from './core/guards/role.guard';
+import { DESIGN_SYSTEM_ROUTES } from './design-system.routes';
 
 export const routes: Routes = [
+  ...DESIGN_SYSTEM_ROUTES,
   {
     path: 'login',
     loadComponent: () =>

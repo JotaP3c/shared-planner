@@ -2,7 +2,7 @@
 .tone-paid, .tone-confirmed { --tone: var(--sp-client); }
 .tone-partial { --tone: var(--sp-personal); }
 .tone-pending, .tone-awaiting { --tone: var(--sp-pending); }
-.tone-refunded, .tone-unscheduled { --tone: var(--sp-cancelled); }
+.tone-refunded, .tone-unscheduled { --tone: var(--sp-content-secondary); }
 .tone-rescheduled { --tone: var(--sp-shared); }
 .tone-expected { --tone: var(--sp-primary); }
 .tone-received { --tone: var(--sp-client); }
@@ -11,7 +11,7 @@
   display: grid;
   grid-template-columns: minmax(120px, 170px) minmax(0, 1fr);
   align-items: center;
-  gap: 18px;
+  gap: var(--sp-space-5);
 
   svg {
     width: 100%;
@@ -22,14 +22,14 @@
 .sp-donut-track {
   fill: none;
   stroke: var(--sp-surface-2);
-  stroke-width: 14;
+  stroke-width: 11;
 }
 
 .sp-donut-segment {
   fill: none;
   stroke: var(--tone);
-  stroke-width: 14;
-  transition: opacity 0.15s ease;
+  stroke-width: 11;
+  transition: opacity var(--sp-duration-fast) var(--sp-ease);
 
   &:hover {
     opacity: 0.8;
@@ -38,47 +38,49 @@
 
 .sp-donut-total {
   fill: var(--sp-text);
+  font-variant-numeric: tabular-nums;
   font-size: 22px;
-  font-weight: 800;
+  font-weight: var(--sp-font-weight-semibold);
 }
 
 .sp-donut-caption {
-  fill: var(--sp-text-2);
+  fill: var(--sp-content-secondary);
   font-size: 9px;
-  font-weight: 600;
+  font-weight: var(--sp-font-weight-medium);
 }
 
 .sp-chart-legend {
   display: grid;
-  gap: 8px;
+  gap: var(--sp-space-2);
   margin: 0;
   padding: 0;
   list-style: none;
-  font-size: 13px;
+  font-size: var(--sp-font-size-sm);
 
   li {
     display: grid;
     grid-template-columns: 12px minmax(0, 1fr) auto 52px;
     align-items: center;
-    gap: 8px;
-    padding: 6px 8px;
-    border-radius: 6px;
+    gap: var(--sp-space-2);
+    padding: var(--sp-space-2);
+    border-radius: var(--sp-radius-sm);
 
     &.is-highlighted { background: var(--sp-surface-2); }
   }
 
   small {
-    color: var(--sp-text-2);
+    color: var(--sp-content-secondary);
     text-align: right;
+    font-variant-numeric: tabular-nums;
   }
 
   &.inline {
     display: flex;
     flex-wrap: wrap;
-    gap: 6px 16px;
-    margin-top: 8px;
-    color: var(--sp-text-2);
-    font-size: 12px;
+    gap: var(--sp-space-2) var(--sp-space-4);
+    margin-top: var(--sp-space-2);
+    color: var(--sp-content-secondary);
+    font-size: var(--sp-font-size-xs);
 
     span {
       display: inline-flex;
@@ -96,7 +98,7 @@
   display: inline-block;
   width: 10px;
   height: 10px;
-  border-radius: 3px;
+  border-radius: var(--sp-space-1);
   background: var(--tone);
 }
 
@@ -125,7 +127,7 @@
 }
 
 .sp-bar-axis {
-  fill: var(--sp-text-2);
+  fill: var(--sp-content-secondary);
   font-size: 11px;
 }
 
@@ -134,11 +136,11 @@
   place-items: center;
   min-height: 140px;
   margin: 0;
-  padding: 16px;
+  padding: var(--sp-space-4);
   border: 1px dashed var(--sp-border-strong);
   border-radius: var(--sp-radius);
-  color: var(--sp-text-2);
-  font-size: 13px;
+  color: var(--sp-content-secondary);
+  font-size: var(--sp-font-size-sm);
   text-align: center;
 }
 

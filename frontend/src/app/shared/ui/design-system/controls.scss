@@ -1,0 +1,84 @@
+@use 'control-foundations';
+
+// Both legacy class aliases and opt-in Angular controls share one visual source.
+button[spButton] {
+  @extend %sp-button-base;
+  &[data-variant='primary'] { @extend %sp-button-primary; }
+  &[data-variant='secondary'] { @extend %sp-button-secondary; }
+  &[data-variant='ghost'] { @extend %sp-button-ghost; }
+  &[data-variant='danger'] { @extend %sp-button-danger; }
+  &[data-size='sm'] { min-height: var(--sp-control-height-sm); padding: var(--sp-space-1) var(--sp-space-3); font-size: var(--sp-font-size-xs); }
+  &[data-size='lg'] { min-height: var(--sp-control-height-lg); padding: var(--sp-space-3) var(--sp-space-5); font-size: var(--sp-font-size-md); }
+  &:disabled { opacity: var(--sp-disabled-opacity); cursor: not-allowed; }
+  &[aria-busy='true'] { cursor: progress; }
+  &[aria-busy='true']::before {
+    content: '';
+    width: 1em;
+    height: 1em;
+    flex: 0 0 auto;
+    border: 2px solid currentColor;
+    border-inline-end-color: transparent;
+    border-radius: var(--sp-radius-pill);
+    animation: sp-control-spin 900ms linear infinite;
+  }
+}
+
+.sp-ds-icon-button { display: inline-flex; vertical-align: middle; }
+button[spButton].sp-ds-icon-button__control {
+  width: var(--sp-control-height-md);
+  padding: 0;
+  &[data-size='sm'] { width: var(--sp-control-height-sm); }
+  &[data-size='lg'] { width: var(--sp-control-height-lg); }
+  &[aria-busy='true'] sp-icon { display: none; }
+}
+
+input[spInput], textarea[spInput], select[spSelect] {
+  @extend %sp-input-base;
+  &[data-size='sm'] { min-height: var(--sp-control-height-sm); padding-block: var(--sp-space-1); font-size: var(--sp-font-size-xs); }
+  &[data-size='lg'] { min-height: var(--sp-control-height-lg); padding-block: var(--sp-space-3); font-size: var(--sp-font-size-md); }
+}
+
+textarea[spInput] { min-height: calc(var(--sp-control-height-md) * 2); resize: vertical; }
+input[type='checkbox'][spCheckbox] {
+  width: var(--sp-space-6);
+  height: var(--sp-space-6);
+  margin: 0;
+  accent-color: var(--sp-action-bg);
+  cursor: pointer;
+  flex: 0 0 auto;
+  &[data-size='sm'] { width: var(--sp-space-5); height: var(--sp-space-5); }
+  &[data-size='lg'] { width: var(--sp-space-7); height: var(--sp-space-7); }
+  &:disabled { opacity: var(--sp-disabled-opacity); cursor: not-allowed; }
+  &[aria-invalid='true'] { outline: var(--sp-border-width) solid var(--sp-danger); outline-offset: 2px; }
+}
+
+button[spButton]:focus-visible, input[spInput]:focus-visible, textarea[spInput]:focus-visible,
+select[spSelect]:focus-visible, input[spCheckbox]:focus-visible {
+  outline: 2px solid var(--sp-focus-color);
+  outline-offset: 3px;
+  box-shadow: var(--sp-focus);
+}
+
+.sp-ds-form-field {
+  display: grid;
+  gap: var(--sp-space-2);
+  min-width: 0;
+  font-family: var(--sp-font);
+  font-size: var(--sp-font-size-sm);
+  line-height: var(--sp-line-height-normal);
+  &__label { color: var(--sp-text); font-weight: var(--sp-font-weight-semibold); }
+  &__hint { color: var(--sp-content-secondary); }
+  &__error { color: var(--sp-feedback-danger-text); font-weight: var(--sp-font-weight-medium); }
+}
+
+@keyframes sp-control-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) {
+  button[spButton][aria-busy='true']::before { animation: none; }
+}
+@media (forced-colors: active) {
+  button[spButton], input[spInput], textarea[spInput], select[spSelect], input[spCheckbox] {
+    border-color: ButtonText;
+    &:disabled { color: GrayText; border-color: GrayText; }
+    &:focus-visible { outline-color: Highlight; }
+  }
+}

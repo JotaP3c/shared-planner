@@ -22,7 +22,7 @@
 
   // Texto
   --sp-text: #0f172a;
-  --sp-text-2: #64748b;
+  --sp-text-2: #475569;
   --sp-text-muted: #94a3b8;
   --sp-text-on-primary: #ffffff;
 
@@ -75,6 +75,82 @@
   --sp-font: Inter, "Segoe UI", system-ui, -apple-system, Roboto, Arial, sans-serif;
   --sp-today: #2563eb;
 
+  // Foundation: escala de 4 px; nomes numéricos representam passos de .25 rem.
+  // Componentes e telas usam a mesma escala de medidas.
+  --sp-space-0: 0;
+  --sp-space-1: 0.25rem;
+  --sp-space-2: 0.5rem;
+  --sp-space-3: 0.75rem;
+  --sp-space-4: 1rem;
+  --sp-space-5: 1.25rem;
+  --sp-space-6: 1.5rem;
+  --sp-space-7: 1.75rem;
+  --sp-space-8: 2rem;
+  --sp-space-9: 2.25rem;
+  --sp-space-10: 2.5rem;
+  --sp-space-11: 2.75rem;
+  --sp-space-12: 3rem;
+
+  // Tipografia: Inter é preferida quando disponível; a stack existente é mantida.
+  --sp-font-size-xs: 0.75rem;
+  --sp-font-size-sm: 0.875rem;
+  --sp-font-size-md: 1rem;
+  --sp-font-size-lg: 1.125rem;
+  --sp-font-size-xl: 1.25rem;
+  --sp-font-size-2xl: 1.5rem;
+  --sp-font-size-3xl: 2rem;
+  --sp-font-weight-normal: 400;
+  --sp-font-weight-medium: 500;
+  --sp-font-weight-semibold: 600;
+  --sp-font-weight-bold: 700;
+  --sp-line-height-tight: 1.2;
+  --sp-line-height-normal: 1.5;
+  --sp-line-height-relaxed: 1.65;
+  --sp-letter-spacing-tight: -0.025em;
+  --sp-letter-spacing-normal: 0;
+  --sp-letter-spacing-wide: 0.06em;
+  --sp-font-variant-numeric: tabular-nums;
+  --sp-secondary: #475569;
+  --sp-disabled-bg: #f1f5f9;
+  --sp-disabled-text: #64748b;
+  --sp-table-row-hover: #f5f8ff;
+  --sp-sidebar-width: 224px;
+  --sp-sidebar-width-collapsed: 72px;
+  --sp-sidebar-divider: rgba(255, 255, 255, 0.12);
+  --sp-sidebar-selected: rgba(37, 99, 235, 0.22);
+  --sp-brand-gradient: linear-gradient(135deg, #3b82f6, #2563eb);
+  --sp-error: var(--sp-danger);
+  --sp-warning: var(--sp-pending);
+
+  // Dimensões e interação dos controles compartilhados.
+  --sp-control-height-sm: 2rem;
+  --sp-control-height-md: 2.5rem;
+  --sp-control-height-lg: 3rem;
+  --sp-border-width: 1px;
+  --sp-radius-control: 10px;
+  --sp-disabled-opacity: 0.55;
+  --sp-duration-fast: 120ms;
+  --sp-duration-normal: 180ms;
+  --sp-duration-slow: 240ms;
+  --sp-ease: cubic-bezier(0.2, 0, 0, 1);
+  --sp-z-dropdown: 100;
+  --sp-z-tooltip: 1100;
+  --sp-z-modal: 1000;
+
+  // Combinações semânticas para os novos componentes: texto e limites legíveis.
+  // O azul de ação mantém contraste com texto branco também no tema escuro.
+  --sp-action-bg: #2563eb;
+  --sp-action-hover: #1d4ed8;
+  --sp-focus-color: #1d4ed8;
+  --sp-control-border: #718096;
+  --sp-content-secondary: #475569;
+  --sp-feedback-danger-text: #991b1b;
+  --sp-feedback-success-text: #166534;
+  --sp-feedback-warning-text: #92400e;
+  --sp-overlay: rgba(15, 23, 42, 0.55);
+  --sp-tooltip-bg: #0f172a;
+  --sp-tooltip-text: #ffffff;
+
   color-scheme: light;
 }
 
@@ -123,6 +199,21 @@
 
   --sp-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
   --sp-shadow-lg: 0 18px 48px rgba(0, 0, 0, 0.5);
+
+  // Os tokens de ação, dimensão e movimento são herdados do :root.
+  --sp-focus-color: #93c5fd;
+  --sp-control-border: #64748b;
+  --sp-content-secondary: #a8b8d5;
+  --sp-secondary: #a8b8d5;
+  --sp-disabled-bg: #172440;
+  --sp-disabled-text: #a8b8d5;
+  --sp-table-row-hover: #172440;
+  --sp-feedback-danger-text: #fca5a5;
+  --sp-feedback-success-text: #86efac;
+  --sp-feedback-warning-text: #fcd34d;
+  --sp-overlay: rgba(0, 0, 0, 0.7);
+  --sp-tooltip-bg: #f1f5f9;
+  --sp-tooltip-text: #0f172a;
 
   color-scheme: dark;
 }

@@ -4,7 +4,7 @@
   --fc-page-bg-color: var(--sp-surface);
   --fc-neutral-bg-color: var(--sp-surface-2);
   --fc-today-bg-color: color-mix(in srgb, var(--sp-primary) 6%, transparent);
-  --fc-now-indicator-color: var(--sp-danger);
+  --fc-now-indicator-color: var(--sp-feedback-danger-text);
   --fc-event-border-color: transparent;
   --fc-event-bg-color: transparent;
   font-family: var(--sp-font);
@@ -17,26 +17,26 @@
 }
 
 .calendar-page .fc .fc-col-header-cell {
-  padding: 10px 0;
+  padding: var(--sp-space-2) 0;
   background: var(--sp-surface-2);
 }
 
 .calendar-page .fc .fc-col-header-cell-cushion {
-  color: var(--sp-text-2);
-  font-size: 12px;
-  font-weight: 800;
+  color: var(--sp-content-secondary);
+  font-size: var(--sp-font-size-xs);
+  font-weight: var(--sp-font-weight-bold);
   text-decoration: none;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: var(--sp-letter-spacing-wide);
 }
 
 .calendar-page .fc .fc-daygrid-day-frame {
-  min-height: 104px;
+  min-height: 96px;
 }
 
 .calendar-page .fc .fc-daygrid-day-top {
   flex-direction: row;
-  padding: 6px 8px 0;
+  padding: var(--sp-space-2) var(--sp-space-2) 0;
 }
 
 .calendar-page .fc .fc-daygrid-day-number {
@@ -44,11 +44,11 @@
   place-items: center;
   min-width: 28px;
   height: 28px;
-  padding: 0 4px;
+  padding: 0 var(--sp-space-1);
   border-radius: 50%;
   color: var(--sp-text);
-  font-size: 13px;
-  font-weight: 700;
+  font-size: var(--sp-font-size-sm);
+  font-weight: var(--sp-font-weight-semibold);
   text-decoration: none;
 }
 
@@ -57,13 +57,13 @@
 
   .fc-daygrid-day-number {
     background: var(--sp-today);
-    color: #fff;
+    color: var(--sp-text-on-primary);
   }
 }
 
 .calendar-page .fc .fc-day-other .fc-daygrid-day-number {
   color: var(--sp-text-muted);
-  font-weight: 600;
+  font-weight: var(--sp-font-weight-semibold);
 }
 
 .calendar-page .fc .fc-daygrid-day:hover {
@@ -73,8 +73,8 @@
 
 .calendar-page .fc .fc-daygrid-more-link {
   color: var(--sp-primary);
-  font-size: 11px;
-  font-weight: 700;
+  font-size: var(--sp-font-size-xs);
+  font-weight: var(--sp-font-weight-semibold);
 }
 
 .calendar-page .fc .fc-timegrid-slot {
@@ -83,9 +83,9 @@
 
 .calendar-page .fc .fc-timegrid-slot-label-cushion,
 .calendar-page .fc .fc-timegrid-axis-cushion {
-  color: var(--sp-text-2);
-  font-size: 11px;
-  font-weight: 700;
+  color: var(--sp-content-secondary);
+  font-size: var(--sp-font-size-xs);
+  font-weight: var(--sp-font-weight-semibold);
 }
 
 .calendar-page.view-week .fc .fc-scroller-liquid-absolute,
@@ -108,12 +108,12 @@
   --sp-ev-accent: var(--sp-personal);
   --sp-ev-bg: var(--sp-personal-bg);
   --sp-ev-text: var(--sp-personal-text);
-  margin: 1px 4px 3px;
+  margin: 1px var(--sp-space-1) var(--sp-space-1);
   padding: 0;
   overflow: hidden;
   border: 0 !important;
   border-left: 3px solid var(--sp-ev-accent) !important;
-  border-radius: 7px;
+  border-radius: var(--sp-radius-sm);
   background: var(--sp-ev-bg) !important;
   color: var(--sp-ev-text) !important;
   box-shadow: none;
@@ -148,7 +148,9 @@
   }
 
   &.sp-event-cancelled {
-    opacity: 0.6;
+    --sp-ev-bg: var(--sp-cancelled-bg);
+    --sp-ev-text: var(--sp-cancelled-text);
+    --sp-ev-accent: var(--sp-cancelled);
 
     .sp-event-title {
       text-decoration: line-through;
@@ -164,7 +166,7 @@
   display: grid;
   gap: 1px;
   min-width: 0;
-  padding: 4px 7px;
+  padding: var(--sp-space-1) var(--sp-space-2);
   line-height: 1.25;
 }
 
@@ -177,15 +179,15 @@
 }
 
 .calendar-page .fc .sp-event-title {
-  font-size: 12px;
-  font-weight: 800;
+  font-size: var(--sp-font-size-xs);
+  font-weight: var(--sp-font-weight-bold);
 }
 
 .calendar-page .fc .sp-event-time,
 .calendar-page .fc .sp-event-status {
-  font-size: 11px;
-  font-weight: 600;
-  opacity: 0.85;
+  font-size: var(--sp-font-size-xs);
+  font-weight: var(--sp-font-weight-semibold);
+  opacity: 1;
 }
 
 .calendar-page .fc .fc-highlight {
@@ -196,18 +198,18 @@
 // its default white text, and an inline title can overflow a narrow month cell.
 .calendar-page .fc .sp-holiday {
   min-width: 0;
-  margin: 1px 4px 3px;
+  margin: 1px var(--sp-space-1) var(--sp-space-1);
   overflow: hidden;
   border: 0 !important;
   border-left: 3px solid var(--sp-holiday) !important;
-  border-radius: 7px;
+  border-radius: var(--sp-radius-sm);
   background: var(--sp-holiday-bg) !important;
   color: var(--sp-holiday-text) !important;
   cursor: default;
 
   .fc-event-main {
     min-width: 0;
-    padding: 4px 7px;
+    padding: var(--sp-space-1) var(--sp-space-2);
     color: var(--sp-holiday-text);
     line-height: 1.35;
   }
@@ -215,6 +217,12 @@
   .sp-event-title {
     display: block;
     max-width: 100%;
-    font-weight: 650;
+    font-weight: var(--sp-font-weight-semibold);
   }
 }
+
+.calendar-page .fc .sp-event-heading { display: flex; align-items: center; gap: var(--sp-space-1); min-width: 0; }
+.calendar-page .fc .sp-event-calendar-dot { flex: 0 0 auto; width: 5px; height: 5px; border-radius: var(--sp-radius-pill); }
+.calendar-page .fc .sp-event-all-day .sp-event-time { font-weight: var(--sp-font-weight-semibold); }
+.calendar-page .fc .sp-event-block:focus-visible { outline: 2px solid var(--sp-focus-color); outline-offset: 1px; }
+@media (max-width: 640px) { .calendar-page .fc .sp-event-inner { padding: var(--sp-space-1) var(--sp-space-1); } .calendar-page .fc .fc-daygrid-day-frame { min-height: 88px; } }

@@ -82,8 +82,10 @@ export class LoginPage {
 
     this.authService.login({ email, password }).subscribe({
       next: () => this.router.navigate(['/calendar']),
-      error: () => {
-        this.errorMessage = 'E-mail ou senha inválidos.';
+      error: (error: { status?: number }) => {
+        this.errorMessage = error?.status === 429
+          ? 'Muitas tentativas de acesso. Aguarde antes de tentar novamente.'
+          : 'E-mail ou senha inválidos.';
         this.isSubmitting = false;
       },
     });

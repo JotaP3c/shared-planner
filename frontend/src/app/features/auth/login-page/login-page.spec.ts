@@ -90,6 +90,18 @@ describe('LoginPage', () => {
     expect(toggle.getAttribute('aria-pressed')).toBe('true');
   });
 
+  it('explains throttling without treating valid credentials as invalid or retrying automatically', () => {
+    component.form.setValue({ email: 'ana@example.com', password: 'secret1' });
+    component.submit();
+    http.expectOne('/api/auth/login').flush({}, { status: 429, statusText: 'Too Many Requests' });
+    fixture.detectChanges();
+    expect(element().querySelector('[data-testid="login-error"]')?.textContent).toContain('Muitas tentativas');
+    expect(component.errorMessage).not.toContain('senha inválidos');
+    expect(component.isSubmitting).toBe(false);
+    expect(localStorage.getItem('sharedPlanner.token')).toBeNull();
+    http.expectNone('/api/auth/login');
+  });
+
   it('applies light, dark and system themes on the login screen through ThemeService', () => {
     const theme = TestBed.inject(ThemeService);
     const root = document.documentElement;

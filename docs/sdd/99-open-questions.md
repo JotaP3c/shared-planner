@@ -1,5 +1,31 @@
 # 99 — Questões em aberto
 
+## Revisão vigente — 17/11/2026
+
+Esta atualização e a [auditoria 34](34-backlog-audit-2026-11-17.md) prevalecem sobre
+as afirmações históricas abaixo; decisões não foram inventadas nesta auditoria.
+
+- Q-001: resolvida para PERSONAL único/automático, proprietário ADMIN contextual.
+- Q-002: responsável estruturado ainda depende de decisão/modelo; não inferir de títulos.
+- Q-003: ADMIN essencial tem bypass explícito e testado; eventual mudança de autoria/
+  impersonação continua decisão de produto, não defeito automaticamente demonstrado.
+- Q-004: unanimidade/designados/rodadas entregues; política adicional por campo/LEGACY
+  permanece aberta. Grants configuráveis já distinguem edição própria/de terceiros.
+- Q-005: capacidade de pagamento foi resolvida no escopo aprovado de perfis/grants:
+  FINANCE_MANAGE e FINANCE_MANAGE_OWN, com vínculo contextual e testes positivos/negativos.
+  A antiga afirmação de que FINANCE nunca altera pagamentos não representa o código atual.
+- Q-006/Q-011: retenção e minimização ainda pendentes; tela de auditoria é funcional,
+  mas oldValue/newValue seguem na API. Não confundir esconder na UI com remover no servidor.
+- Q-007: cancelamento lógico permanece resolvido. A decisão de sessão é BLG-SEC-007,
+  não esta Q-007, e continua pendente.
+- BLG-BR-007/FE-009: aparência e identidade de leitura estão concluídas no escopo pedido;
+  preferências adicionais/edição de perfil não são requisitos automaticamente pendentes.
+- BLG-UX-004: importados multidia preservam intervalos; criação arbitrária com datas
+  distintas continua decisão. Recorrência, ICS e Excel já são entregas reais e testadas.
+- Q-008/009/010/012: propostas históricas não aprovam mudanças implicitamente. Fluxos
+  atuais permanecem; convites por e-mail e transferência de propriedade não foram criados.
+
+
 ## Decisões explícitas da nova solicitação — 11/11/2026
 
 Q-001: **RESOLVED para escopo de calendário próprio**: exatamente um PERSONAL por

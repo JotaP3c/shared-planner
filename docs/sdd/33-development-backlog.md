@@ -1,5 +1,136 @@
 # 33 — Backlog de desenvolvimento
 
+## Matriz vigente — auditoria de 17/11 e Fase 3.0
+
+Esta seção prevalece sobre os checkpoints históricos abaixo, que foram preservados.
+Auditoria por código/testes/histórico: [evidências e ordem de execução](34-backlog-audit-2026-11-17.md).
+A auditoria34 foi documental. A fase 3.0 alterou somente o escopo de estabilização, validou PostgreSQL isolado e não fez commits/pushes.
+
+**79 IDs BLG únicos** (BLG-FE-005 aparece historicamente em duas seções e conta uma vez):
+**48 DONE, 18 PARTIAL, 4 OPEN, 1 BUG e 8 BLOCKED**.
+Pendentes = 31 (todos os estados diferentes de DONE). Prioridades originais preservadas.
+Não contar linhas históricas repetidas ou referências a Q/SEC-FIND como novas tarefas.
+
+| ID | Funcionalidade | Estado real | Prioridade | Ação necessária |
+|---|---|---|---|---|
+| BLG-SEC-001 | SEC-FIND-001 — EventResponse expunha amount e pagamento a VIEWER/EDITOR. | DONE | P1 | Projeção financeira/revogação/JWT confirmados em SecurityConfig, EventResponse e ApiSecurityIntegrationTests. E1/E3. |
+| BLG-SEC-002 | SEC-FIND-002 — ex-membro listava e decidia pendência SHARED. | DONE | P1 | Projeção financeira/revogação/JWT confirmados em SecurityConfig, EventResponse e ApiSecurityIntegrationTests. E1/E3. |
+| BLG-SEC-003 | SEC-FIND-003 — credenciais públicas de seed e portas locais amplas. | PARTIAL | P2 | Loopback implementado; revisar seeds/scripts históricos e rotação antes de ambiente compartilhado. E3/E4. |
+| BLG-SEC-004 | SEC-FIND-004 — segredo JWT de desenvolvimento versionado. | DONE | P2 | Projeção financeira/revogação/JWT confirmados em SecurityConfig, EventResponse e ApiSecurityIntegrationTests. E1/E3. |
+| BLG-SEC-005 | SEC-FIND-005 — dependências npm vulneráveis na baseline. | BUG | P2 | Fase 3.0: correções compatíveis reduzem38→29 entradas dev (15 altas/14 moderadas), runtime 0. Restam glob/minimatch/picomatch fora de correção segura nos ranges atuais; BUG residual. [Relatório](phase-3-stabilization/validation-report.md). |
+| BLG-SEC-006 | SEC-FIND-006 — usuário runtime do PostgreSQL reutiliza bootstrap. | OPEN | P2 | Compose reutiliza POSTGRES_USER no backend; separar owner/migrator/runtime e testar privilégios. E3. |
+| BLG-SEC-007 | SEC-FIND-007 — JWT em localStorage. | BLOCKED | P2 | Decidir estratégia de sessão; token permanece no localStorage. E4/Q-007. |
+| BLG-SEC-008 | SEC-FIND-008 — headers de segurança e TLS não definidos para produção. | PARTIAL | P2 | Spring Security fornece headers padrão; falta terminação TLS/CSP/HSTS validada por ambiente. E3. |
+| BLG-SEC-009 | SEC-FIND-009 — sem rate limit e política de senha suficiente. | PARTIAL | P2 | Rate limiting entregue/testado na fase 3.0. Política de senha adicional/topologia distribuída ainda não definida nem homologada. [Relatório](phase-3-stabilization/validation-report.md). |
+| BLG-SEC-010 | SEC-FIND-010 — auditoria sem retenção/máscara. | BLOCKED | P2 | Resolver Q-006/Q-011: snapshots oldValue/newValue continuam na API; falta retenção/minimização. E3. |
+| BLG-SEC-011 | SEC-FIND-011 — ACL local dos arquivos sensíveis requer hardening. | OPEN | P2 | ACL de arquivos privados não foi certificada; definir/verificar usuário/serviço sem publicar credenciais. E3. |
+| BLG-SEC-012 | SEC-FIND-012 — cobertura/monitoramento de segurança insuficientes. | PARTIAL | P2 | Fase 3.0 amplia para166 testes backend e jornada HTTP/PG real, eventos de falha seguros; CI/monitoramento operacional continuam. [Relatório](phase-3-stabilization/validation-report.md). |
+| BLG-SEC-013 | SEC-FIND-013 — validações de input/JWT incompletas. | PARTIAL | P3 | Issuer/HS256/DTOs reforçados; audience, envelope/limites e boundaries restantes não completos. E3. |
+| BLG-SEC-014 | SEC-FIND-014 — supply chain sem gate reproduzível. | OPEN | P3 | Sem workflows CI para audit/scan/SBOM/política de imagens. E5/E6. |
+| BLG-SEC-015 | SEC-FIND-015 — constraints e backup/restore incompletos. | PARTIAL | P3 | Fase 3.0 encerra o recorte financeiro: V13, dumps/SHA/restore e concorrência. Retenção e rotina operacional de backup continuam pendentes; não encerrar todo S3. [Relatório](phase-3-stabilization/validation-report.md). |
+| BLG-SEC-016 | SEC-FIND-016 — proxy SSR sem hardening operacional. | OPEN | P3 | Proxy SSR encaminha headers amplos, sem timeout/limite explícito ou filtragem hop-by-hop. E3. |
+| BLG-SEC-017 | SEC-FIND-017 — política de edição ampla do alvo SHARED. | BLOCKED | P2 | Rodadas e grants estão implementados; política adicional de campos/atores LEGACY depende Q-004. E3/E4. |
+| BLG-BUG-001 | Editar tipo/amount de evento podia preservar pagamento incoerente. | DONE | P0 | Correção presente e regressão correspondente aprovada; manter sem reabrir por dívida complementar. E1/E2. |
+| BLG-BUG-002 | Owner podia ser rebaixado por POST/PUT de membro. | DONE | P1 | Correção presente e regressão correspondente aprovada; manter sem reabrir por dívida complementar. E1/E2. |
+| BLG-BUG-003 | Ex-membro referenciado como alvo podia aprovar/rejeitar SHARED. | DONE | P1 | Correção presente e regressão correspondente aprovada; manter sem reabrir por dívida complementar. E1/E2. |
+| BLG-BUG-004 | Calendário converte falhas de eventos/pendências em listas vazias. | DONE | P1 | Correção presente e regressão correspondente aprovada; manter sem reabrir por dívida complementar. E1/E2. |
+| BLG-BUG-005 | Respostas antigas de calendário podem sobrescrever período/filtro recente e liberar loading cedo. | DONE | P2 | Correção presente e regressão correspondente aprovada; manter sem reabrir por dívida complementar. E1/E2. |
+| BLG-BUG-006 | Página de membros mistura loading e respostas entre calendários. | DONE | P2 | Correção presente e regressão correspondente aprovada; manter sem reabrir por dívida complementar. E1/E2. |
+| BLG-BUG-007 | Busca pode exibir resposta do termo anterior antes do próximo debounce. | DONE | P3 | Correção presente e regressão correspondente aprovada; manter sem reabrir por dívida complementar. E1/E2. |
+| BLG-BUG-008 | Pending mostra empty durante loading e usa um único actionEventId para ações concorrentes. | DONE | P3 | Correção presente e regressão correspondente aprovada; manter sem reabrir por dívida complementar. E1/E2. |
+| BLG-BUG-009 | Reabrir SHARED sem novo e-mail herdava criador/aprovador já removido ou inativo, deixando a pendência impossível de decidir (BR-SHARED-001/004). | DONE | P1 | Correção presente e regressão correspondente aprovada; manter sem reabrir por dívida complementar. E1/E2. |
+| BLG-BUG-010 | Pendência SHARED decidida e depois reaberta ficava oculta até recarregar a página (`resolvedEventIds` vitalício). | DONE | P1 | Correção presente e regressão correspondente aprovada; manter sem reabrir por dívida complementar. E1/E2. |
+| BLG-BUG-011 | Card financeiro do calendário e contador do sino não refletiam criação/edição/cancelamento/pagamento/aprovação. | DONE | P2 | Correção presente e regressão correspondente aprovada; manter sem reabrir por dívida complementar. E1/E2. |
+| BLG-BUG-012 | Atalho de duração truncava o término em 23:59 exibindo duração diferente da aplicada. | DONE | P2 | Correção presente e regressão correspondente aprovada; manter sem reabrir por dívida complementar. E1/E2. |
+| BLG-BUG-014 | `<select [value]>` com opções em `@for` exibia a 1ª opção: Financeiro mostrava "Diário" calculando o mês; Membros mostrava "Administrador" enviando VIEWER. | DONE | P1 | Correção presente e regressão correspondente aprovada; manter sem reabrir por dívida complementar. E1/E2. |
+| BLG-BUG-015 | `POST /members` sobrescrevia papel de membro existente e não distinguia inexistente/inativo; e-mail sem trim. | DONE | P1 | Correção presente e regressão correspondente aprovada; manter sem reabrir por dívida complementar. E1/E2. |
+| BLG-FE-010 | Confirmação de atendimento (NF-01). | DONE | P1 | Tela/serviço/guard e specs presentes, incluindo criação de calendário e confirmação; manter regressão. E2. |
+| BLG-FE-005 | Auditoria. | PARTIAL | P2 | Tela/filtros/estados e specs funcionam; snapshots não renderizados, porém ainda expostos pela API. E2/E3. |
+| BLG-BUG-013 | Tema: PNG opaco no login quebrava o tema escuro; script pré-pintura divergia do serviço em valor inválido; sem sync entre abas. | DONE | P2 | Correção presente e regressão correspondente aprovada; manter sem reabrir por dívida complementar. E1/E2. |
+| BLG-BR-001 | Q-001 — o que é agenda própria. | DONE | P1 | Escopo aprovado posterior substitui decisão antiga: PERSONAL automático, grants de pagamento e aparência/identidade. E1/E2/E4. |
+| BLG-BR-002 | Q-002 — responsável como User ou texto. | BLOCKED | P1 | Responsável estruturado ainda não existe: personName/createdBy não são responsibleUserId. Resolver Q-002. E3. |
+| BLG-BR-003 | Q-003 — alcance do bypass ADMIN. | BLOCKED | P1 | ADMIN essencial conserva bypass explícito; mudança para impersonação/autoria restrita exige decisão Q-003. E3/E4. |
+| BLG-BR-004 | Q-004 — edição/reaprovação SHARED. | BLOCKED | P1 | Consentimento unânime/rodadas concluído; decisão adicional de edição por campo/LEGACY continua Q-004. E3/E4. |
+| BLG-BR-005 | Q-005 — capacidade para alterar pagamento. | DONE | P1 | Escopo aprovado posterior substitui decisão antiga: PERSONAL automático, grants de pagamento e aparência/identidade. E1/E2/E4. |
+| BLG-BR-006 | Q-006 — retenção e minimização de auditoria. | BLOCKED | P2 | Prazo, descarte e minimização de auditoria aguardam Q-006. E3. |
+| BLG-BR-007 | Settings. | DONE | P3 | Escopo aprovado posterior substitui decisão antiga: PERSONAL automático, grants de pagamento e aparência/identidade. E1/E2/E4. |
+| BLG-BE-001 | Garantir invariantes de pagamento também em EventService.update e no banco onde possível. | DONE | P0 | Fase 3.0: V13 validada, legado incompatível rejeitado atomicamente, serviço/locks preservados; PostgreSQL real e regressão166 PASS. [Relatório](phase-3-stabilization/validation-report.md). |
+| BLG-BE-002 | Criar resposta/projeção de evento por capacidade financeira. | DONE | P1 | Implementação e regressão de autorização/owner/financeiro presentes; manter contratos. E1/E3. |
+| BLG-BE-003 | Revalidar vínculo atual na fila e decisão SHARED. | DONE | P1 | Implementação e regressão de autorização/owner/financeiro presentes; manter contratos. E1/E3. |
+| BLG-BE-004 | Preservar owner ADMIN em todas as mutações de membro. | DONE | P1 | Implementação e regressão de autorização/owner/financeiro presentes; manter contratos. E1/E3. |
+| BLG-BE-005 | Endurecer autenticação: JWT, rate limit, eventos de segurança e respostas consistentes. | DONE | P1 | Fase 3.0: JWT preservado, login limitado/429/Retry-After, eventos sem credenciais e status HTTP consistente; DONE no escopo de instância única atual. [Relatório](phase-3-stabilization/validation-report.md). |
+| BLG-BE-006 | Completar limites de DTO e padronizar contrato de erro seguro. | PARTIAL | P2 | CreateUser já limita nome/e-mail e trata constraint com 409; envelope/limites gerais ainda não completos. E1/E3. |
+| BLG-BE-007 | Completar consulta de auditoria após decisão. | PARTIAL | P2 | Busca possui filtros, limite 50/100 e autorização; falta suíte positiva dedicada de filtros/boundaries e decisão de minimização. E1/E3. |
+| BLG-BE-008 | Preparar contrato Finance estável para a primeira feature. | DONE | P2 | Implementação e regressão de autorização/owner/financeiro presentes; manter contratos. E1/E3. |
+| BLG-FE-001 | Limitar Bearer a requests /api confiáveis e tratar 401/403. | DONE | P1 | Tela/serviço/guard e specs presentes, incluindo criação de calendário e confirmação; manter regressão. E2. |
+| BLG-FE-002 | Guards e navegação por papel/capacidade. | DONE | P1 | Tela/serviço/guard e specs presentes, incluindo criação de calendário e confirmação; manter regressão. E2. |
+| BLG-FE-003 | Implementar Finance como primeira feature após os gates. | DONE | P2 | Tela/serviço/guard e specs presentes, incluindo criação de calendário e confirmação; manter regressão. E2. |
+| BLG-FE-004 | Implementar Admin Users. | DONE | P2 | Tela/serviço/guard e specs presentes, incluindo criação de calendário e confirmação; manter regressão. E2. |
+| BLG-FE-006 | Corrigir estados assíncronos de calendar/pending/members/search. | DONE | P2 | Tela/serviço/guard e specs presentes, incluindo criação de calendário e confirmação; manter regressão. E2. |
+| BLG-FE-007 | Completar validação de eventos. | DONE | P2 | Tela/serviço/guard e specs presentes, incluindo criação de calendário e confirmação; manter regressão. E2. |
+| BLG-FE-008 | Implementar criação de calendário para ADMIN ou remover expectativa da UI. | DONE | P3 | Tela/serviço/guard e specs presentes, incluindo criação de calendário e confirmação; manter regressão. E2. |
+| BLG-FE-009 | Settings somente após BLG-BR-007. | DONE | P3 | Tela/serviço/guard e specs presentes, incluindo criação de calendário e confirmação; manter regressão. E2. |
+| BLG-TEST-001 | Regressão de integridade de pagamento. | DONE | P0 | Fase 3.0: constraints V13, backup/restore, legado válido/inválido e corridas reais em PostgreSQL17.11; 166 testes, sem skips. [Relatório](phase-3-stabilization/validation-report.md). |
+| BLG-TEST-002 | Negativos de SEC-FIND-001. | DONE | P1 | Casos implementados nas suítes pertinentes e aprovados nesta execução. E1/E2. |
+| BLG-TEST-003 | Negativos de SEC-FIND-002. | DONE | P1 | Casos implementados nas suítes pertinentes e aprovados nesta execução. E1/E2. |
+| BLG-TEST-004 | Autenticação e sessão. | PARTIAL | P1 | Fase 3.0 acrescenta rate limit concorrente/HTTP, 400/401, token inválido/desativado e logs redigidos. Sessão/logout global e boundaries adicionais seguem pendentes sem decidir SEC-007. [Relatório](phase-3-stabilization/validation-report.md). |
+| BLG-TEST-005 | BOLA/matriz de autorização. | PARTIAL | P1 | Fase 3.0 valida BOLA, grants atuais, financeiro/Excel/auditoria/usuários e revogação em HTTP/PG; matriz exaustiva das capacidades/auditoria continua evolução. [Relatório](phase-3-stabilization/validation-report.md). |
+| BLG-TEST-006 | Owner e revogação SHARED. | DONE | P1 | Fase 3.0: owner/último ADMIN e aprovação × revogação concorrentes em PostgreSQL/HTTP real; chamadas posteriores com token antigo negadas. [Relatório](phase-3-stabilization/validation-report.md). |
+| BLG-TEST-007 | Estados Angular. | DONE | P2 | Casos implementados nas suítes pertinentes e aprovados nesta execução. E1/E2. |
+| BLG-TEST-008 | Finance. | DONE | P2 | Casos implementados nas suítes pertinentes e aprovados nesta execução. E1/E2. |
+| BLG-TEST-009 | E2E crítico. | PARTIAL | P2 | Jornada real login→CLIENT→confirmação→pagamento→Finance→XLSX e SHARED concluída em HTTP/PG. Browser integrado sem fixtures e CI ainda pendentes. [Relatório](phase-3-stabilization/validation-report.md). |
+| BLG-TEST-010 | Auditoria e exposição. | PARTIAL | P2 | Contratos de usuário e auditoria funcional cobertos; retenção/minimização/logs não encerrados. E1/E3. |
+| BLG-TD-001 | Triagem controlada das dependências npm. | PARTIAL | P2 | Triagem por cadeia/advisory realizada; lock atualizado sem majors diretos/force e regressão aprovada. Audit dev residual 29 continua exigindo acompanhamento. [Relatório](phase-3-stabilization/validation-report.md). |
+| BLG-TD-002 | Automatizar paridade dos repositórios em CI/check local. | PARTIAL | P3 | Check local reproduzível passa; falta integração CI. E5. |
+| BLG-TD-003 | Centralizar mapeamento de erros e capacidades no frontend. | PARTIAL | P3 | Capacidades centralizadas em calendar-permissions; tratamento de erros ainda distribuído. E2/E3. |
+| BLG-TD-004 | Reduzir warnings de budget SCSS. | DONE | P4 | Código e validação de budgets, textos ou batching confirmados. E1/E2/E4. |
+| BLG-TD-005 | Melhorar legibilidade de MembersPage e normalizar textos pt-BR. | DONE | P4 | Código e validação de budgets, textos ou batching confirmados. E1/E2/E4. |
+| BLG-TD-006 | Rever metadados HTML e acessibilidade básica. | PARTIAL | P4 | DS/foco/teclado/contraste automatizados; falta validação manual com leitor de tela. E2/E4. |
+| BLG-TD-007 | Evitar N+1 na redação financeira de listas/pending. | DONE | P1 | Código e validação de budgets, textos ou batching confirmados. E1/E2/E4. |
+| BLG-UX-001 | Estados loading, empty, erro parcial, retry e acesso negado. | DONE | P2 | Estados/feedback/remoção de recursos sem suporte implementados e cobertos. E2/E4. |
+| BLG-UX-002 | Explicar permissões sem substituir segurança backend. | PARTIAL | P2 | Grants controlam ações e 403; explicação contextual de cada ação indisponível não é uniforme. E2/E3. |
+| BLG-UX-003 | Remover ou marcar recursos fictícios. | DONE | P3 | Estados/feedback/remoção de recursos sem suporte implementados e cobertos. E2/E4. |
+| BLG-UX-004 | Avaliar eventos que atravessam dias. | BLOCKED | P3 | Importados multidia/all-day preservados; criação arbitrária com datas distintas depende decisão de produto. E2/E4. |
+| BLG-UX-005 | Feedback de sucesso e confirmação consistente. | DONE | P3 | Estados/feedback/remoção de recursos sem suporte implementados e cobertos. E2/E4. |
+
+### Referências complementares já presentes no backlog
+
+Não integram o denominador BLG de 79: **10 referências, todas DONE no escopo aprovado**.
+CAL-01, CAL-02, CAL-03: tipos, pessoal automático, papéis contextuais; APP-01: rodadas/designados;
+CLI-01: telefone/descrição; REC-01: recorrência finita; IMP-01: ICS idempotente; HOL-01: feriados;
+FIN-01: isolamento/consolidação; UI-01: correções específicas de filtro/móvel/importado.
+Evidências E1/E2/E4. Carga de dados reais e migrations não foram repetidas; seus resultados
+são históricos identificados, não uma nova declaração de teste local do banco.
+Somando os dois grupos: **89 referências únicas, 58 concluídas e 31 pendentes**.
+RBAC configurável, Excel e DS recentes têm rastreabilidade nas specs próprias, sem criar IDs BLG artificiais.
+
+| ID | Funcionalidade | Estado real | Prioridade | Ação necessária |
+|---|---|---|---|---|
+| CAL-01 | Calendário pessoal automático e único | DONE | Não definida no complemento | Manter regressão CalendarEvolution/V9; E1/E4 |
+| CAL-02 | Tipos PERSONAL/SHARED/IMPORTED | DONE | Não definida no complemento | Manter classificação e preservação LEGACY; E1/E4 |
+| CAL-03 | Papéis contextuais combinados | DONE | Não definida no complemento | Manter AccessControl/CalendarEvolution; E1/E4 |
+| APP-01 | Consentimento por rodada e designados | DONE | Não definida no complemento | Manter unanimidade e histórico; E1/E4 |
+| CLI-01 | Telefone e descrição única | DONE | Não definida no complemento | Manter contratos, máscara e preservação de legado; E1/E2 |
+| REC-01 | Recorrência finita e exceções | DONE | Não definida no complemento | Manter engine/integração; não inventar selo sem metadados; E1/E4 |
+| IMP-01 | ICS com destino explícito e idempotência | DONE | Não definida no complemento | Manter parser/preview/confirmação/deduplicação; E1/E2/E4 |
+| HOL-01 | Feriados nacionais de 2026 | DONE | Não definida no complemento | Manter camada permanente e isolamento financeiro; E1/E4 |
+| FIN-01 | Financeiro isolado e consolidado | DONE | Não definida no complemento | Manter fixtures trimestrais/autorização; E1/E2/E4 |
+| UI-01 | Correções de filtro/móvel/intervalo | DONE | Não definida no complemento | Manter testes de UI e comparação visual; E2/E4 |
+
+### Gate após a Fase 3.0
+
+P0 financeiro e os critérios críticos P1 desta etapa foram validados em PostgreSQL/HTTP real.
+Etapa 3.1 liberada para desenvolvimento do catálogo sobre esta base, mantendo regressão.
+Isso não homologa produção: banco em uso permanece V12, dependências dev têm29 entradas
+residuais, sessão/TLS/retenção/CI e hardening distribuído continuam nos IDs próprios.
+Aplicar V13 em banco em uso exige backup fresco e preflight, sem correção silenciosa.
+Ver [evidências e limites](phase-3-stabilization/validation-report.md).
+
+---
+
+## Histórico preservado (não representa o estado vigente)
+
+
 ## Atualização vigente — 12/11/2026
 
 | ID / referência | Resultado atual |

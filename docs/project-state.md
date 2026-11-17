@@ -1,3 +1,38 @@
+# Revisão vigente — auditoria de 17/11/2026
+
+## Fase 3.0 — estabilização de 17/11/2026
+
+Gate financeiro P0 e critérios críticos P1 desta etapa encerrados: constraints V13,
+backup/restore, concorrência PostgreSQL, autenticação/429 e jornada HTTP real com Excel.
+Validação final: 166 Java sem falhas/erros/skips,197 Angular e build de produção PASS.
+Etapa 3.1 liberada para desenvolvimento; produção não homologada. Banco local em uso
+permanece V12 e recebeu somente backup/preflight; nenhum dado real alterado.
+Audit completo38→29, runtime0; correções residuais de toolchain permanecem abertas.
+Backlog vigente:48/79 BLG DONE,31 pendentes; dez complementos DONE separados.
+[Relatório da fase3.0](sdd/phase-3-stabilization/validation-report.md) registra limites e comandos. Sem commits/pushes.
+
+
+O conteúdo bilíngue de maio abaixo é um snapshot histórico, não o estado atual.
+Estado confirmado: Java 17/Spring Boot 4/PostgreSQL (migrations V1–V12), Angular 21,
+telas funcionais de calendário, pendências, financeiro/Excel, membros, usuários,
+perfis/permissões, auditoria e aparência; Design System e remodelagem publicados.
+Auditoria não deve recriar essas telas por causa dos parágrafos antigos sobre placeholders.
+
+HEADs analisados: monorepo f9c0853, backend 9f8e2b8, frontend cecfd3e.
+Regressão atual: frontend 197/197; backend 150 contabilizados, 149 aprovados e um
+PostgreSQL opt-in ignorado, zero falhas/erros. Paridade backend149/frontend159 PASS.
+Audit npm runtime zero; completo 38 entradas (19 altas/19 moderadas), exigindo triagem.
+
+Fonte vigente por ID: [backlog auditado](sdd/33-development-backlog.md).
+Método, evidências, limitações e gate: [auditoria 34](sdd/34-backlog-audit-2026-11-17.md).
+São 79 IDs BLG: 44 DONE e 35 pendentes; dez complementos entregues são contados à parte.
+Etapa 3 tem prontidão condicionada aos gates de integridade/regressão; hardening de
+produção, decisões de auditoria e sessão não estão implicitamente concluídos.
+Sem código, banco, commits ou pushes alterados nesta auditoria; arquivos locais preservados.
+
+---
+
+
 # Historical Project State - Shared Planner
 
 > [!IMPORTANT]

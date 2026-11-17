@@ -1,5 +1,30 @@
 # 01 — Current State (AS-IS)
 
+## Fase 3.0 — estabilização de 17/11/2026
+
+Gate financeiro P0 e critérios críticos P1 desta etapa encerrados: constraints V13,
+backup/restore, concorrência PostgreSQL, autenticação/429 e jornada HTTP real com Excel.
+Validação final: 166 Java sem falhas/erros/skips,197 Angular e build de produção PASS.
+Etapa 3.1 liberada para desenvolvimento; produção não homologada. Banco local em uso
+permanece V12 e recebeu somente backup/preflight; nenhum dado real alterado.
+Audit completo38→29, runtime0; correções residuais de toolchain permanecem abertas.
+Backlog vigente:48/79 BLG DONE,31 pendentes; dez complementos DONE separados.
+[Relatório da fase3.0](phase-3-stabilization/validation-report.md) registra limites e comandos. Sem commits/pushes.
+
+
+## Auditoria vigente — 17/11/2026
+
+Fonte atual por ID: [backlog 33](33-development-backlog.md), com evidências e gates no
+[relatório 34](34-backlog-audit-2026-11-17.md). Remodelagem profissional/DS publicada
+em f9c0853 (monorepo) e cecfd3e (frontend); backend permanece 9f8e2b8.
+Nesta auditoria: 197 testes frontend aprovados; backend 150 contabilizados, 149
+aprovados e um opt-in PostgreSQL ignorado, zero falhas/erros. Paridade 149/159 PASS.
+Audit npm runtime zero, completo 38 entradas (19 altas/19 moderadas), reabrindo SEC-005.
+44/79 IDs BLG concluídos; 35 pendentes; dez complementos entregues contados à parte.
+Checkpoints anteriores e resultados de migrations reais abaixo são históricos.
+Etapa 3 com prontidão condicionada aos gates descritos no relatório; sem alterações
+de código/banco e sem commits/pushes nesta auditoria.
+
 ## Fechamento da entrega — 16/11/2026
 
 Ver [publicação de perfis, calendários e financeiro](roles-calendar-finance-enhancements/publication-report.md).

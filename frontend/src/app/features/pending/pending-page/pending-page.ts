@@ -1,3 +1,4 @@
+import { SpButtonDirective, SpLoadingState, SpEmptyState } from '../../../shared/ui/design-system';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { finalize } from 'rxjs';
@@ -10,7 +11,7 @@ import { DataChangeService } from '../../../core/state/data-change.service';
 
 @Component({
   selector: 'app-pending-page',
-  imports: [],
+  imports: [SpButtonDirective, SpLoadingState, SpEmptyState],
   templateUrl: './pending-page.html',
   styleUrl: './pending-page.scss',
 })

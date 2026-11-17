@@ -1,3 +1,4 @@
+import { SpButtonDirective, SpInputDirective, SpSelectDirective, SpCheckboxDirective, SpTableDirective, SpLoadingState, SpEmptyState } from '../../../shared/ui/design-system';
 import { DOCUMENT } from '@angular/common';
 import { Component, DestroyRef, OnInit, computed, effect, inject, signal, untracked } from '@angular/core';
 import { RouterLink } from '@angular/router';
@@ -36,7 +37,7 @@ interface AppliedFinanceFilters extends DateRange {
 
 @Component({
   selector: 'app-finance-page',
-  imports: [RouterLink, DonutChart, LineChart, Icon],
+  imports: [SpButtonDirective, SpInputDirective, SpSelectDirective, SpCheckboxDirective, SpTableDirective, SpLoadingState, SpEmptyState, RouterLink, DonutChart, LineChart, Icon],
   templateUrl: './finance-page.html',
   styleUrl: './finance-page.scss',
 })
@@ -55,8 +56,7 @@ export class FinancePage implements OnInit {
     { value: 'WEEKLY', label: 'Semanal' },
     { value: 'BIWEEKLY', label: 'Quinzenal' },
     { value: 'MONTHLY', label: 'Mensal' },
-    { value: 'CUSTOM', label: 'Personalizado' },
-  ];
+    { value: 'CUSTOM', label: 'Personalizado' }];
 
   readonly calendars = signal<CalendarResponse[]>([]);
   readonly calendarsLoaded = signal(false);
@@ -371,8 +371,7 @@ export class FinancePage implements OnInit {
       { key: 'paid', label: 'Pago', value: finance.paidCount ?? 0, tone: 'paid' },
       { key: 'partial', label: 'Parcialmente pago', value: finance.partiallyPaidCount ?? 0, tone: 'partial' },
       { key: 'pending', label: 'Pendente', value: finance.pendingCount ?? 0, tone: 'pending' },
-      { key: 'refunded', label: 'Reembolsado', value: finance.refundedCount ?? 0, tone: 'refunded' },
-    ];
+      { key: 'refunded', label: 'Reembolsado', value: finance.refundedCount ?? 0, tone: 'refunded' }];
   }
 
   /** Donut de confirmação: QUANTIDADE, situação atual (não mistura com pagamento). */
@@ -381,8 +380,7 @@ export class FinancePage implements OnInit {
       { key: 'confirmed', label: 'Confirmados', value: finance.confirmedCount ?? 0, tone: 'confirmed' },
       { key: 'awaiting', label: 'Aguardando', value: finance.awaitingConfirmationCount ?? 0, tone: 'awaiting' },
       { key: 'unscheduled', label: 'Desmarcados', value: finance.unscheduledCount ?? 0, tone: 'unscheduled' },
-      { key: 'rescheduled', label: 'Remarcados', value: finance.rescheduledCount ?? 0, tone: 'rescheduled' },
-    ];
+      { key: 'rescheduled', label: 'Remarcados', value: finance.rescheduledCount ?? 0, tone: 'rescheduled' }];
   }
 
   activeAppointmentCount(finance: FinanceSummaryResponse): number {

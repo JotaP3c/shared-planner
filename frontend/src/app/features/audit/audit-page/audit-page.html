@@ -6,7 +6,7 @@
       <p>Histórico das operações registradas pelo sistema.</p>
     </div>
 
-    <button class="secondary-button" type="button" (click)="load()" [disabled]="isLoading()">
+    <button spButton variant="secondary" class="secondary-button" type="button" (click)="load()" [disabled]="isLoading()">
       {{ isLoading() ? 'Atualizando...' : 'Atualizar' }}
     </button>
   </header>
@@ -14,7 +14,7 @@
   <form class="page-form audit-filters" (submit)="$event.preventDefault(); load()" aria-label="Filtros da auditoria">
     <label class="sp-field">
       Calendário
-      <select data-testid="audit-calendar" (change)="selectCalendar($any($event.target).value)">
+      <select spSelect data-testid="audit-calendar" (change)="selectCalendar($any($event.target).value)">
         @if (isGlobalAdmin()) {
           <option value="" [selected]="!selectedCalendarId()">Todos</option>
         }
@@ -26,7 +26,7 @@
 
     <label class="sp-field">
       Tipo de registro
-      <select data-testid="audit-entity" (change)="selectEntityType($any($event.target).value)">
+      <select spSelect data-testid="audit-entity" (change)="selectEntityType($any($event.target).value)">
         <option value="" [selected]="!selectedEntityType()">Todos</option>
         @for (type of entityTypes; track type) {
           <option [value]="type" [selected]="type === selectedEntityType()">{{ entityLabel(type) }}</option>
@@ -36,7 +36,7 @@
 
     <label class="sp-field">
       Quantidade
-      <select data-testid="audit-limit" (change)="selectLimit($any($event.target).value)">
+      <select spSelect data-testid="audit-limit" (change)="selectLimit($any($event.target).value)">
         @for (limit of limits; track limit) {
           <option [value]="limit" [selected]="limit === selectedLimit()">Últimos {{ limit }}</option>
         }
@@ -45,28 +45,26 @@
   </form>
 
   <p class="page-hint">
-    Exibe os registros mais recentes (sem paginação). Valores anteriores e novos não são exibidos
-    até a definição da política de retenção e minimização (Q-006).
+    Consulte os registros mais recentes. Os filtros controlam o calendário, o tipo e a quantidade exibida.
   </p>
 
   @if (errorMessage()) {
     <p class="page-feedback is-error" role="alert" data-testid="audit-error">
       {{ errorMessage() }}
-      <button class="ghost-button" type="button" (click)="load()">Tentar novamente</button>
+      <button spButton variant="ghost" class="ghost-button" type="button" (click)="load()">Tentar novamente</button>
     </p>
   }
 
   <article class="page-panel">
     @if (isLoading() && !logs().length) {
-      <div class="page-empty" role="status"><strong>Carregando registros...</strong></div>
+      <sp-loading-state class="page-empty" label="Carregando registros..." />
     } @else if (showEmptyState()) {
-      <div class="page-empty" role="status" data-testid="audit-empty">
-        <strong>Nenhum registro encontrado.</strong>
-        <p>Ajuste os filtros ou realize operações para que elas apareçam aqui.</p>
-      </div>
+      <sp-empty-state class="page-empty" role="status" aria-live="polite" data-testid="audit-empty" icon="list"
+        title="Nenhum registro encontrado." description="Ajuste os filtros ou realize operações para que elas apareçam aqui." />
     } @else if (logs().length) {
       <div class="page-table-wrap">
-        <table class="page-table is-stackable" data-testid="audit-table">
+        <table spTable class="page-table is-stackable" data-testid="audit-table">
+          <caption class="sr-only">Histórico de operações para os filtros selecionados</caption>
           <thead>
             <tr>
               <th scope="col">Data</th>

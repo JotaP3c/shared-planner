@@ -1,3 +1,4 @@
+import { SpButtonDirective, SpInputDirective, SpSelectDirective, SpCheckboxDirective, SpLoadingState } from '../../shared/ui/design-system';
 import { Component, DestroyRef, computed, inject, OnInit, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { finalize, forkJoin, Observable, Subscription } from 'rxjs';
@@ -10,6 +11,7 @@ import { CalendarResponse, UserResponse } from '../../core/models/shared-planner
 import { DataChangeService } from '../../core/state/data-change.service';
 
 @Component({
+  imports: [SpButtonDirective, SpInputDirective, SpSelectDirective, SpCheckboxDirective, SpLoadingState],
   selector: 'app-access-page', templateUrl: './access-page.html', styleUrl: './access-page.scss',
 })
 export class AccessPage implements OnInit {

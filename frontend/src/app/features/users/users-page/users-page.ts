@@ -1,3 +1,4 @@
+import { SpButtonDirective, SpInputDirective, SpSelectDirective, SpCheckboxDirective, SpTableDirective, SpLoadingState, SpEmptyState } from '../../../shared/ui/design-system';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { finalize } from 'rxjs';
@@ -12,7 +13,7 @@ type PanelMode = 'closed' | 'create' | 'edit';
 
 @Component({
   selector: 'app-users-page',
-  imports: [ReactiveFormsModule, Icon],
+  imports: [SpButtonDirective, SpInputDirective, SpSelectDirective, SpCheckboxDirective, SpTableDirective, SpLoadingState, SpEmptyState, ReactiveFormsModule, Icon],
   templateUrl: './users-page.html',
   styleUrl: './users-page.scss',
 })

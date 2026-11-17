@@ -1,52 +1,52 @@
 <section class="page access-page" aria-labelledby="access-title">
   <header class="page-header"><div><span class="eyebrow">Administração</span><h1 id="access-title">Perfis e Permissões</h1>
     <p>Configure perfis globais e de calendário. Os acessos ao calendário continuam limitados aos seus membros.</p></div>
-    <button class="secondary-button" type="button" (click)="load()" [disabled]="loading()">Atualizar</button>
+    <button spButton variant="secondary" class="secondary-button" type="button" (click)="load()" [disabled]="loading()">Atualizar</button>
   </header>
   @if (error()) { <p class="page-feedback is-error" role="alert">{{ error() }}</p> }
   @if (success()) { <p class="page-feedback is-success" role="status">{{ success() }}</p> }
-  @if (loading()) { <p role="status">Carregando perfis...</p> }
+  @if (loading()) { <sp-loading-state label="Carregando perfis..." /> }
   @if (allowed() && !loading()) {
     <div class="profile-layout">
       <section class="access-card" aria-label="Perfis existentes"><h2>Perfis</h2>
-        <button class="secondary-button" type="button" (click)="newProfile()">Novo perfil</button>
+        <button spButton variant="secondary" class="secondary-button" type="button" (click)="newProfile()">Novo perfil</button>
         <ul class="profile-list">@for (profile of profiles(); track profile.id) { <li>
-          <button type="button" [class.selected]="editingId() === profile.id" (click)="edit(profile)">
+          <button type="button" [class.selected]="editingId() === profile.id" [attr.aria-pressed]="editingId() === profile.id" (click)="edit(profile)">
             <strong>{{ profile.name }}</strong><small>{{ profile.scope === 'GLOBAL' ? 'Sistema' : 'Calendário' }} · {{ profile.active ? 'Ativo' : 'Inativo' }}</small>
           </button></li> }</ul>
       </section>
       <section class="access-card" aria-label="Editar permissões"><h2>{{ editingId() ? 'Permissões do perfil' : 'Criar perfil' }}</h2>
         @if (protectedProfile()) { <p class="page-hint">Perfil essencial protegido. Sua administração global não pode ser removida.</p> }
         <form (submit)="$event.preventDefault(); saveProfile()">
-          <div class="access-fields"><label class="sp-field">Nome<input maxlength="120" required [value]="name()" (input)="name.set($any($event.target).value)" [disabled]="protectedProfile() || saving()" /></label>
-            <label class="sp-field">Escopo<select [value]="scope()" (change)="setScope($any($event.target).value)" [disabled]="!!editingId() || saving()"><option value="GLOBAL">Sistema</option><option value="CALENDAR">Calendário</option></select></label>
-            <label class="check-field"><input type="checkbox" [checked]="active()" (change)="active.set($any($event.target).checked)" [disabled]="protectedProfile() || saving()" /> Perfil ativo</label>
+          <div class="access-fields"><label class="sp-field">Nome<input spInput maxlength="120" required [value]="name()" (input)="name.set($any($event.target).value)" [disabled]="protectedProfile() || saving()" /></label>
+            <label class="sp-field">Escopo<select spSelect [value]="scope()" (change)="setScope($any($event.target).value)" [disabled]="!!editingId() || saving()"><option value="GLOBAL">Sistema</option><option value="CALENDAR">Calendário</option></select></label>
+            <label class="check-field"><input spCheckbox type="checkbox" [checked]="active()" (change)="active.set($any($event.target).checked)" [disabled]="protectedProfile() || saving()" /> Perfil ativo</label>
           </div>
           <fieldset class="permission-grid" [disabled]="protectedProfile() || saving()"><legend>Funcionalidades permitidas</legend>
             @for (permission of scopeCatalog(); track permission.code) { <label class="permission-option">
-              <input type="checkbox" [checked]="grants().includes(permission.code)" (change)="togglePermission(permission.code, $any($event.target).checked)" />
+              <input spCheckbox type="checkbox" [checked]="grants().includes(permission.code)" (change)="togglePermission(permission.code, $any($event.target).checked)" />
               <span>{{ permission.label }}<small>{{ permission.module }}</small></span>
             </label> }
           </fieldset>
           <p class="page-hint">Visualizar calendário é necessário para os acessos desse calendário. Importação também exige Criar eventos. Exportar e registrar pagamentos exigem a consulta financeira correspondente.</p>
-          <button class="primary-button" type="submit" [disabled]="saving() || protectedProfile() || !name().trim()">{{ saving() ? 'Salvando...' : 'Salvar perfil' }}</button>
+          <button spButton variant="primary" class="primary-button" type="submit" [disabled]="saving() || protectedProfile() || !name().trim()">{{ saving() ? 'Salvando...' : 'Salvar perfil' }}</button>
         </form>
       </section>
     </div>
     <section class="access-card" aria-labelledby="assignment-title"><h2 id="assignment-title">Associar usuários e consultar acessos</h2>
       <p class="page-hint">Perfis selecionados substituem os padrões nesse escopo. Sem perfis, os acessos são negados. A administração do próprio calendário permanece protegida.</p>
-      <div class="access-fields"><label class="sp-field">Usuário<select [value]="selectedUserId()" (change)="selectUser($any($event.target).value)" [disabled]="savingAssignment()"><option value="">Selecione</option>
+      <div class="access-fields"><label class="sp-field">Usuário<select spSelect [value]="selectedUserId()" (change)="selectUser($any($event.target).value)" [disabled]="savingAssignment()"><option value="">Selecione</option>
         @for (user of users(); track user.id) { <option [value]="user.id">{{ user.fullName }} · {{ user.email }}</option> }</select></label>
-        <label class="sp-field">Escopo da associação<select [value]="selectedCalendarId()" (change)="selectCalendar($any($event.target).value)" [disabled]="savingAssignment()"><option value="">Sistema</option>
+        <label class="sp-field">Escopo da associação<select spSelect [value]="selectedCalendarId()" (change)="selectCalendar($any($event.target).value)" [disabled]="savingAssignment()"><option value="">Sistema</option>
           @for (calendar of calendars(); track calendar.id) { <option [value]="calendar.id">{{ calendar.name }}</option> }</select></label></div>
-      @if (loadingAssignment()) { <p role="status">Consultando acessos...</p> }
+      @if (loadingAssignment()) { <sp-loading-state label="Consultando acessos..." size="sm" /> }
       @if (selectedUserId() && !loadingAssignment() && effective()) {
         <p class="page-hint">{{ explicitAssignment() ? 'Associação personalizada' : 'Perfis padrão dos papéis atuais' }}</p>
         <fieldset class="assignment-options" [disabled]="savingAssignment()"><legend>Perfis associados</legend>
-          @for (profile of assignmentProfiles(); track profile.id) { <label><input type="checkbox" [checked]="assignmentIds().includes(profile.id)" [disabled]="!profile.active && !assignmentIds().includes(profile.id)" (change)="toggleAssignment(profile.id, $any($event.target).checked)" /> {{ profile.name }}{{ profile.active ? '' : ' (inativo)' }}</label> }
+          @for (profile of assignmentProfiles(); track profile.id) { <label><input spCheckbox type="checkbox" [checked]="assignmentIds().includes(profile.id)" [disabled]="!profile.active && !assignmentIds().includes(profile.id)" (change)="toggleAssignment(profile.id, $any($event.target).checked)" /> {{ profile.name }}{{ profile.active ? '' : ' (inativo)' }}</label> }
         </fieldset>
-        <div class="page-actions"><button class="primary-button" type="button" (click)="saveAssignment()" [disabled]="savingAssignment()">{{ savingAssignment() ? 'Salvando...' : 'Salvar associação' }}</button>
-          <button class="secondary-button" type="button" (click)="saveAssignment(true)" [disabled]="savingAssignment() || !explicitAssignment()">Restaurar padrões</button></div>
+        <div class="page-actions"><button spButton variant="primary" class="primary-button" type="button" (click)="saveAssignment()" [disabled]="savingAssignment()">{{ savingAssignment() ? 'Salvando...' : 'Salvar associação' }}</button>
+          <button spButton variant="secondary" class="secondary-button" type="button" (click)="saveAssignment(true)" [disabled]="savingAssignment() || !explicitAssignment()">Restaurar padrões</button></div>
         <h3>Permissões efetivas</h3><p class="page-hint">Resultado após combinar os perfis do sistema com as permissões e o vínculo ao calendário.</p>
         <ul class="effective-list">@for (permission of effectiveGrants(); track permission) { <li>{{ permissionLabel(permission) }}</li> } @empty { <li>Nenhuma permissão neste escopo.</li> }</ul>
       }

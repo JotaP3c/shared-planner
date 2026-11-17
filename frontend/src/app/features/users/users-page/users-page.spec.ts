@@ -114,6 +114,22 @@ describe('UsersPage', () => {
     expect(component.createForm.invalid).toBe(true);
   });
 
+  it('associates visible validation messages with the invalid native inputs', () => {
+    http.expectOne('/api/users').flush([]);
+    component.openCreate();
+    component.submitCreate();
+    fixture.detectChanges();
+
+    const host = fixture.nativeElement as HTMLElement;
+    for (const [name, errorId] of [['fullName', 'create-name-error'], ['email', 'create-email-error'], ['password', 'create-password-error']]) {
+      const input = host.querySelector<HTMLInputElement>(`input[formControlName="${name}"]`)!;
+      expect(input.getAttribute('aria-invalid')).toBe('true');
+      expect(input.getAttribute('aria-describedby')).toBe(errorId);
+      expect(host.querySelector(`#${errorId}`)?.getAttribute('role')).toBe('alert');
+    }
+    http.expectNone(request => request.method === 'POST');
+  });
+
   it('creates a user and keeps the list sorted', () => {
     http.expectOne('/api/users').flush([user('bruno')]);
     component.openCreate();

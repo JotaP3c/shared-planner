@@ -8,13 +8,13 @@
 
     <div class="finance-actions">
       @if (canExport()) {
-        <button class="primary-button" type="button" data-testid="finance-export"
-          [disabled]="isExporting()" [attr.aria-busy]="isExporting()" (click)="exportExcel()">
+        <button spButton variant="primary" class="primary-button" type="button" data-testid="finance-export"
+          [disabled]="isExporting()" [loading]="isExporting()" [attr.aria-busy]="isExporting()" (click)="exportExcel()">
           <sp-icon name="list" [size]="16" />
           {{ isExporting() ? 'Gerando Excel...' : 'Exportar Excel' }}
         </button>
       }
-      <button
+      <button spButton variant="secondary"
       class="secondary-button"
       type="button"
       [disabled]="!selectedCalendarId() || isLoadingSummary()"
@@ -29,9 +29,8 @@
   @if (exportError()) { <p class="page-feedback is-error" role="alert" data-testid="finance-export-error">{{ exportError() }}</p> }
 
   @if (isLoadingCalendars()) {
-    <section class="state-card" aria-live="polite" aria-busy="true">
-      <span class="state-icon loading" aria-hidden="true"></span>
-      <strong>Carregando calendários...</strong>
+    <section class="state-card">
+      <sp-loading-state label="Carregando calendários..." />
       <p>Estamos verificando as agendas às quais você possui acesso financeiro.</p>
     </section>
   } @else if (calendarErrorMessage()) {
@@ -39,14 +38,11 @@
       <span class="state-icon" aria-hidden="true">!</span>
       <strong>Não foi possível abrir o financeiro</strong>
       <p>{{ calendarErrorMessage() }}</p>
-      <button class="secondary-button" type="button" (click)="loadCalendars()">Tentar novamente</button>
+      <button spButton variant="secondary" class="secondary-button" type="button" (click)="loadCalendars()">Tentar novamente</button>
     </section>
   } @else if (noAccess()) {
-    <section class="state-card" data-testid="finance-no-access">
-      <span class="state-icon lock" aria-hidden="true"></span>
-      <strong>Sem acesso financeiro</strong>
-      <p>Você precisa de permissão financeira em pelo menos um calendário.</p>
-    </section>
+    <sp-empty-state class="state-card" data-testid="finance-no-access" icon="lock"
+      title="Sem acesso financeiro" description="Você precisa de permissão financeira em pelo menos um calendário." />
   } @else if (authorizedCalendars().length) {
     <form class="page-panel finance-filters" [class.is-collapsed]="filtersCollapsed()" (submit)="$event.preventDefault(); applyFilters()">
       <div class="filter-heading">
@@ -56,7 +52,7 @@
         </div>
         <div class="filter-heading-actions">
           @if (!filtersCollapsed()) { <small>Datas inicial e final são inclusivas.</small> }
-          <button class="secondary-button icon-control" type="button" data-testid="finance-filter-toggle"
+          <button spButton variant="secondary" class="secondary-button icon-control" type="button" data-testid="finance-filter-toggle"
             [attr.aria-expanded]="!filtersCollapsed()" aria-controls="finance-filter-controls"
             [attr.aria-label]="filtersCollapsed() ? 'Expandir filtros' : 'Recolher filtros'"
             [title]="filtersCollapsed() ? 'Expandir filtros' : 'Recolher filtros'" (click)="toggleFilters()">
@@ -69,7 +65,7 @@
       <div class="filter-grid">
         <label class="sp-field">
           Calendário
-          <select
+          <select spSelect
             aria-label="Calendário financeiro"
             data-testid="finance-calendar-select"
             [disabled]="isLoadingSummary() || consolidated()"
@@ -83,7 +79,7 @@
 
         <label class="sp-field">
           Período
-          <select
+          <select spSelect
             aria-label="Período financeiro"
             data-testid="finance-period-select"
             (change)="selectPeriod($any($event.target).value)"
@@ -97,7 +93,7 @@
         @if (selectedPeriod() === 'CUSTOM') {
           <label class="sp-field">
             Data inicial
-            <input
+            <input spInput
               type="date"
               aria-label="Data inicial"
               [value]="customStartDate()"
@@ -107,7 +103,7 @@
 
           <label class="sp-field">
             Data final
-            <input
+            <input spInput
               type="date"
               aria-label="Data final"
               [value]="customEndDate()"
@@ -117,7 +113,7 @@
         } @else {
           <label class="sp-field">
             Data de referência
-            <input
+            <input spInput
               type="date"
               aria-label="Data de referência"
               [value]="referenceDate()"
@@ -126,18 +122,18 @@
           </label>
         }
 
-        <button class="primary-button" type="submit" [disabled]="isLoadingSummary()">
+        <button spButton variant="primary" class="primary-button" type="submit" [disabled]="isLoadingSummary()">
           Aplicar período
         </button>
       </div>
 
       <div class="finance-scope-options">
-        <label class="consolidation-option"><input type="checkbox" [checked]="consolidated()"
+        <label class="consolidation-option"><input spCheckbox type="checkbox" [checked]="consolidated()"
           (change)="setConsolidated($any($event.target).checked)" /> Consolidar calendários</label>
       @if (consolidated()) {
         <div class="finance-calendars" role="group" aria-label="Calendários do consolidado">
           @for (calendar of authorizedCalendars(); track calendar.id) {
-            <label><input type="checkbox" [checked]="includedCalendarIds().includes(calendar.id)"
+            <label><input spCheckbox type="checkbox" [checked]="includedCalendarIds().includes(calendar.id)"
               (change)="toggleIncludedCalendar(calendar.id)" />{{ calendar.name }}</label>
           }
         </div>
@@ -154,15 +150,12 @@
     @if (errorMessage()) {
       <p class="page-feedback is-error" role="alert">
         <strong>Não foi possível atualizar o resumo.</strong> {{ errorMessage() }}
-        <button class="ghost-button" type="button" (click)="refresh()">Tentar novamente</button>
+        <button spButton variant="ghost" class="ghost-button" type="button" (click)="refresh()">Tentar novamente</button>
       </p>
     }
 
     @if (isLoadingSummary()) {
-      <section class="state-card compact" aria-live="polite" aria-busy="true">
-        <span class="state-icon loading" aria-hidden="true"></span>
-        <strong>Calculando resumo...</strong>
-      </section>
+      <section class="state-card compact"><sp-loading-state label="Calculando resumo..." /></section>
     } @else if (summary(); as finance) {
       <section class="summary-section" aria-labelledby="values-title">
         @if (finance.containsSimulatedData) {
@@ -238,14 +231,12 @@
         </div>
 
         @if (isEmpty()) {
-          <div class="empty-summary" data-testid="finance-empty">
-            <strong>Nenhum atendimento no período</strong>
-            <p>Não há receitas de eventos CLIENT não cancelados neste intervalo.</p>
-          </div>
+          <sp-empty-state class="empty-summary" data-testid="finance-empty"
+            title="Nenhum atendimento no período" description="Não há receitas de atendimentos de clientes não cancelados neste intervalo." />
         } @else {
           <div class="finance-chart-toolbar">
             <h2><sp-icon name="chart" [size]="17" /> Análise do período</h2>
-            <button class="secondary-button icon-control" type="button" data-testid="finance-charts-toggle"
+            <button spButton variant="secondary" class="secondary-button icon-control" type="button" data-testid="finance-charts-toggle"
               [attr.aria-expanded]="!chartsCollapsed()" aria-controls="finance-charts"
               [attr.aria-label]="chartsCollapsed() ? 'Expandir gráficos' : 'Recolher gráficos'"
               [title]="chartsCollapsed() ? 'Expandir gráficos' : 'Recolher gráficos'" (click)="toggleCharts()">
@@ -259,7 +250,7 @@
                 <small>{{ timeline()?.granularity === 'MONTH' ? 'Por mês' : 'Por dia' }} · valores em R$</small>
               </header>
               @if (isLoadingDetails()) {
-                <p class="sp-chart-empty" role="status">Carregando evolução...</p>
+                <sp-loading-state label="Carregando evolução..." />
               } @else if (detailsError()) {
                 <p class="page-feedback is-error" role="alert">{{ detailsError() }}</p>
               } @else {
@@ -306,10 +297,11 @@
             </header>
 
             @if (isLoadingDetails()) {
-              <p class="sp-chart-empty" role="status">Carregando atendimentos...</p>
+              <sp-loading-state label="Carregando atendimentos..." />
             } @else if (appointments().length) {
               <div class="page-table-wrap">
-                <table class="page-table is-stackable" data-testid="recent-appointments">
+                <table spTable density="compact" class="page-table is-stackable" data-testid="recent-appointments">
+                  <caption class="sr-only">Atendimentos recentes do período selecionado</caption>
                   <thead>
                     <tr>
                       <th scope="col">Data</th>

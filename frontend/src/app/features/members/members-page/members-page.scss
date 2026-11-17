@@ -1,7 +1,6 @@
-:host {
-  display: block;
-}
-
-.additional-roles { display: flex; flex-wrap: wrap; gap: 10px; font-size: 12px; }
-.additional-roles label { display: flex; align-items: center; gap: 5px; }
-app-calendar-creator { margin-bottom: 16px; }
+:host { display: block; }
+.additional-roles { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-space-3); font-size: var(--sp-font-size-xs); }
+.additional-roles label { display: flex; align-items: center; gap: var(--sp-space-2); }
+td .additional-roles { margin-top: var(--sp-space-2); }
+td button + select { margin-top: var(--sp-space-2); }
+fieldset label + label { margin-top: var(--sp-space-2); }

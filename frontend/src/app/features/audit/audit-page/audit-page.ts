@@ -1,3 +1,4 @@
+import { SpButtonDirective, SpSelectDirective, SpTableDirective, SpLoadingState, SpEmptyState } from '../../../shared/ui/design-system';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { finalize } from 'rxjs';
 
@@ -43,7 +44,7 @@ const ENTITY_LABELS: Record<AuditEntityType, string> = {
  */
 @Component({
   selector: 'app-audit-page',
-  imports: [],
+  imports: [SpButtonDirective, SpSelectDirective, SpTableDirective, SpLoadingState, SpEmptyState],
   templateUrl: './audit-page.html',
   styleUrl: './audit-page.scss',
 })

@@ -419,6 +419,7 @@ describe('FinancePage', () => {
     expect(request.request.params.get('endDate')).toBe('2026-11-30');
     expect(component.isExporting()).toBe(true);
     expect((fixture.nativeElement.querySelector('[data-testid="finance-export"]') as HTMLButtonElement).disabled).toBe(true);
+    expect(fixture.nativeElement.querySelector('[data-testid="finance-export"]')?.getAttribute('aria-busy')).toBe('true');
     const blob = new Blob(['xlsx-content'], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
     request.flush(blob, { headers: { 'Content-Disposition': 'attachment; filename="shared-planner-financial-report-2026-11.xlsx"' } });
     expect(downloaded).toHaveBeenCalledWith(blob, 'shared-planner-financial-report-2026-11.xlsx');

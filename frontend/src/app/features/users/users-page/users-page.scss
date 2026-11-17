@@ -1,38 +1,5 @@
-:host {
-  display: block;
-}
-
-.users-search {
-  min-width: 240px;
-}
-
-.row-actions {
-  display: inline-flex;
-  gap: 6px;
-
-  .icon-button {
-    width: 34px;
-    height: 34px;
-  }
-
-  .icon-button.danger:hover:not(:disabled) {
-    border-color: var(--sp-danger);
-    color: var(--sp-danger);
-  }
-
-  .icon-button:disabled {
-    opacity: 0.45;
-    cursor: not-allowed;
-  }
-}
-
-.checkbox-field span {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.checkbox-field input {
-  width: auto;
-  min-height: 0;
-}
+:host { display: block; }
+.users-search { min-width: min(240px, 100%); max-width: 100%; }
+.row-actions { display: inline-flex; flex-wrap: wrap; gap: var(--sp-space-2); .icon-button { width: 36px; height: 36px; } .icon-button.danger:hover:not(:disabled) { border-color: var(--sp-danger); color: var(--sp-feedback-danger-text); } .icon-button:disabled { opacity: var(--sp-disabled-opacity); cursor: not-allowed; } }
+.checkbox-field span { display: flex; align-items: center; gap: var(--sp-space-2); }
+@media (max-width: 720px) { .users-search { width: 100%; } .row-actions .icon-button { width: 40px; height: 40px; } }

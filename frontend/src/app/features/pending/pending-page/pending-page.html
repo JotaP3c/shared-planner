@@ -6,7 +6,7 @@
       <p>Acompanhe os eventos compartilhados que aguardam resposta.</p>
     </div>
 
-    <button class="secondary-button" type="button" (click)="loadPendingEvents()" [disabled]="isLoading()">
+    <button spButton variant="secondary" class="secondary-button" type="button" (click)="loadPendingEvents()" [disabled]="isLoading()">
       {{ isLoading() ? 'Atualizando...' : 'Atualizar' }}
     </button>
   </header>
@@ -18,7 +18,7 @@
   @if (loadError()) {
     <p class="page-feedback is-error" role="alert" data-testid="pending-load-error">
       {{ loadError() }}
-      <button class="ghost-button" type="button" (click)="loadPendingEvents()" [disabled]="isLoading()">
+      <button spButton variant="ghost" class="ghost-button" type="button" (click)="loadPendingEvents()" [disabled]="isLoading()">
         Tentar novamente
       </button>
     </p>
@@ -69,12 +69,12 @@
             </dl>
 
             <footer>
-              <button class="ghost-button" type="button" (click)="openInCalendar(event)">
+              <button spButton variant="ghost" class="ghost-button" type="button" (click)="openInCalendar(event)">
                 Abrir no calendário
               </button>
 
               @if (canRespond(event)) {
-                <button
+                <button spButton variant="primary"
                   class="save-button"
                   type="button"
                   [disabled]="isActionInProgress(event.id)"
@@ -83,7 +83,7 @@
                   Aprovar
                 </button>
 
-                <button
+                <button spButton variant="danger"
                   class="danger-button"
                   type="button"
                   [disabled]="isActionInProgress(event.id)"
@@ -97,14 +97,10 @@
         </section>
       } @empty {
         @if (isLoading()) {
-          <div class="page-empty" role="status" data-testid="pending-loading">
-            <strong>Carregando pendências...</strong>
-          </div>
+          <sp-loading-state class="page-empty" data-testid="pending-loading" label="Carregando pendências..." />
         } @else if (showEmptyState()) {
-          <div class="page-empty" role="status" data-testid="pending-empty">
-            <strong>Nenhuma pendência encontrada.</strong>
-            <p>Quando um evento compartilhado depender de aprovação, ele aparecerá aqui.</p>
-          </div>
+          <sp-empty-state class="page-empty" role="status" aria-live="polite" data-testid="pending-empty" icon="inbox"
+            title="Nenhuma pendência encontrada." description="Quando um evento compartilhado depender de aprovação, ele aparecerá aqui." />
         }
       }
     </div>

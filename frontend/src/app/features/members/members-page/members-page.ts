@@ -1,3 +1,4 @@
+import { SpButtonDirective, SpInputDirective, SpSelectDirective, SpCheckboxDirective, SpTableDirective, SpLoadingState } from '../../../shared/ui/design-system';
 import { DatePipe } from '@angular/common';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { Subscription, finalize, forkJoin, Observable } from 'rxjs';
@@ -10,7 +11,7 @@ import { canCalendarPermission } from '../../../core/auth/calendar-permissions';
 import { CalendarCreator } from '../../calendar/calendar-creator/calendar-creator';
 import { CalendarMemberResponse, CalendarMemberRole, CalendarResponse } from '../../../core/models/shared-planner.models';
 
-@Component({ selector: 'app-members-page', imports: [DatePipe, CalendarCreator], templateUrl: './members-page.html', styleUrl: './members-page.scss' })
+@Component({ selector: 'app-members-page', imports: [SpButtonDirective, SpInputDirective, SpSelectDirective, SpCheckboxDirective, SpTableDirective, SpLoadingState, DatePipe, CalendarCreator], templateUrl: './members-page.html', styleUrl: './members-page.scss' })
 export class MembersPage implements OnInit {
   private readonly calendarService = inject(CalendarService);
   private readonly authService = inject(AuthService);

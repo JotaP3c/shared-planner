@@ -9,7 +9,7 @@
     <div class="page-actions">
       <label class="sp-field">
         Calendário
-        <select
+        <select spSelect
           [value]="selectedCalendarId()"
           (change)="selectCalendar($any($event.target).value)"
         >
@@ -33,15 +33,13 @@
 
   @if (canManage()) {
     <p class="page-hint">
-      Adicionar membro dá acesso ao calendário a uma conta que já existe e está ativa. Para quem ainda
-      não tem conta, um administrador global deve cadastrá-la em <strong>Administração › Usuários</strong>.
-      Alterar os papéis de um membro restaura os acessos padrão desses papéis. Para configurar
-      permissões personalizadas, use <strong>Gerenciar acessos</strong>.
+      Adicione contas já cadastradas e ativas. Novos cadastros ficam em <strong>Administração › Usuários</strong>.
+      Use <strong>Gerenciar acessos</strong> para personalizar permissões; trocar os papéis restaura seus acessos padrão.
     </p>
     <form class="page-form" (submit)="$event.preventDefault(); addMember()">
       <label class="sp-field">
         E-mail
-        <input
+        <input spInput
           type="email"
           required
           autocomplete="off"
@@ -53,7 +51,7 @@
 
       <label class="sp-field">
         Papel
-        <select data-testid="member-role-select" (change)="memberRole.set($any($event.target).value)">
+        <select spSelect data-testid="member-role-select" (change)="memberRole.set($any($event.target).value)">
           @for (role of roles; track role) {
             <option [value]="role" [selected]="role === memberRole()">{{ roleLabel(role) }}</option>
           }
@@ -61,11 +59,11 @@
       </label>
 
       <div class="additional-roles" role="group" aria-label="Permissões adicionais">
-        <label><input type="checkbox" [checked]="additionalFinance()" (change)="additionalFinance.set($any($event.target).checked)" /> Financeiro adicional</label>
-        <label><input type="checkbox" [checked]="additionalEditor()" (change)="additionalEditor.set($any($event.target).checked)" /> Editor adicional</label>
+        <label><input spCheckbox type="checkbox" [checked]="additionalFinance()" (change)="additionalFinance.set($any($event.target).checked)" /> Financeiro adicional</label>
+        <label><input spCheckbox type="checkbox" [checked]="additionalEditor()" (change)="additionalEditor.set($any($event.target).checked)" /> Editor adicional</label>
       </div>
 
-      <button class="primary-button" type="submit" [disabled]="isSaving()">
+      <button spButton variant="primary" class="primary-button" type="submit" [disabled]="isSaving()">
         {{ isSaving() ? 'Salvando...' : 'Adicionar membro' }}
       </button>
     </form>
@@ -74,25 +72,26 @@
   @if (accessMember(); as member) {
     <section class="page-form" aria-label="Gerenciar acessos do calendário">
       <h2>Acessos de {{ member.userFullName }}</h2>
-      @if (accessLoading()) { <p role="status">Consultando permissões...</p> }
+      @if (accessLoading()) { <sp-loading-state label="Consultando permissões..." size="sm" /> }
       @if (!accessLoading() && effectiveAccess()) {
         <p class="page-hint">{{ accessExplicit() ? 'Perfis personalizados' : 'Perfis padrão dos papéis atuais' }}. As permissões globais também limitam o resultado.</p>
         <fieldset [disabled]="accessSaving()"><legend>Perfis deste calendário</legend>
-          @for (profile of accessProfiles(); track profile.id) { <label class="additional-roles"><input type="checkbox" [checked]="accessProfileIds().includes(profile.id)" [disabled]="!profile.active && !accessProfileIds().includes(profile.id)" (change)="toggleAccessProfile(profile.id, $any($event.target).checked)" />{{ profile.name }}{{ profile.active ? '' : ' (inativo)' }}</label> }
+          @for (profile of accessProfiles(); track profile.id) { <label class="additional-roles"><input spCheckbox type="checkbox" [checked]="accessProfileIds().includes(profile.id)" [disabled]="!profile.active && !accessProfileIds().includes(profile.id)" (change)="toggleAccessProfile(profile.id, $any($event.target).checked)" />{{ profile.name }}{{ profile.active ? '' : ' (inativo)' }}</label> }
         </fieldset>
         <div><strong>Permissões efetivas</strong><p>{{ memberPermissionLabels().join(' · ') || 'Nenhuma permissão neste calendário.' }}</p></div>
-        <div class="page-actions"><button class="primary-button" type="button" (click)="saveAccess()" [disabled]="accessSaving()">Salvar acessos</button>
-          <button class="secondary-button" type="button" (click)="saveAccess(true)" [disabled]="accessSaving() || !accessExplicit()">Restaurar padrões</button></div>
+        <div class="page-actions"><button spButton variant="primary" class="primary-button" type="button" (click)="saveAccess()" [disabled]="accessSaving()">Salvar acessos</button>
+          <button spButton variant="secondary" class="secondary-button" type="button" (click)="saveAccess(true)" [disabled]="accessSaving() || !accessExplicit()">Restaurar padrões</button></div>
       }
-      <button class="secondary-button" type="button" (click)="closeAccess()" [disabled]="accessSaving()">Fechar</button>
+      <button spButton variant="secondary" class="secondary-button" type="button" (click)="closeAccess()" [disabled]="accessSaving()">Fechar</button>
     </section>
   }
 
   <div class="page-table-wrap">
     @if (isLoading()) {
-      <p class="page-empty" role="status">Carregando membros...</p>
+      <sp-loading-state class="page-empty" label="Carregando membros..." />
     } @else {
-      <table class="page-table is-stackable">
+      <table spTable class="page-table is-stackable">
+        <caption class="sr-only">Membros do calendário selecionado</caption>
         <thead>
           <tr>
             <th scope="col">Usuário</th>
@@ -113,9 +112,9 @@
               <td data-label="Papel">
                 @if (canManage() && !isOwner(member)) {
                   @if (member.userId) {
-                    <button class="secondary-button" type="button" (click)="manageAccess(member)" [disabled]="accessSaving()">Gerenciar acessos</button>
+                    <button spButton variant="secondary" class="secondary-button" type="button" (click)="manageAccess(member)" [disabled]="accessSaving()">Gerenciar acessos</button>
                   }
-                  <select
+                  <select spSelect
                     [attr.aria-label]="'Papel de ' + member.userFullName"
                     [value]="member.role"
                     [disabled]="isMemberBusy(member.id)"
@@ -127,7 +126,7 @@
                   </select>
                   <div class="additional-roles">
                     @for (role of ['EDITOR', 'FINANCE']; track role) {
-                      <label><input type="checkbox" [checked]="effectiveRoles(member).includes($any(role))"
+                      <label><input spCheckbox type="checkbox" [checked]="effectiveRoles(member).includes($any(role))"
                         [disabled]="isMemberBusy(member.id) || member.role === role"
                         (change)="setAdditionalRole(member, $any(role), $any($event.target).checked)" />{{ roleLabel($any(role)) }}</label>
                     }
@@ -141,7 +140,7 @@
               <td data-label="Entrada">{{ member.createdAt ? (member.createdAt | date:'dd/MM/yyyy HH:mm') : '—' }}</td>
               <td data-label="Ações">
                 @if (canManage() && !isOwner(member)) {
-                  <button
+                  <button spButton variant="danger"
                     class="danger-button"
                     type="button"
                     [attr.aria-label]="'Remover ' + member.userFullName"

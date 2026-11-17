@@ -3,6 +3,7 @@ package com.sharedplanner.migration;
 import org.flywaydb.core.Flyway;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
+import com.sharedplanner.stabilization.PostgresTestBackup;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
@@ -22,6 +23,7 @@ class PostgresMigrationIntegrationTests {
         String schema = "audit_" + UUID.randomUUID().toString().replace("-", "");
         var configuration = Flyway.configure().dataSource(url, "planner_test", "")
                 .schemas(schema).defaultSchema(schema).locations("classpath:db/migration");
+        PostgresTestBackup.create("audit_migration_test", null);
         configuration.target("7").load().migrate();
         UUID owner = UUID.randomUUID();
         UUID other = UUID.randomUUID();
@@ -52,6 +54,7 @@ class PostgresMigrationIntegrationTests {
                     .isEqualTo("PENDING_CONFIRMATION");
             assertThat(scalar(connection, "SELECT confirmation_status FROM events WHERE id='" + personal + "'"))
                     .isNull();
+            PostgresTestBackup.create("audit_migration_test", schema);
             Flyway latest = configuration.target("latest").load();
             latest.migrate();
             latest.validate();
@@ -71,9 +74,9 @@ class PostgresMigrationIntegrationTests {
             assertThat(scalar(connection, "SELECT count(*) FROM flyway_schema_history WHERE version IN ('8','9','10','11','12') AND success=true"))
                     .isEqualTo("5");
             assertThat(scalar(connection, "SELECT count(*) FROM flyway_schema_history WHERE success=true AND version IS NOT NULL"))
-                    .isEqualTo("12");
+                    .isEqualTo("13");
             assertThat(scalar(connection, "SELECT max(version::integer) FROM flyway_schema_history WHERE success=true"))
-                    .isEqualTo("12");
+                    .isEqualTo("13");
             assertThat(scalar(connection, "SELECT count(*) FROM events WHERE financial_simulation=false AND simulation_reference_date IS NULL"))
                     .isEqualTo("2");
             assertThat(scalar(connection, "SELECT count(*) FROM development_event_corrections")).isEqualTo("0");
@@ -100,6 +103,47 @@ class PostgresMigrationIntegrationTests {
             assertThat(latest.migrate().migrationsExecuted).isZero();
             assertThat(scalar(connection, "SELECT count(*) FROM calendars WHERE calendar_type='PERSONAL'"))
                     .isEqualTo("3");
+        }
+    }
+
+    @Test
+    void financialMigrationPreservesValidLegacyAndAtomicallyRejectsInvalidLegacy() throws Exception {
+        String url=System.getenv("PLANNER_MIGRATION_TEST_URL");
+        assertThat(url).isEqualTo("jdbc:postgresql://127.0.0.1:54629/audit_migration_test");
+        for(boolean invalid : new boolean[]{false,true}) {
+            String schema="audit_"+UUID.randomUUID().toString().replace("-","");
+            var configuration=Flyway.configure().dataSource(url,"planner_test","")
+                    .schemas(schema).defaultSchema(schema).locations("classpath:db/migration");
+            PostgresTestBackup.create("audit_migration_test",null);
+            configuration.target("12").load().migrate();
+            UUID owner=UUID.randomUUID(),calendar=UUID.randomUUID(),event=UUID.randomUUID();
+            try(Connection connection=DriverManager.getConnection(url,"planner_test","")) {
+                connection.setSchema(schema);
+                try(var statement=connection.createStatement()) {
+                    statement.executeUpdate("INSERT INTO users(id,full_name,email,password_hash,role) VALUES ('"+owner+"','Synthetic legacy','"+owner+"@phase3.invalid','test-only','USER')");
+                    statement.executeUpdate("INSERT INTO calendars(id,name,owner_user_id) VALUES ('"+calendar+"','Synthetic legacy','"+owner+"')");
+                    statement.executeUpdate("INSERT INTO events(id,calendar_id,created_by_user_id,event_type,status,title,client_name,work_description,amount,starts_at,ends_at,payment_status,payment_method,received_amount,paid_at) VALUES ('"+event+"','"+calendar+"','"+owner+"','CLIENT','SCHEDULED','Synthetic legacy','Synthetic client','Synthetic service',100,'2030-11-17 10:00','2030-11-17 11:00','PAID','PIX',"+(invalid?"101":"100")+",'2030-11-17 11:00')");
+                }
+                var backup=PostgresTestBackup.create("audit_migration_test",schema);
+                PostgresTestBackup.restoreForVerification(backup);
+                try(Connection restored=DriverManager.getConnection("jdbc:postgresql://127.0.0.1:54629/phase3_backup_restore","planner_test","")) {
+                    restored.setSchema(schema);
+                    assertThat(scalar(restored,"select received_amount from events where id='"+event+"'"))
+                            .isEqualTo(invalid?"101.00":"100.00");
+                    assertThat(scalar(restored,"select max(version::integer) from flyway_schema_history where success=true")).isEqualTo("12");
+                }
+                if(invalid) {
+                    assertThatThrownBy(()->configuration.target("latest").load().migrate()).isInstanceOf(org.flywaydb.core.api.FlywayException.class);
+                    assertThat(scalar(connection,"select max(version::integer) from flyway_schema_history where success=true")).isEqualTo("12");
+                    assertThat(scalar(connection,"select received_amount from events where id='"+event+"'")).isEqualTo("101.00");
+                    assertThat(scalar(connection,"select count(*) from pg_constraint where conname='ck_events_financial_state' and connamespace='"+schema+"'::regnamespace")).isEqualTo("0");
+                } else {
+                    configuration.target("latest").load().migrate();
+                    assertThat(scalar(connection,"select received_amount from events where id='"+event+"'")).isEqualTo("100.00");
+                    assertThat(scalar(connection,"select count(*) from events")).isEqualTo("1");
+                    assertThat(scalar(connection,"select convalidated::text from pg_constraint where conname='ck_events_financial_state' and connamespace='"+schema+"'::regnamespace")).isEqualTo("true");
+                }
+            }
         }
     }
 

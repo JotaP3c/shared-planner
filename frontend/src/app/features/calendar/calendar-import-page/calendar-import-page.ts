@@ -1,3 +1,4 @@
+import { SpButtonDirective, SpInputDirective, SpSelectDirective, SpCheckboxDirective, SpTableDirective } from '../../../shared/ui/design-system';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { finalize } from 'rxjs';
 import { CalendarService } from '../../../core/api/calendar.service';
@@ -8,8 +9,9 @@ import { canCalendarPermission } from '../../../core/auth/calendar-permissions';
 
 @Component({
   selector: 'app-calendar-import-page',
+  imports: [SpButtonDirective, SpInputDirective, SpSelectDirective, SpCheckboxDirective, SpTableDirective],
   templateUrl: './calendar-import-page.html',
-  styles: `:host { display: block; } .import-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 14px; } .import-panel { padding: 20px; margin-bottom: 18px; } .import-confirm { display: flex; gap: 8px; margin: 18px 0; } .import-actions { display: flex; flex-wrap: wrap; gap: 12px; } .import-summary { color: var(--sp-text-2); }`,
+  styles: `:host { display: block; } .import-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: var(--sp-space-4); } .import-panel { padding: var(--sp-space-5); margin-bottom: var(--sp-space-5); } .import-confirm { display: flex; gap: var(--sp-space-2); margin: var(--sp-space-4) 0; } .import-actions { display: flex; flex-wrap: wrap; gap: var(--sp-space-3); } .import-summary { color: var(--sp-content-secondary); }`,
 })
 export class CalendarImportPage implements OnInit {
   private readonly calendarService = inject(CalendarService);

@@ -46,13 +46,13 @@
   @if (canConfirm() || canUnschedule()) {
     <div class="confirmation-actions">
       @if (canConfirm()) {
-        <button class="save-button" type="button" data-testid="confirm-appointment" [disabled]="isSaving()" (click)="confirm()">
+        <button spButton class="save-button" type="button" data-testid="confirm-appointment" [disabled]="isSaving()" (click)="confirm()">
           <sp-icon name="check" [size]="16" />
           {{ isSaving() ? 'Salvando...' : 'Confirmar agendamento' }}
         </button>
       }
       @if (canUnschedule() && !isUnscheduleFormOpen()) {
-        <button class="secondary-button" type="button" data-testid="open-unschedule" [disabled]="isSaving()"
+        <button spButton variant="secondary" class="secondary-button" type="button" data-testid="open-unschedule" [disabled]="isSaving()"
                 (click)="openUnscheduleForm()">
           <sp-icon name="x" [size]="16" />
           Desmarcar agendamento
@@ -82,15 +82,15 @@
         <div class="reschedule-fields">
           <label class="sp-field">
             Nova data
-            <input type="date" formControlName="newDate" data-testid="reschedule-date" />
+            <input spInput type="date" formControlName="newDate" data-testid="reschedule-date" />
           </label>
           <label class="sp-field">
             Início
-            <input type="time" formControlName="newStartTime" data-testid="reschedule-start" />
+            <input spInput type="time" formControlName="newStartTime" data-testid="reschedule-start" />
           </label>
           <label class="sp-field">
             Término
-            <input type="time" formControlName="newEndTime" data-testid="reschedule-end" />
+            <input spInput type="time" formControlName="newEndTime" data-testid="reschedule-end" />
           </label>
         </div>
         <p class="field-hint">A remarcação altera a data deste mesmo atendimento. Valor e pagamentos não são duplicados.</p>
@@ -102,7 +102,7 @@
             {{ selectedReason() === 'OTHER' ? 'Justificativa' : 'Observações (opcional)' }}
             @if (selectedReason() === 'OTHER') { <span class="req">*</span> }
           </span>
-          <textarea formControlName="notes" rows="2" maxlength="500" data-testid="unschedule-notes"></textarea>
+          <textarea spInput formControlName="notes" rows="2" maxlength="500" data-testid="unschedule-notes"></textarea>
         </label>
       }
 
@@ -111,8 +111,8 @@
       }
 
       <footer>
-        <button class="ghost-button" type="button" [disabled]="isSaving()" (click)="closeUnscheduleForm()">Voltar</button>
-        <button class="danger-button" type="submit" data-testid="submit-unschedule" [disabled]="isSaving()">
+        <button spButton variant="ghost" class="ghost-button" type="button" [disabled]="isSaving()" (click)="closeUnscheduleForm()">Voltar</button>
+        <button spButton variant="danger" class="danger-button" type="submit" data-testid="submit-unschedule" [disabled]="isSaving()">
           {{ isSaving() ? 'Salvando...' : selectedReason() === 'RESCHEDULE' ? 'Remarcar' : 'Desmarcar' }}
         </button>
       </footer>

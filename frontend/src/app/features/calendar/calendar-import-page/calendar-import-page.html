@@ -6,12 +6,12 @@
   <form class="sp-card import-panel" (submit)="$event.preventDefault(); preview()" [attr.aria-busy]="loading()">
     <fieldset [disabled]="loading()" class="import-grid">
       <legend>Fonte e mapeamento</legend>
-      <label class="sp-field">Arquivo ICS<input type="file" accept=".ics,text/calendar" (change)="readFile($any($event.target).files?.[0])" /></label>
+      <label class="sp-field">Arquivo ICS<input spInput type="file" accept=".ics,text/calendar" (change)="readFile($any($event.target).files?.[0])" /></label>
       <label class="sp-field">Identificador do calendário de origem
-        <input type="text" required maxlength="255" [value]="sourceCalendarId()" (input)="sourceCalendarId.set($any($event.target).value); invalidate()" placeholder="ID da agenda exportada" />
+        <input spInput type="text" required maxlength="255" [value]="sourceCalendarId()" (input)="sourceCalendarId.set($any($event.target).value); invalidate()" placeholder="ID da agenda exportada" />
       </label>
       <label class="sp-field">Calendário de destino
-        <select required [value]="targetCalendarId()" (change)="targetCalendarId.set($any($event.target).value); invalidate()">
+        <select spSelect required [value]="targetCalendarId()" (change)="targetCalendarId.set($any($event.target).value); invalidate()">
           <option value="">Selecione explicitamente</option>
           @for (calendar of calendars(); track calendar.id) {
             <option [value]="calendar.id">{{ calendar.name }} · {{ calendar.ownerEmail }}</option>
@@ -19,28 +19,28 @@
         </select>
       </label>
       <label class="sp-field">Fuso horário
-        <input type="text" [value]="zoneId()" (input)="zoneId.set($any($event.target).value); invalidate()" />
+        <input spInput type="text" [value]="zoneId()" (input)="zoneId.set($any($event.target).value); invalidate()" />
       </label>
-      <label class="sp-field">Data inicial<input type="date" required [value]="windowStart()" (input)="windowStart.set($any($event.target).value); invalidate()" /></label>
-      <label class="sp-field">Data final<input type="date" required [value]="windowEnd()" (input)="windowEnd.set($any($event.target).value); invalidate()" /></label>
+      <label class="sp-field">Data inicial<input spInput type="date" required [value]="windowStart()" (input)="windowStart.set($any($event.target).value); invalidate()" /></label>
+      <label class="sp-field">Data final<input spInput type="date" required [value]="windowEnd()" (input)="windowEnd.set($any($event.target).value); invalidate()" /></label>
     </fieldset>
     <p class="import-summary">A categoria padrão é Pessoal, sem preço ou pagamento. Um nome no título não define a propriedade da agenda. Importe cada origem para seu calendário correspondente. A prévia apresenta eventos incompletos e duplicados.</p>
-    <button class="primary-button" type="submit" [disabled]="loading()">{{ loading() ? 'Processando...' : 'Gerar prévia' }}</button>
+    <button spButton class="primary-button" type="submit" [disabled]="loading()">{{ loading() ? 'Processando...' : 'Gerar prévia' }}</button>
   </form>
   @if (result(); as preview) {
     <section class="sp-card import-panel" aria-label="Prévia da importação">
       <h2>Prévia · {{ selectedCalendar()?.name }}</h2>
       <p class="import-summary">{{ preview.rows.length }} registro(s) · {{ preview.duplicates }} duplicado(s) · {{ preview.blocked }} bloqueado(s)</p>
-      <div class="page-table-wrap"><table class="page-table is-stackable">
+      <div class="page-table-wrap"><table spTable class="page-table is-stackable">
         <thead><tr><th>Título</th><th>Início</th><th>Término</th><th>Situação</th></tr></thead>
         <tbody>@for (row of preview.rows; track $index) {
           <tr><td data-label="Título">{{ row.title }}</td><td data-label="Início">{{ row.startsAt || 'Não recuperado' }}</td>
             <td data-label="Término">{{ row.endsAt || 'Não recuperado' }}</td><td data-label="Situação">{{ stateLabel(row.state) }} {{ row.reason || '' }}</td></tr>
         } @empty { <tr><td colspan="4">Nenhum evento recuperável no intervalo.</td></tr> }</tbody>
       </table></div>
-      <label class="import-confirm"><input type="checkbox" [checked]="confirmed()" [disabled]="loading()" (change)="confirmed.set($any($event.target).checked)" />
+      <label class="import-confirm"><input spCheckbox type="checkbox" [checked]="confirmed()" [disabled]="loading()" (change)="confirmed.set($any($event.target).checked)" />
         Confirmo que a origem pertence ao destino {{ selectedCalendar()?.name }} e que tenho autorização para importar estes dados.</label>
-      <button class="primary-button" type="button" [disabled]="!confirmed() || loading()" (click)="commit()">Importar eventos autorizados</button>
+      <button spButton class="primary-button" type="button" [disabled]="!confirmed() || loading()" (click)="commit()">Importar eventos autorizados</button>
     </section>
   }
 </section>

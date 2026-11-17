@@ -1,3 +1,4 @@
+import { SpButtonDirective, SpInputDirective } from '../../../shared/ui/design-system';
 import { Component, computed, inject, input, output, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { finalize } from 'rxjs';
@@ -31,7 +32,7 @@ const REASON_LABELS: Record<UnscheduleReason, string> = {
  */
 @Component({
   selector: 'app-appointment-confirmation',
-  imports: [ReactiveFormsModule, Icon],
+  imports: [SpButtonDirective, SpInputDirective, ReactiveFormsModule, Icon],
   templateUrl: './appointment-confirmation.html',
 })
 export class AppointmentConfirmation {

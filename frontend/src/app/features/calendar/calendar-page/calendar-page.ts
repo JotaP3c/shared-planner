@@ -1,3 +1,4 @@
+import { SpButtonDirective, SpInputDirective, SpSelectDirective, SpCheckboxDirective, SpTabs } from '../../../shared/ui/design-system';
 import { AfterViewInit, Component, DestroyRef, OnInit, ViewChild, computed, effect, inject, signal, untracked } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
@@ -56,7 +57,7 @@ interface MonthlyFinanceSummary {
 
 @Component({
   selector: 'app-calendar-page',
-  imports: [FullCalendarModule, ReactiveFormsModule, Icon, DialogFocusDirective, AppointmentConfirmation, RecurrenceEditor, CalendarCreator],
+  imports: [SpButtonDirective, SpInputDirective, SpSelectDirective, SpCheckboxDirective, SpTabs, FullCalendarModule, ReactiveFormsModule, Icon, DialogFocusDirective, AppointmentConfirmation, RecurrenceEditor, CalendarCreator],
   templateUrl: './calendar-page.html',
   styleUrl: './calendar-page.scss',
   host: { '(document:keydown.escape)': 'onFilterEscape($event)' },
@@ -178,6 +179,22 @@ export class CalendarPage implements OnInit, AfterViewInit {
     { value: 'timeGridDay', label: 'Dia' },
   ];
 
+  readonly viewTabs = this.viewOptions.map(view => ({ id: view.value, label: view.label }));
+
+  onEventTypeKeydown(event: KeyboardEvent): void {
+    if (!['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End'].includes(event.key)) return;
+    const group = event.currentTarget as HTMLElement;
+    const buttons = Array.from(group.querySelectorAll<HTMLButtonElement>('button[role="radio"]:not(:disabled)'));
+    const current = buttons.indexOf(group.ownerDocument.activeElement as HTMLButtonElement);
+    if (current < 0 || !buttons.length) return;
+    event.preventDefault();
+    const next = event.key === 'Home' ? 0 : event.key === 'End' ? buttons.length - 1
+      : event.key === 'ArrowRight' || event.key === 'ArrowDown' ? (current + 1) % buttons.length
+      : (current - 1 + buttons.length) % buttons.length;
+    buttons[next].focus();
+    buttons[next].click();
+  }
+
   readonly eventTypeCards: Array<{ value: EventType; label: string; hint: string; icon: IconName }> = [
     { value: 'CLIENT', label: 'Cliente', hint: 'Atendimento com valor', icon: 'briefcase' },
     { value: 'PERSONAL', label: 'Pessoal', hint: 'Compromisso pessoal', icon: 'calendar' },
@@ -214,22 +231,15 @@ export class CalendarPage implements OnInit, AfterViewInit {
   ];
 
   private readonly CALENDAR_COLORS: Array<{ bg: string; text: string; border: string }> = [
-    { bg: '#dbeafe', text: '#1d4ed8', border: '#3b82f6' },
-    { bg: '#dcfce7', text: '#166534', border: '#22c55e' },
-    { bg: '#ede9fe', text: '#6d28d9', border: '#8b5cf6' },
-    { bg: '#fef3c7', text: '#92400e', border: '#f59e0b' },
-    { bg: '#fee2e2', text: '#991b1b', border: '#ef4444' },
-    { bg: '#e0f2fe', text: '#075985', border: '#0ea5e9' },
+    { bg: 'var(--sp-personal-bg)', text: 'var(--sp-personal-text)', border: 'var(--sp-personal)' },
+    { bg: 'var(--sp-client-bg)', text: 'var(--sp-client-text)', border: 'var(--sp-client)' },
+    { bg: 'var(--sp-shared-bg)', text: 'var(--sp-shared-text)', border: 'var(--sp-shared)' },
+    { bg: 'var(--sp-pending-bg)', text: 'var(--sp-pending-text)', border: 'var(--sp-pending)' },
+    { bg: 'var(--sp-rejected-bg)', text: 'var(--sp-rejected-text)', border: 'var(--sp-rejected)' },
+    { bg: 'var(--sp-holiday-bg)', text: 'var(--sp-holiday-text)', border: 'var(--sp-holiday)' },
   ];
 
-  private readonly AVATAR_COLORS: Array<{ bg: string; text: string }> = [
-    { bg: '#dbeafe', text: '#1d4ed8' },
-    { bg: '#dcfce7', text: '#166534' },
-    { bg: '#ede9fe', text: '#6d28d9' },
-    { bg: '#fef3c7', text: '#92400e' },
-    { bg: '#fee2e2', text: '#991b1b' },
-    { bg: '#e0f2fe', text: '#075985' },
-  ];
+  private readonly AVATAR_COLORS = this.CALENDAR_COLORS;
 
   readonly calendarColorMap = computed(() => {
     const map = new Map<string, { bg: string; text: string; border: string }>();
@@ -484,6 +494,7 @@ export class CalendarPage implements OnInit, AfterViewInit {
   }
 
   formatTimeRange(event: EventResponse): string {
+    if (event.allDay) return 'Dia inteiro';
     return `${this.formatEventTime(new Date(event.startsAt))} – ${this.formatEventTime(new Date(event.endsAt))}`;
   }
 
@@ -1962,6 +1973,8 @@ export class CalendarPage implements OnInit, AfterViewInit {
       display: 'block',
       classNames: [
         'sp-event-block',
+        this.calendarColorClass(event.calendarId),
+        event.allDay ? 'sp-event-all-day' : '',
         `sp-type-${this.typeClass(event.eventType)}`,
         event.status === 'PENDING_APPROVAL' ? 'sp-event-pending' : '',
         event.status === 'REJECTED' ? 'sp-event-rejected' : '',
@@ -1989,6 +2002,8 @@ export class CalendarPage implements OnInit, AfterViewInit {
     const endsAt = new Date(event.endsAt);
     const time = event.allDay ? 'Dia inteiro' : `${this.formatEventTime(startsAt)} - ${this.formatEventTime(endsAt)}`;
     const title = this.escapeHtml(this.eventTitle(event));
+    const calendarLabel = this.escapeHtml(this.calendarName(event.calendarId));
+    const calendarDot = `<span class="sp-event-calendar-dot" style="background:${this.calendarColor(event.calendarId).border}" aria-hidden="true"></span>`;
 
     const status = event.status === 'PENDING_APPROVAL'
       ? '<span class="sp-event-status">Aguardando aprovação</span>'
@@ -1997,8 +2012,8 @@ export class CalendarPage implements OnInit, AfterViewInit {
     if (viewType === 'dayGridMonth') {
       return {
         html: `
-          <div class="sp-event-inner sp-event-inner-compact">
-            <span class="sp-event-title">${title}</span>
+          <div class="sp-event-inner sp-event-inner-compact" title="${calendarLabel} · ${title} · ${time}">
+            <span class="sp-event-heading">${calendarDot}<span class="sp-event-title">${title}</span></span>
             <span class="sp-event-time">${time}</span>
           </div>
         `,
@@ -2007,8 +2022,8 @@ export class CalendarPage implements OnInit, AfterViewInit {
 
     return {
       html: `
-        <div class="sp-event-inner">
-          <span class="sp-event-title">${title}</span>
+        <div class="sp-event-inner" title="${calendarLabel} · ${title} · ${time}">
+          <span class="sp-event-heading">${calendarDot}<span class="sp-event-title">${title}</span></span>
           <span class="sp-event-time">${time}</span>
           ${status}
         </div>

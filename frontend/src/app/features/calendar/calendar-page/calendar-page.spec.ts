@@ -27,7 +27,33 @@ describe('CalendarPage', () => {
     expect(component).toBeTruthy();
   });
 
+  it('changes calendar views through the shared toggle without changing its view identifiers', () => {
+    fixture.detectChanges();
+    const change = vi.spyOn(component, 'changeView').mockImplementation(() => {});
+    const buttons = Array.from((fixture.nativeElement as HTMLElement).querySelectorAll<HTMLButtonElement>('sp-tabs button'));
+    buttons.find(button => button.textContent?.trim() === 'Semana')!.click();
+    expect(change).toHaveBeenCalledWith('timeGridWeek');
+    expect(buttons.map(button => button.getAttribute('role'))).toEqual([null, null, null]);
+  });
+
+  it('supports arrow-key selection of the event type while keeping native event fields', () => {
+    component.calendars.set([{ id: 'calendar', name: 'Agenda', ownerEmail: 'owner@example.com', memberRole: 'ADMIN',
+      canCreateEvents: true, permissions: ['CALENDAR_VIEW', 'EVENT_CREATE'] }]);
+    component.openNewEventModal();
+    fixture.detectChanges();
+    const radios = Array.from((fixture.nativeElement as HTMLElement).querySelectorAll<HTMLButtonElement>('.type-selector [role=radio]'));
+    radios[0].focus();
+    radios[0].dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }));
+    fixture.detectChanges();
+    expect(document.activeElement).toBe(radios[1]);
+    expect(radios[1].getAttribute('aria-checked')).toBe('true');
+    expect(radios[1].tabIndex).toBe(0);
+    expect(radios[0].tabIndex).toBe(-1);
+  });
+
   it('closes the calendar filter with Escape while focus stays on its trigger and removes the backdrop', () => {
+    component.calendars.set([{ id: 'calendar', name: 'Agenda', ownerEmail: 'owner@example.com', memberRole: 'ADMIN',
+      canCreateEvents: true, permissions: ['CALENDAR_VIEW', 'EVENT_CREATE'] }]);
     fixture.detectChanges();
     const element: HTMLElement = fixture.nativeElement;
     const trigger = element.querySelector<HTMLButtonElement>('button.filter-chip')!;
@@ -35,11 +61,48 @@ describe('CalendarPage', () => {
     expect(component.openFilterMenu()).toBe('calendars');
     expect(document.activeElement).toBe(trigger);
     expect(element.querySelector('.filter-backdrop')).not.toBeNull();
+    const popover = element.querySelector<HTMLElement>('#calendar-filter-options')!;
+    expect(trigger.getAttribute('aria-controls')).toBe(popover.id);
+    expect(trigger.hasAttribute('aria-haspopup')).toBe(false);
+    expect(popover.getAttribute('role')).toBe('group');
+    expect(popover.querySelector('input[type=checkbox]')?.getAttribute('role')).toBeNull();
     document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
     fixture.detectChanges();
     expect(component.openFilterMenu()).toBeNull();
     expect(element.querySelector('.filter-backdrop')).toBeNull();
     expect(document.activeElement).toBe(trigger);
+  });
+
+  it('exposes required event fields and touched validation without changing the business validators', () => {
+    component.calendars.set([{ id: 'calendar', name: 'Agenda', ownerEmail: 'owner@example.com', memberRole: 'ADMIN',
+      canCreateEvents: true, permissions: ['CALENDAR_VIEW', 'EVENT_CREATE'] }]);
+    component.openNewEventModal();
+    fixture.detectChanges();
+    const element: HTMLElement = fixture.nativeElement;
+    const clientName = element.querySelector<HTMLInputElement>('input[formControlName=clientName]')!;
+    const phone = element.querySelector<HTMLInputElement>('input[formControlName=clientPhone]')!;
+    expect(clientName.getAttribute('aria-required')).toBe('true');
+    expect(clientName.hasAttribute('aria-invalid')).toBe(false);
+    expect(phone.hasAttribute('aria-required')).toBe(false);
+
+    clientName.value = '   ';
+    clientName.dispatchEvent(new Event('input'));
+    clientName.dispatchEvent(new Event('blur'));
+    fixture.detectChanges();
+    expect(clientName.getAttribute('aria-invalid')).toBe('true');
+    // Blank/trim validation remains owned by submitEventForm, not a new reactive validator.
+    expect(component.eventForm.controls.clientName.valid).toBe(true);
+
+    clientName.value = 'Cliente';
+    clientName.dispatchEvent(new Event('input'));
+    component.eventForm.controls.date.setValue('');
+    component.submitEventForm();
+    fixture.detectChanges();
+    expect(clientName.hasAttribute('aria-invalid')).toBe(false);
+    expect(element.querySelector('input[formControlName=date]')?.getAttribute('aria-invalid')).toBe('true');
+    const alert = element.querySelector<HTMLElement>('#event-form-error')!;
+    expect(alert.getAttribute('role')).toBe('alert');
+    expect(element.querySelector('form.event-form')?.getAttribute('aria-describedby')).toBe(alert.id);
   });
 
   it('collapses the right panel independently and lets the calendar take the space (INC-06)', () => {
@@ -263,6 +326,22 @@ describe('CalendarPage async states and validation (BLG-BUG-004/005/008, BLG-FE-
       ...overrides,
     };
   }
+
+  it('renders all-day and calendar context without treating event or calendar names as HTML', () => {
+    component.calendars.set([{ ...calendarA, name: 'Agenda <privada> "compartilhada"' }]);
+    const source = event('safe-label', { title: '<img src=x onerror=alert(1)>', allDay: true });
+    const renderer = component as unknown as { renderCalendarEvent(event: EventResponse, view: string): { html: string } };
+    const element = document.createElement('div');
+    element.innerHTML = renderer.renderCalendarEvent(source, 'dayGridMonth').html;
+    expect(element.querySelector('img')).toBeNull();
+    expect(element.querySelector('.sp-event-title')?.textContent).toBe(source.title);
+    expect(element.querySelector('.sp-event-time')?.textContent).toBe('Dia inteiro');
+    expect(component.formatTimeRange(source)).toBe('Dia inteiro');
+    expect(component.formatUpcomingWhen(source)).toContain('Dia inteiro');
+    expect(component.formatTimeRange({ ...source, allDay: false })).toMatch(/\d{2}:\d{2} – \d{2}:\d{2}/);
+    expect(element.querySelector('.sp-event-inner')?.getAttribute('title')).toContain('Agenda <privada> "compartilhada"');
+    expect(element.querySelector('.sp-event-calendar-dot')?.getAttribute('aria-hidden')).toBe('true');
+  });
 
   const eventsFor = (calendarId: string) => (req: { url: string; params: { get(name: string): string | null } }) =>
     req.url === '/api/events' && req.params.get('calendarId') === calendarId;

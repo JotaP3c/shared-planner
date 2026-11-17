@@ -12,7 +12,7 @@
   @if (eventsLoadError()) {
     <p class="error-message" role="alert" data-testid="events-load-error">
       {{ eventsLoadError() }}
-      <button class="secondary-button" type="button" (click)="retryLoadEvents()" [disabled]="isLoading()">
+      <button spButton variant="secondary" class="secondary-button" type="button" (click)="retryLoadEvents()" [disabled]="isLoading()">
         Tentar novamente
       </button>
     </p>
@@ -30,20 +30,10 @@
         </div>
 
         <div class="calendar-header-actions">
-          <div class="view-switch" role="group" aria-label="Visualização">
-            @for (view of viewOptions; track view.value) {
-              <button
-                type="button"
-                [class.active]="currentCalendarView() === view.value"
-                [attr.aria-pressed]="currentCalendarView() === view.value"
-                (click)="changeView(view.value)"
-              >
-                {{ view.label }}
-              </button>
-            }
-          </div>
+          <sp-tabs class="view-switch" [items]="viewTabs" [value]="currentCalendarView()" mode="toggle"
+            label="Visualização" (valueChange)="changeView($any($event))" />
 
-          <button
+          <button spButton
             class="primary-button new-event-button"
             type="button"
             [disabled]="!canCreateEvents()"
@@ -56,7 +46,6 @@
         </div>
       </header>
 
-      <app-calendar-creator (created)="onCalendarCreated($event)" />
 
       <div class="calendar-toolbar">
         <div class="toolbar-filters">
@@ -90,9 +79,9 @@
             <button
               class="filter-chip"
               type="button"
-              aria-haspopup="menu"
               [class.open]="openFilterMenu() === 'calendars'"
               [attr.aria-expanded]="openFilterMenu() === 'calendars'"
+              [attr.aria-controls]="openFilterMenu() === 'calendars' ? 'calendar-filter-options' : null"
               (click)="toggleFilterMenu('calendars', $any($event.currentTarget))"
             >
               <sp-icon name="layers" [size]="16" />
@@ -102,22 +91,24 @@
 
             @if (openFilterMenu() === 'calendars') {
               <div class="filter-backdrop" (click)="closeFilterMenu()" aria-hidden="true"></div>
-              <div class="filter-popover" role="menu" (keydown.escape)="closeFilterMenu()">
+              <div class="filter-popover" id="calendar-filter-options" role="group" aria-labelledby="calendar-filter-title" (keydown.escape)="closeFilterMenu()">
                 <header>
-                  <strong>Calendários</strong>
+                  <strong id="calendar-filter-title">Calendários</strong>
                   <button class="link-button" type="button" (click)="selectAllCalendars()">Selecionar todos</button>
                 </header>
 
                 <div class="filter-options">
                   @for (calendar of calendars(); track calendar.id) {
                     <label class="filter-option">
-                      <input
+                      <input spCheckbox
                         type="checkbox"
                         [checked]="selectedCalendarIds().includes(calendar.id)"
                         (change)="toggleCalendar(calendar.id)"
                       />
                       <span class="cal-dot" [style.background]="calendarColor(calendar.id).border"></span>
-                      <span>{{ calendar.name }}</span>
+                      <span class="calendar-option-name">{{ calendar.name }}
+                        @if (calendar.calendarType === 'SHARED') { <small>Compartilhado</small> }
+                      </span>
                     </label>
                   } @empty {
                     <p class="filter-empty">Nenhum calendário disponível.</p>
@@ -134,12 +125,12 @@
         </div>
 
         <div class="period-nav">
-          <button type="button" class="icon-button" aria-label="Período anterior" (click)="prevPeriod()">
+          <button spButton variant="ghost" size="sm" type="button" class="icon-button" aria-label="Período anterior" (click)="prevPeriod()">
             <sp-icon name="chevron-left" [size]="18" />
           </button>
-          <button type="button" class="secondary-button today-button" (click)="goToToday()">Hoje</button>
+          <button spButton variant="secondary" size="sm" type="button" class="secondary-button today-button" (click)="goToToday()">Hoje</button>
           <strong class="period-title" aria-live="polite">{{ periodTitle() }}</strong>
-          <button type="button" class="icon-button" aria-label="Próximo período" (click)="nextPeriod()">
+          <button spButton variant="ghost" size="sm" type="button" class="icon-button" aria-label="Próximo período" (click)="nextPeriod()">
             <sp-icon name="chevron-right" [size]="18" />
           </button>
         </div>
@@ -160,6 +151,7 @@
         <span class="legend-item"><span class="dot shared"></span>Compartilhado</span>
         <span class="legend-item"><span class="dot pending"></span>Aguardando aprovação</span>
       </footer>
+      <app-calendar-creator (created)="onCalendarCreated($event)" />
     </article>
 
     <aside class="calendar-side" id="calendar-side-panel" aria-label="Resumo">
@@ -277,7 +269,7 @@
           @if (pendingLoadError()) {
             <p class="error-message" role="alert" data-testid="pending-panel-error">
               {{ pendingLoadError() }}
-              <button class="secondary-button" type="button" (click)="retryLoadPendingApprovals()">Tentar novamente</button>
+              <button spButton variant="secondary" class="secondary-button" type="button" (click)="retryLoadPendingApprovals()">Tentar novamente</button>
             </p>
           }
         </div>
@@ -300,7 +292,7 @@
           } @else if (financeError()) {
             <p class="error-message" role="alert">
               {{ financeError() }}
-              <button class="secondary-button" type="button" (click)="retryFinanceSummary()">Tentar novamente</button>
+              <button spButton variant="secondary" class="secondary-button" type="button" (click)="retryFinanceSummary()">Tentar novamente</button>
             </p>
           } @else if (financeSummary(); as summary) {
             <div class="finance-total">
@@ -357,13 +349,13 @@
             <h2 id="event-modal-title">{{ isEditMode() ? 'Editar evento' : 'Criar evento' }}</h2>
             <p>{{ isEditMode() ? 'Atualize as informações do evento' : 'Adicione um novo evento à sua agenda' }}</p>
           </div>
-          <button class="icon-button modal-close" type="button" aria-label="Fechar" (click)="closeEventModal()">
+          <button spButton variant="ghost" size="sm" class="icon-button modal-close" type="button" aria-label="Fechar" (click)="closeEventModal()">
             <sp-icon name="x" [size]="18" />
           </button>
         </header>
 
-        <form class="event-form" [formGroup]="eventForm" (ngSubmit)="submitEventForm()" novalidate>
-          <fieldset class="type-selector">
+        <form class="event-form" [formGroup]="eventForm" [attr.aria-describedby]="eventFormError() ? 'event-form-error' : null" (ngSubmit)="submitEventForm()" novalidate>
+          <fieldset class="type-selector" role="radiogroup" (keydown)="onEventTypeKeydown($event)">
             <legend>Tipo de evento</legend>
             @for (card of eventTypeCards; track card.value) {
               <button
@@ -372,6 +364,7 @@
                 [class]="'type-option ' + typeClass(card.value)"
                 [class.active]="formEventType() === card.value"
                 [attr.aria-checked]="formEventType() === card.value"
+                [tabIndex]="formEventType() === card.value ? 0 : -1"
                 (click)="onEventTypeChange(card.value)"
               >
                 <span class="type-option-icon"><sp-icon [name]="card.icon" [size]="18" /></span>
@@ -388,7 +381,8 @@
             @if (creatableCalendars().length > 1 || isEditMode()) {
               <label class="sp-field">
                 Calendário
-                <select formControlName="calendarId">
+                <select spSelect formControlName="calendarId" aria-required="true"
+                  [error]="eventForm.controls.calendarId.touched && eventForm.controls.calendarId.invalid">
                   @for (calendar of creatableCalendars(); track calendar.id) {
                     <option [value]="calendar.id">{{ calendar.name }}</option>
                   }
@@ -400,24 +394,28 @@
               <div class="form-row two">
                 <label class="sp-field">
                   <span>Nome do cliente <span class="req">*</span></span>
-                  <input type="text" formControlName="clientName" placeholder="Ex.: Ana Silva" />
+                  <input spInput type="text" formControlName="clientName" placeholder="Ex.: Ana Silva" aria-required="true"
+                    [error]="eventForm.controls.clientName.touched && (eventForm.controls.clientName.invalid || !eventForm.controls.clientName.value.trim())" />
                 </label>
                 <label class="sp-field">
                   <span>Valor (R$) <span class="req">*</span></span>
-                  <input type="number" min="0" step="0.01" inputmode="decimal" formControlName="amount" placeholder="0,00" />
+                  <input spInput type="number" min="0" step="0.01" inputmode="decimal" formControlName="amount" placeholder="0,00" aria-required="true"
+                    [error]="eventForm.controls.amount.touched && (eventForm.controls.amount.invalid || eventForm.controls.amount.value == null || eventForm.controls.amount.value === '')" />
                 </label>
               </div>
               <label class="sp-field">Telefone do cliente
-                <input type="tel" formControlName="clientPhone" maxlength="20" inputmode="tel"
+                <input spInput type="tel" formControlName="clientPhone" maxlength="20" inputmode="tel"
                   placeholder="(XX) 9XXXX-XXXX" (input)="formatPhoneInput($any($event.target).value)" />
                 <small class="field-hint">Opcional. DDD e número de celular brasileiro.</small>
               </label>
             } @else {
               <label class="sp-field">
                 <span>Título do evento <span class="req">*</span></span>
-                <input
+                <input spInput
                   type="text"
                   formControlName="title"
+                  aria-required="true"
+                  [error]="eventForm.controls.title.touched && (eventForm.controls.title.invalid || !eventForm.controls.title.value.trim())"
                   [placeholder]="formEventType() === 'SHARED' ? 'Ex.: Jantar em família' : 'Ex.: Consulta médica'"
                 />
               </label>
@@ -426,14 +424,17 @@
             @if (formEventType() === 'PERSONAL') {
               <label class="sp-field">
                 <span>Pessoa <span class="req">*</span></span>
-                <input type="text" formControlName="personName" placeholder="Quem participa do compromisso" />
+                <input spInput type="text" formControlName="personName" placeholder="Quem participa do compromisso" aria-required="true"
+                  [error]="eventForm.controls.personName.touched && (eventForm.controls.personName.invalid || !eventForm.controls.personName.value.trim())" />
               </label>
             }
 
             @if (formEventType() === 'SHARED' || formUsesSharedCalendar()) {
               <label class="sp-field">
                 <span>Aprovadores designados (e-mails)</span>
-                <input type="text" formControlName="approvalRequestedFromEmail" placeholder="pessoa@email.com, outra@email.com" />
+                <input spInput type="text" formControlName="approvalRequestedFromEmail" placeholder="pessoa@email.com, outra@email.com"
+                  [attr.aria-required]="formEventType() === 'SHARED' && !formUsesSharedCalendar() ? 'true' : null"
+                  [error]="eventForm.controls.approvalRequestedFromEmail.touched && formEventType() === 'SHARED' && !formUsesSharedCalendar() && !eventForm.controls.approvalRequestedFromEmail.value.trim()" />
                 <small class="field-hint">Separe por vírgulas. Todos os designados precisam aprovar. Em calendário compartilhado, vazio convida os demais membros ativos. Você não aprova o próprio evento.</small>
               </label>
             }
@@ -442,18 +443,21 @@
               <p class="field-hint">{{ eventBeingEdited()?.allDay ? 'Evento de dia inteiro.' : 'Evento importado com intervalo de mais de um dia.' }} A edição de conteúdo preserva as datas e os horários originais.</p>
             }
 
+            <h3 class="form-section-heading">Data e horário</h3>
             <div class="form-row four">
               <label class="sp-field">
                 <span>Data <span class="req">*</span></span>
-                <input type="date" formControlName="date" [readOnly]="preservesOriginalInterval()" />
+                <input spInput type="date" formControlName="date" [readOnly]="preservesOriginalInterval()" aria-required="true"
+                  [error]="eventForm.controls.date.touched && eventForm.controls.date.invalid" />
               </label>
               <label class="sp-field">
                 <span>Início <span class="req">*</span></span>
-                <input type="time" formControlName="startTime" [readOnly]="preservesOriginalInterval()" />
+                <input spInput type="time" formControlName="startTime" [readOnly]="preservesOriginalInterval()" aria-required="true"
+                  [error]="eventForm.controls.startTime.touched && eventForm.controls.startTime.invalid" />
               </label>
               <label class="sp-field">
                 Duração
-                <select [value]="currentDurationMinutes() ?? ''" [disabled]="preservesOriginalInterval()" (change)="onDurationChange($any($event.target).value)">
+                <select spSelect [value]="currentDurationMinutes() ?? ''" [disabled]="preservesOriginalInterval()" (change)="onDurationChange($any($event.target).value)">
                   <option value="">Personalizada</option>
                   @for (minutes of availableDurations(); track minutes) {
                     <option [value]="minutes" [selected]="minutes === currentDurationMinutes()">{{ formatDuration(minutes) }}</option>
@@ -462,21 +466,23 @@
               </label>
               <label class="sp-field">
                 <span>Término <span class="req">*</span></span>
-                <input type="time" formControlName="endTime" [readOnly]="preservesOriginalInterval()" />
+                <input spInput type="time" formControlName="endTime" [readOnly]="preservesOriginalInterval()" aria-required="true"
+                  [error]="eventForm.controls.endTime.touched && eventForm.controls.endTime.invalid" />
               </label>
             </div>
 
             @if (formEventType() === 'CLIENT') {
               <label class="sp-field">
                 <span>Descrição do serviço <span class="req">*</span></span>
-                <textarea rows="2" formControlName="workDescription" placeholder="Descreva o serviço..."></textarea>
+                <textarea spInput rows="2" formControlName="workDescription" placeholder="Descreva o serviço..." aria-required="true"
+                  [error]="eventForm.controls.workDescription.touched && !eventForm.controls.workDescription.value.trim()"></textarea>
               </label>
             }
 
             @if (formEventType() !== 'CLIENT') {
             <label class="sp-field">
               Descrição
-              <textarea rows="2" formControlName="description" placeholder="Detalhes adicionais (opcional)"></textarea>
+              <textarea spInput rows="2" formControlName="description" placeholder="Detalhes adicionais (opcional)"></textarea>
             </label>
             }
 
@@ -484,33 +490,33 @@
               <app-recurrence-editor (changed)="recurrence.set($event)" />
             } @else {
               <div class="series-controls">
-                <button class="secondary-button" type="button" (click)="loadEditingSeries()">Gerenciar série recorrente</button>
+                <button spButton variant="secondary" class="secondary-button" type="button" (click)="loadEditingSeries()">Gerenciar série recorrente</button>
                 @if (seriesMessage()) { <p role="status">{{ seriesMessage() }}</p> }
                 @if (editingSeries()) {
                   <label class="sp-field">Aplicar alteração
-                    <select [value]="seriesScope()" (change)="seriesScope.set($any($event.target).value)">
+                    <select spSelect [value]="seriesScope()" (change)="seriesScope.set($any($event.target).value)">
                       <option value="SINGLE">Somente esta ocorrência</option>
                       <option value="FUTURE">Esta e as futuras</option>
                       <option value="ALL">Toda a série</option>
                     </select>
                   </label>
                   @if (seriesScope() !== 'SINGLE') {
-                    <button class="danger-button" type="button" (click)="cancelEditingSeries()" [disabled]="isSavingEvent()">Cancelar ocorrências selecionadas</button>
+                    <button spButton variant="danger" class="danger-button" type="button" (click)="cancelEditingSeries()" [disabled]="isSavingEvent()">Cancelar ocorrências selecionadas</button>
                   }
                 }
               </div>
             }
 
             @if (eventFormError()) {
-              <p class="modal-error" role="alert">
+              <p class="modal-error" id="event-form-error" role="alert">
                 <sp-icon name="alert" [size]="16" />{{ eventFormError() }}
               </p>
             }
           </div>
 
           <footer class="modal-actions">
-            <button type="button" class="ghost-button" (click)="closeEventModal()">Cancelar</button>
-            <button type="submit" class="save-button" [disabled]="isSavingEvent()">
+            <button spButton variant="ghost" type="button" class="ghost-button" (click)="closeEventModal()">Cancelar</button>
+            <button spButton type="submit" class="save-button" [disabled]="isSavingEvent()" [loading]="isSavingEvent()">
               <sp-icon name="check" [size]="16" />
               @if (isSavingEvent()) {
                 Salvando...
@@ -566,7 +572,7 @@
             </div>
           </div>
 
-          <button class="icon-button detail-close" type="button" aria-label="Fechar" (click)="closeEventDetails()">
+          <button spButton variant="ghost" size="sm" class="icon-button detail-close" type="button" aria-label="Fechar" (click)="closeEventDetails()">
             <sp-icon name="x" [size]="18" />
           </button>
         </header>
@@ -636,7 +642,7 @@
               @for (approval of event.approvals ?? []; track approval.userEmail) {
                 <p>{{ approval.userEmail }} · {{ approvalStatusLabel(approval.status) }}</p>
               }
-              <button class="secondary-button" type="button" (click)="loadApprovalHistory(event)">Histórico de respostas</button>
+              <button spButton variant="secondary" class="secondary-button" type="button" (click)="loadApprovalHistory(event)">Histórico de respostas</button>
               @if (approvalHistoryError()) { <p role="alert">{{ approvalHistoryError() }}</p> }
               @if (approvalHistory(); as history) {
                 <ol>@for (approval of history; track $index) {
@@ -707,7 +713,7 @@
               <div class="payment-fields">
                 <label class="sp-field">
                   Status
-                  <select formControlName="paymentStatus">
+                  <select spSelect formControlName="paymentStatus">
                     @for (option of paymentStatusOptions; track option.value) {
                       <option [value]="option.value">{{ option.label }}</option>
                     }
@@ -721,7 +727,7 @@
                       <span class="required-pill">obrigatório</span>
                     }
                   </span>
-                  <select formControlName="paymentMethod">
+                  <select spSelect formControlName="paymentMethod">
                     <option value="">Não informado</option>
                     @for (option of paymentMethodOptions; track option.value) {
                       <option [value]="option.value">{{ option.label }}</option>
@@ -731,7 +737,7 @@
 
                 <label class="sp-field">
                   Valor recebido
-                  <input
+                  <input spInput
                     type="number"
                     min="0"
                     step="0.01"
@@ -742,7 +748,7 @@
 
                 <label class="sp-field">
                   Pago em
-                  <input type="datetime-local" formControlName="paidAt" />
+                  <input spInput type="datetime-local" formControlName="paidAt" />
                 </label>
               </div>
 
@@ -753,10 +759,10 @@
               }
 
               <footer>
-                <button class="ghost-button" type="button" [disabled]="isUpdatingPayment()" (click)="isPaymentFormOpen.set(false)">
+                <button spButton variant="ghost" class="ghost-button" type="button" [disabled]="isUpdatingPayment()" (click)="isPaymentFormOpen.set(false)">
                   Fechar
                 </button>
-                <button class="save-button" type="submit" [disabled]="isUpdatingPayment()">
+                <button spButton class="save-button" type="submit" [disabled]="isUpdatingPayment()">
                   {{ isUpdatingPayment() ? 'Salvando...' : 'Salvar pagamento' }}
                 </button>
               </footer>
@@ -770,11 +776,11 @@
 
         <footer class="event-detail-actions">
           @if (canRespondToSelectedEvent()) {
-            <button class="save-button" type="button" [disabled]="isUpdatingApproval()" (click)="approveSelectedEvent()">
+            <button spButton class="save-button" type="button" [disabled]="isUpdatingApproval()" (click)="approveSelectedEvent()">
               <sp-icon name="check" [size]="16" />
               {{ isUpdatingApproval() ? 'Enviando...' : 'Aprovar' }}
             </button>
-            <button class="danger-button" type="button" [disabled]="isUpdatingApproval()" (click)="rejectSelectedEvent()">
+            <button spButton variant="danger" class="danger-button" type="button" [disabled]="isUpdatingApproval()" (click)="rejectSelectedEvent()">
               <sp-icon name="x" [size]="16" />
               {{ isUpdatingApproval() ? 'Enviando...' : 'Reprovar' }}
             </button>
@@ -782,7 +788,7 @@
 
           @if (canCancelEvent(event)) {
             <!-- Ação destrutiva separada à esquerda; secundárias à direita. -->
-            <button
+            <button spButton variant="danger"
               class="danger-button detail-destructive"
               type="button"
               [disabled]="isDeletingEvent() || isUpdatingApproval()"
@@ -794,7 +800,7 @@
           }
 
             @if (canManagePayment(event) && hasFinancialDetails(event)) {
-              <button
+              <button spButton variant="secondary"
                 class="secondary-button"
                 type="button"
                 [attr.aria-expanded]="isPaymentFormOpen()"
@@ -807,7 +813,7 @@
             }
 
           @if (canEditEvent(event)) {
-            <button class="secondary-button" type="button" [disabled]="isUpdatingApproval()" (click)="openEditEventModal(event)">
+            <button spButton variant="secondary" class="secondary-button" type="button" [disabled]="isUpdatingApproval()" (click)="openEditEventModal(event)">
               <sp-icon class="action-icon edit-action-icon" name="edit" [size]="16" />
               Editar evento
             </button>

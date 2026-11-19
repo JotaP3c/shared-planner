@@ -16,7 +16,15 @@ const root = path.resolve(process.env.PLANNER_BROWSER_BUILD_DIR || path.resolve(
 const output = path.resolve(process.env.PLANNER_QA_OUTPUT || path.join(os.tmpdir(), 'shared-planner-professional-ui'));
 fs.mkdirSync(output, { recursive: true });
 const actor = { ...user, role: 'ADMIN', permissions: [...new Set([...user.permissions, ...adminCalendarPermissions,
-  'USERS_VIEW', 'USERS_MANAGE', 'ROLES_MANAGE', 'AUDIT_VIEW_ALL'])] };
+  'USERS_VIEW', 'USERS_MANAGE', 'ROLES_MANAGE', 'AUDIT_VIEW_ALL', 'CATALOG_VIEW', 'CATALOG_MANAGE'])] };
+const catalogItems = [
+  { id: 'qa-service', calendarId: 'personal-a', type: 'SERVICE', name: 'Procedimento de teste',
+    category: 'Consultas', standardPrice: 50, promotionalPrice: null, effectivePrice: 50,
+    durationMinutes: 30, active: true, version: 0 },
+  { id: 'qa-product', calendarId: 'personal-a', type: 'PRODUCT', name: 'Produto de teste',
+    category: 'Produtos', standardPrice: 12.5, promotionalPrice: null, effectivePrice: 12.5,
+    durationMinutes: null, active: true, version: 0 },
+];
 const member = { id: 'member-other', userId: 'other-user', calendarId: 'personal-a', userFullName: 'Marina de teste',
   userEmail: 'other@example.invalid', role: 'EDITOR', roles: ['EDITOR', 'FINANCE'], createdAt: '2026-11-01T10:00:00' };
 const users = [actor, { id: 'other-user', fullName: member.userFullName, email: member.userEmail, role: 'FINANCE', active: true,
@@ -85,6 +93,14 @@ async function installFixtures(context, state) {
       calendarId: url.searchParams.get('calendarId'), profileIds: ['viewer-profile'], explicit: true };
     else if (url.pathname === '/api/access/effective') body = { userId: actor.id, profileIds: [], globalPermissions: actor.permissions,
       calendars: calendars.map(calendar => ({ calendarId: calendar.id, profileIds: ['viewer-profile'], permissions: calendar.permissions })) };
+    else if (url.pathname === '/api/calendars' && (state.catalogBooking || new URL(route.request().frame().url()).pathname === '/finance/catalog')) {
+      body = calendars.map(calendar => calendar.id === 'personal-a'
+        ? { ...calendar, permissions: [...calendar.permissions, 'CATALOG_VIEW', 'CATALOG_MANAGE'] } : calendar);
+    } else if (/^\/api\/calendars\/[^/]+\/catalog$/.test(url.pathname)) {
+      const query = (url.searchParams.get('q') || '').toLowerCase();
+      const matching = catalogItems.filter(item => item.name.toLowerCase().includes(query));
+      body = { items: matching, page: 0, size: 30, totalElements: matching.length };
+    }
     else if (url.pathname.endsWith('/members')) body = [{ ...member, id: 'owner-member', userId: actor.id, userEmail: actor.email,
       userFullName: actor.fullName, role: 'ADMIN', roles: ['ADMIN'] }, member];
     else if (url.pathname === '/api/events/pending-approvals') body = state.pending === 'empty' ? [] : pending;
@@ -259,21 +275,62 @@ async function stateChecks(page, state, base, tag) {
   await capture(page, `${tag}-pending-empty`); state.pending = 'normal';
 }
 
+async function catalogBooking(page, state, base, tag, viewport) {
+  state.catalogBooking = true;
+  try {
+    await page.goto(base + '/calendar');
+    await page.getByRole('button', { name: 'Novo evento', exact: true }).click();
+    const dialog = page.getByRole('dialog');
+    const search = dialog.getByRole('combobox', { name: 'O que será feito?' });
+    await dialog.locator('[formcontrolname="clientName"]').fill('Cliente de teste');
+    for (const item of catalogItems) {
+      await search.fill(item.name);
+      await dialog.getByRole('option', { name: new RegExp(item.name) }).click();
+    }
+    await dialog.getByRole('spinbutton', { name: 'Quantidade de Procedimento de teste' }).fill('2');
+    await dialog.locator('.catalog-total').getByText(/112,50/).waitFor();
+    check(`${tag}: booking totals multiple contracted items`, /112,50/.test(await dialog.locator('.catalog-total').innerText()));
+    check(`${tag}: booking proposes one hour from quantities`, await dialog.getByRole('combobox', { name: 'Duração' }).inputValue() === '60');
+    check(`${tag}: booking previews client and calendar`, /Cliente de teste/.test(await dialog.locator('.appointment-preview').innerText()));
+    check(`${tag}: CLIENT recurrence remains unavailable`, await dialog.locator('app-recurrence-editor').count() === 0);
+    await dialog.getByLabel('Observações (opcional)').fill('Observação de teste');
+    await capture(page, `${tag}-catalog-booking`);
+    if (viewport.width === 390) {
+      await page.setViewportSize({ width: viewport.height, height: viewport.width });
+      const submit = dialog.getByRole('button', { name: 'Criar evento', exact: true });
+      await submit.scrollIntoViewIfNeeded();
+      check(`${tag}: rotation keeps the booking usable`, await submit.isVisible() && await submit.isEnabled());
+      await capture(page, `${tag}-catalog-booking-rotated`);
+      await page.setViewportSize(viewport);
+    }
+    await page.keyboard.press('Escape');
+    await dialog.waitFor({ state: 'detached' });
+  } finally {
+    state.catalogBooking = false;
+  }
+}
+
 async function run() {
   assert.ok(fs.existsSync(root), 'Browser build directory must exist');
   await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
   const base = `http://127.0.0.1:${server.address().port}`;
   const browser = await chromium.launch({ channel: 'chrome', headless: true });
   const routes = [
-    ['finance', 'Resumo de receitas'], ['members', 'Membros dos calendários'], ['admin/users', 'Usuários'],
+    ['finance', 'Resumo de receitas'], ['finance/catalog', 'Catálogo'], ['members', 'Membros dos calendários'], ['admin/users', 'Usuários'],
     ['admin/roles', 'Perfis e Permissões'], ['audit', 'Auditoria'], ['pending', 'Pendências'],
     ['calendar-import', 'Importar Google Calendar'], ['settings', 'Configurações'],
   ];
   try {
-    for (const theme of ['light', 'dark']) for (const width of [1440, 390, 1024]) {
+    const viewports = before
+      ? [{ width: 1440, height: 960 }, { width: 390, height: 844 }, { width: 1024, height: 960 }]
+      : [{ width: 1440, height: 960 }, { width: 390, height: 844 }, { width: 768, height: 1024 },
+         { width: 900, height: 480 }, { width: 320, height: 640 }];
+    for (const theme of ['light', 'dark']) for (const viewport of viewports) {
+      const { width } = viewport;
       const tag = `${theme}-${width}`;
       if (process.env.PLANNER_QA_SCENARIO && process.env.PLANNER_QA_SCENARIO !== tag) continue;
-      const context = await browser.newContext({ viewport: { width, height: width === 390 ? 844 : 960 },
+      const touch = width <= 390 || viewport.height === 480;
+      const context = await browser.newContext({ viewport, hasTouch: touch,
         timezoneId: 'America/Sao_Paulo', reducedMotion: 'reduce' });
       const state = { users: 'normal', pending: 'normal' };
       await context.route('**/*', async route => {
@@ -303,7 +360,23 @@ async function run() {
         await page.goto(base + '/calendar'); await page.getByRole('heading', { name: 'Calendário', exact: true }).waitFor();
         await page.locator('.fc-daygrid-body').waitFor(); await page.locator('.fc-daygrid-event').first().waitFor();
         await capture(page, `${tag}-calendar`); await inspectContrast(page, `${tag}-calendar`);
-        if (width !== 1024) await keyboardChecks(page, width, tag);
+        if (width <= 390 || width === 1440) await keyboardChecks(page, width, tag);
+        if (!before && touch) {
+          const filters = page.locator('.mobile-filter-toggle');
+          check(`${tag}: calendar filters start collapsed`, await filters.getAttribute('aria-expanded') === 'false');
+          await filters.click();
+          const filterGroup = page.getByRole('group', { name: 'Filtrar por tipo de evento' });
+          await filterGroup.waitFor();
+          check(`${tag}: calendar filters are available on demand`, await filterGroup.isVisible());
+          await filters.click();
+          const agenda = page.getByRole('region', { name: 'Eventos por dia' });
+          await agenda.getByRole('button', { name: /Atendimento de teste|Cliente de teste/ }).click();
+          const detail = page.getByRole('dialog');
+          await detail.waitFor();
+          await capture(page, `${tag}-event-detail`);
+          await page.keyboard.press('Escape');
+          await detail.waitFor({ state: 'detached' });
+        }
         const create = page.getByRole('button', { name: 'Novo evento', exact: true });
         await create.click(); const dialog = page.getByRole('dialog'); await dialog.waitFor();
         check(`${tag}: one click opens event form`, await dialog.isVisible());
@@ -317,12 +390,31 @@ async function run() {
         }
         await page.keyboard.press('Escape'); await dialog.waitFor({ state: 'detached' });
         for (const [route, heading] of routes) {
-          if (width === 1024 && !['finance', 'admin/users', 'settings'].includes(route)) continue;
+          if (before && width === 1024 && !['finance', 'finance/catalog', 'admin/users', 'settings'].includes(route)) continue;
           await page.goto(base + '/' + route); await page.getByRole('heading', { name: heading, exact: true }).waitFor();
           if (route === 'admin/users') await page.getByTestId('open-create-user').waitFor();
           if (route === 'finance') {
             await page.locator('[data-testid="expected-amount"]').waitFor();
             await page.locator('sp-line-chart .sp-line-series.primary').waitFor();
+          }
+          if (route === 'finance/catalog') {
+            await page.getByRole('row', { name: /Procedimento de teste/ }).waitFor();
+            if (!before) {
+              const search = page.getByRole('searchbox', { name: 'Busca', exact: true });
+              const expand = page.getByRole('button', { name: 'Expandir filtros' });
+              if (await expand.isVisible()) await expand.click();
+              await search.fill('Consulta');
+              await page.getByRole('button', { name: 'Recolher filtros' }).click();
+              await search.waitFor({ state: 'hidden' });
+              check(`${tag}: catalogue filters collapse`, !await search.isVisible());
+              await page.getByRole('button', { name: 'Expandir filtros' }).click();
+              await search.waitFor();
+              check(`${tag}: catalogue keeps the filter value`, await search.inputValue() === 'Consulta');
+              if (width <= 390) {
+                await page.getByRole('button', { name: 'Recolher filtros' }).click();
+                await search.waitFor({ state: 'hidden' });
+              }
+            }
           }
           if (route === 'members') await page.getByText(member.userEmail, { exact: true }).first().waitFor();
           if (route === 'pending') await page.getByRole('heading', { name: 'Planejamento compartilhado' }).waitFor();
@@ -330,8 +422,14 @@ async function run() {
           const name = `${tag}-${route.replaceAll('/', '-')}`;
           await capture(page, name); await inspectContrast(page, name);
           if (route === 'finance') {
-            await page.locator('#finance-charts').scrollIntoViewIfNeeded();
+            await page.locator('.sp-line-plot').scrollIntoViewIfNeeded();
             await capture(page, `${tag}-finance-charts`);
+            if (!before) {
+              const plot = page.locator('.sp-line-plot');
+              check(`${tag}: revenue chart fits its panel`, await plot.evaluate(element => element.scrollWidth <= element.clientWidth + 1));
+              await plot.locator('.sp-line-point').first().focus();
+              check(`${tag}: revenue point opens keyboard tooltip`, await plot.locator('.sp-line-tooltip').isVisible());
+            }
           }
           if (route === 'calendar-import') await importPreview(page, tag);
           if (route === 'settings') {
@@ -344,7 +442,10 @@ async function run() {
             }
           }
         }
-        if (width !== 1024) await stateChecks(page, state, base, tag);
+        if (width === 1440 || width === 390) {
+          await stateChecks(page, state, base, tag);
+          if (!before) await catalogBooking(page, state, base, tag, viewport);
+        }
       } catch (error) {
         report.failures.push(`${tag}: ${error.stack}`); persist();
         await page.screenshot({ path: path.join(output, `${tag}-failure.png`), fullPage: true }).catch(() => {});

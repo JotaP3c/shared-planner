@@ -29,6 +29,19 @@ public interface FinanceExportEventRepository extends Repository<Event, UUID> {
                         @Param("end") LocalDateTime end);
 
     @Query("""
+            select count(item.catalogItemId)
+            from Event e join e.catalogItems item
+            where e.calendar.id in :calendarIds
+              and e.eventType = com.sharedplanner.event.EventType.CLIENT
+              and e.status <> com.sharedplanner.event.EventStatus.CANCELLED
+              and e.startsAt >= :start
+              and e.startsAt < :end
+            """)
+    long countExportItems(@Param("calendarIds") List<UUID> calendarIds,
+                          @Param("start") LocalDateTime start,
+                          @Param("end") LocalDateTime end);
+
+    @Query("""
             select e from Event e join fetch e.calendar
             where e.calendar.id in :calendarIds
               and e.eventType = com.sharedplanner.event.EventType.CLIENT

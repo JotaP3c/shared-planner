@@ -25,6 +25,7 @@ import java.util.UUID;
 public class FinanceExportService {
     static final int MAX_CALENDARS = 20;
     static final int MAX_APPOINTMENTS = 10_000;
+    static final int MAX_ITEM_ROWS = 20_000;
     static final int MAX_TEXT_CHARACTERS = 2_000_000;
 
     private final AuthorizationService authorization;
@@ -49,14 +50,20 @@ public class FinanceExportService {
         for (UUID id : uniqueIds) {
             authorization.ensureCanExportFinance(id, authentication);
         }
-        var budget = events.budget(uniqueIds, startDate.atStartOfDay(), endDate.plusDays(1).atStartOfDay());
+        var start = startDate.atStartOfDay();
+        var end = endDate.plusDays(1).atStartOfDay();
+        var budget = events.budget(uniqueIds, start, end);
         if (budget.getAppointmentCount() > MAX_APPOINTMENTS || budget.getTextCharacters() > MAX_TEXT_CHARACTERS
                 || budget.getLongestService() > 32767) {
             throw new ResponseStatusException(HttpStatus.PAYLOAD_TOO_LARGE,
                     "The report exceeds 10000 appointments, 2000000 text characters or Excel's 32767-character cell limit; select a smaller report");
         }
-        List<Event> appointments = events.findExportEvents(uniqueIds, startDate.atStartOfDay(),
-                endDate.plusDays(1).atStartOfDay(), PageRequest.of(0, MAX_APPOINTMENTS + 1));
+        // XSSF keeps worksheet cells in memory. Bound the expanded rows before loading the snapshots.
+        if (events.countExportItems(uniqueIds, start, end) > MAX_ITEM_ROWS) {
+            throw new ResponseStatusException(HttpStatus.PAYLOAD_TOO_LARGE,
+                    "The report exceeds 20000 catalog item rows; select a smaller period or fewer calendars");
+        }
+        List<Event> appointments = events.findExportEvents(uniqueIds, start, end, PageRequest.of(0, MAX_APPOINTMENTS + 1));
         if (appointments.size() > MAX_APPOINTMENTS) {
             throw new ResponseStatusException(HttpStatus.PAYLOAD_TOO_LARGE,
                     "The report exceeds 10000 appointments; select a smaller period or fewer calendars");
@@ -85,9 +92,12 @@ public class FinanceExportService {
         long characters = 0;
         for (Event event : appointments) {
             characters += validateCellText(event.getWorkDescription());
-            characters += validateCellText(event.getClientName());
-            characters += validateCellText(event.getCalendar().getName());
+            int clientAndCalendar = validateCellText(event.getClientName()) + validateCellText(event.getCalendar().getName());
+            characters += clientAndCalendar;
             validateCellText(event.getExternalSource());
+            for (var item : event.getCatalogItems()) {
+                characters += clientAndCalendar + validateCellText(item.name());
+            }
         }
         if (characters > MAX_TEXT_CHARACTERS) {
             throw new ResponseStatusException(HttpStatus.PAYLOAD_TOO_LARGE,

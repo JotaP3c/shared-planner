@@ -41,6 +41,9 @@ final class FinanceWorkbook {
             appointments(book.createSheet("Appointments"), styles, events);
             payments(book.createSheet("Payments"), styles, events);
             calendarSummary(book.createSheet("Calendar Summary"), styles, calendars);
+            if (events.stream().anyMatch(event -> !event.getCatalogItems().isEmpty())) {
+                catalogItems(book.createSheet("Item Details"), styles, events);
+            }
             dashboard(dashboard, styles, start, end, calendars);
             book.setActiveSheet(0);
             book.write(output);
@@ -77,6 +80,31 @@ final class FinanceWorkbook {
         }
         table(sheet, events.size(), headers.length);
         widths(sheet, 13, 11, 30, 28, 54, 17, 18, 26, 24, 20, 20, 23, 20, 39, 20, 26, 26);
+    }
+
+    private void catalogItems(XSSFSheet sheet, Styles styles, List<Event> events) {
+        header(sheet, 0, styles, "Data", "Calendário", "Cliente", "ID do atendimento",
+                "ID do item", "Produto/procedimento", "Quantidade", "Preço unitário aplicado",
+                "Desconto total aplicado", "Subtotal", "Duração por unidade (min)");
+        int index = 1;
+        for (Event event : events) {
+            for (var item : event.getCatalogItems()) {
+                Row row = sheet.createRow(index++);
+                date(row, 0, event.getStartsAt(), styles.datetime);
+                text(row, 1, event.getCalendar().getName());
+                text(row, 2, event.getClientName());
+                text(row, 3, event.getId().toString());
+                text(row, 4, item.catalogItemId().toString());
+                text(row, 5, item.name());
+                number(row, 6, item.quantity(), styles.integer);
+                money(row, 7, item.unitPrice(), styles);
+                money(row, 8, item.discount(), styles);
+                money(row, 9, item.subtotal(), styles);
+                if (item.durationMinutes() != null) number(row, 10, item.durationMinutes(), styles.integer);
+            }
+        }
+        table(sheet, index - 1, 11);
+        widths(sheet, 22, 30, 28, 39, 39, 45, 16, 26, 26, 20, 28);
     }
 
     private void payments(XSSFSheet sheet, Styles styles, List<Event> events) {

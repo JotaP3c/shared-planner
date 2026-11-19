@@ -1,0 +1,143 @@
+<section class="page catalog-page" aria-label="Catálogo de serviços e produtos">
+  <sp-page-header eyebrow="Financeiro" title="Catálogo" description="Serviços e produtos para agendar atendimentos." >
+    @if (canManage()) {
+      <button spButton spHeaderActions type="button" (click)="openForm()" [disabled]="saving()">Novo item</button>
+    }
+  </sp-page-header>
+
+  @if (success()) { <p class="page-feedback is-success" role="status">{{ success() }}</p> }
+  @if (error()) {
+    <div class="page-feedback is-error" role="alert">
+      {{ error() }}
+      <button spButton variant="ghost" type="button" (click)="refreshCalendars()" [disabled]="loadingCalendars() || saving()">Tentar novamente</button>
+    </div>
+  }
+  @if (loadingCalendars()) {
+    <sp-loading-state label="Carregando calendários…" />
+  } @else if (calendars().length) {
+    <div class="page-panel catalog-filters">
+      <label class="sp-field">Calendário
+        <select spSelect [disabled]="saving()" (change)="selectCalendar($any($event.target).value)">
+          @for (calendar of calendars(); track calendar.id) {
+            <option [value]="calendar.id" [selected]="calendar.id === calendarId()">{{ calendar.name }}</option>
+          }
+        </select>
+      </label>
+      <form [formGroup]="filters" (ngSubmit)="load()" class="catalog-grid" aria-label="Filtrar itens do catálogo">
+        <label class="sp-field">Busca
+          <input spInput type="search" formControlName="q" maxlength="160" placeholder="Nome, código ou descrição" />
+        </label>
+        <label class="sp-field">Tipo
+          <select spSelect formControlName="type"><option value="">Todos</option><option value="SERVICE">Serviços</option><option value="PRODUCT">Produtos</option></select>
+        </label>
+        <label class="sp-field">Categoria
+          <input spInput formControlName="category" maxlength="100" />
+        </label>
+        <label class="sp-field">Situação
+          <select spSelect formControlName="status"><option value="active">Ativos</option><option value="inactive">Inativos</option><option value="all">Todos</option></select>
+        </label>
+        <button spButton variant="secondary" type="submit">Aplicar filtros</button>
+      </form>
+    </div>
+
+    @if (formOpen()) {
+      <form class="page-panel catalog-form" [formGroup]="form" (ngSubmit)="save()" aria-labelledby="catalog-form-title">
+        <h2 id="catalog-form-title">{{ editing() ? 'Editar item' : 'Cadastrar item' }}</h2>
+        <fieldset class="catalog-grid" [disabled]="saving()">
+          <label class="sp-field">Nome <input spInput formControlName="name" required maxlength="180" /></label>
+          <label class="sp-field">Tipo
+            <select spSelect formControlName="type"><option value="SERVICE">Serviço</option><option value="PRODUCT">Produto</option></select>
+          </label>
+          <label class="sp-field">Código (opcional) <input spInput formControlName="code" maxlength="60" /></label>
+          <label class="sp-field">Categoria (opcional) <input spInput formControlName="category" maxlength="100" /></label>
+          <label class="sp-field">Preço padrão (R$) <input spInput type="number" formControlName="standardPrice" min="0" step="0.01" required /></label>
+          <label class="sp-field">Duração em minutos (opcional) <input spInput type="number" formControlName="durationMinutes" min="1" max="1440" step="1" /></label>
+          <label class="sp-field catalog-span">Descrição <textarea spInput formControlName="description" maxlength="2000" rows="2"></textarea></label>
+        </fieldset>
+        <fieldset class="catalog-grid" [disabled]="saving()">
+          <legend>Promoção (opcional)</legend>
+          <label class="sp-field">Preço promocional (R$) <input spInput type="number" formControlName="promotionalPrice" min="0" step="0.01" /></label>
+          <label class="sp-field">Início <input spInput type="date" formControlName="promotionStartDate" /></label>
+          <label class="sp-field">Fim <input spInput type="date" formControlName="promotionEndDate" /></label>
+        </fieldset>
+        @if (formError()) { <p class="page-feedback is-error" role="alert">{{ formError() }}</p> }
+        <div class="page-actions">
+          <button spButton type="submit" [loading]="saving()" [disabled]="saving()">Salvar item</button>
+          <button spButton variant="secondary" type="button" (click)="cancelForm()" [disabled]="saving()">Cancelar</button>
+        </div>
+      </form>
+    }
+
+    @if (loadingItems()) {
+      <sp-loading-state label="Carregando catálogo…" />
+    } @else if (items().length) {
+      <div class="page-table-wrap" tabindex="0" role="region" aria-label="Itens do catálogo">
+        <table spTable class="page-table">
+          <thead><tr><th scope="col">Item</th><th scope="col">Categoria</th><th scope="col">Preço</th><th scope="col">Duração</th><th scope="col">Situação</th><th scope="col">Ações</th></tr></thead>
+          <tbody>
+            @for (item of items(); track item.id) {
+              <tr>
+                <td><strong>{{ item.name }}</strong><small>{{ item.type === 'SERVICE' ? 'Serviço' : 'Produto' }}{{ item.code ? ' · ' + item.code : '' }}</small>@if (item.description) { <small>{{ item.description }}</small> }</td>
+                <td>{{ item.category || '—' }}</td>
+                <td><strong>{{ currency(item.standardPrice) }}</strong>
+                  @if (item.promotionalPrice !== null) {
+                    <small>{{ currency(item.promotionalPrice) }} · {{ displayDate(item.promotionStartDate) }} a {{ displayDate(item.promotionEndDate) }}</small>
+                    @if (item.promotionApplied) { <small>Promoção vigente hoje</small> }
+                  }
+                </td>
+                <td>{{ item.durationMinutes ? item.durationMinutes + ' min' : '—' }}</td>
+                <td><sp-badge [variant]="item.active ? 'success' : 'neutral'">{{ item.active ? 'Ativo' : 'Inativo' }}</sp-badge></td>
+                <td><div class="row-actions">
+                  <button spButton size="sm" variant="ghost" type="button" (click)="openHistory(item)" [attr.aria-label]="'Histórico de preços de ' + item.name">Histórico</button>
+                  @if (canManage()) {
+                    <button spButton size="sm" variant="secondary" type="button" (click)="openForm(item)" [disabled]="saving()" [attr.aria-label]="'Editar ' + item.name">Editar</button>
+                    <button spButton size="sm" variant="ghost" type="button" (click)="toggleActive(item)" [disabled]="saving()" [attr.aria-label]="(item.active ? 'Desativar ' : 'Reativar ') + item.name">{{ item.active ? 'Desativar' : 'Reativar' }}</button>
+                  }
+                </div></td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+      @if (total() > pageSize) {
+        <nav class="page-actions" aria-label="Paginação do catálogo">
+          <button spButton variant="secondary" type="button" [disabled]="page() === 0" (click)="load(page() - 1)">Anterior</button>
+          <span>Página {{ page() + 1 }} · {{ total() }} itens</span>
+          <button spButton variant="secondary" type="button" [disabled]="(page() + 1) * pageSize >= total()" (click)="load(page() + 1)">Próxima</button>
+        </nav>
+      }
+    } @else if (!error()) {
+      <sp-empty-state title="Nenhum item encontrado" description="Revise os filtros ou cadastre um item neste calendário." />
+    }
+
+    @if (historyItem(); as item) {
+      <section class="page-panel" aria-labelledby="catalog-history-title">
+        <header class="page-actions catalog-history-header">
+          <h2 id="catalog-history-title">Histórico de preços · {{ item.name }}</h2>
+          <button spButton variant="secondary" type="button" (click)="closeHistory()">Fechar histórico</button>
+        </header>
+        @if (loadingHistory()) { <sp-loading-state label="Carregando histórico…" /> }
+        @else if (historyError()) { <p class="page-feedback is-error" role="alert">{{ historyError() }}</p> }
+        @else if (history().length) {
+          <ul class="catalog-history">
+            @for (record of history(); track $index) {
+              <li><strong>{{ currency(record.standardPrice) }}</strong>
+                @if (record.promotionalPrice !== null) { · Promoção de {{ currency(record.promotionalPrice) }} ({{ displayDate(record.promotionStartDate) }} a {{ displayDate(record.promotionEndDate) }}) }
+                <small>{{ record.changedAt | date:'dd/MM/yyyy HH:mm' }} · {{ record.changedByEmail }}</small>
+              </li>
+            }
+          </ul>
+        } @else { <p>Nenhuma alteração de preço registrada.</p> }
+        @if (!loadingHistory() && (historyPage() > 0 || hasMoreHistory())) {
+          <nav class="page-actions" aria-label="Paginação do histórico">
+            <button spButton variant="secondary" type="button" [disabled]="historyPage() === 0" (click)="openHistory(item, historyPage() - 1)">Anterior</button>
+            <span>Página {{ historyPage() + 1 }}</span>
+            <button spButton variant="secondary" type="button" [disabled]="!hasMoreHistory()" (click)="openHistory(item, historyPage() + 1)">Próxima</button>
+          </nav>
+        }
+      </section>
+    }
+  } @else if (!error()) {
+    <sp-empty-state title="Nenhum calendário autorizado" description="Seu acesso precisa incluir consulta ao catálogo e aos valores do calendário." />
+  }
+</section>

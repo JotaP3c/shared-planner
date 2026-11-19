@@ -47,6 +47,11 @@ export const routes: Routes = [
         loadComponent: () => import('./features/calendar/calendar-import-page/calendar-import-page').then(m => m.CalendarImportPage),
       },
       {
+        path: 'finance/catalog',
+        canActivate: [permissionGuard('CATALOG_VIEW', true)],
+        loadComponent: () => import('./features/catalog/catalog-page').then(m => m.CatalogPage),
+      },
+      {
         path: 'finance',
         canActivate: [permissionGuard('FINANCE_VIEW', true)],
         loadComponent: () =>

@@ -6,6 +6,7 @@ import { provideRouter } from '@angular/router';
 import { CalendarPage } from './calendar-page';
 import { AuthService } from '../../../core/auth/auth.service';
 import { CalendarResponse, EventResponse } from '../../../core/models/shared-planner.models';
+import { CatalogItemResponse } from '../../../core/models/catalog.models';
 import { DataChangeService } from '../../../core/state/data-change.service';
 
 describe('CalendarPage', () => {
@@ -41,6 +42,7 @@ describe('CalendarPage', () => {
       canCreateEvents: true, permissions: ['CALENDAR_VIEW', 'EVENT_CREATE'] }]);
     component.openNewEventModal();
     fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('app-recurrence-editor')).toBeNull();
     const radios = Array.from((fixture.nativeElement as HTMLElement).querySelectorAll<HTMLButtonElement>('.type-selector [role=radio]'));
     radios[0].focus();
     radios[0].dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }));
@@ -49,6 +51,7 @@ describe('CalendarPage', () => {
     expect(radios[1].getAttribute('aria-checked')).toBe('true');
     expect(radios[1].tabIndex).toBe(0);
     expect(radios[0].tabIndex).toBe(-1);
+    expect(fixture.nativeElement.querySelector('app-recurrence-editor')).not.toBeNull();
   });
 
   it('closes the calendar filter with Escape while focus stays on its trigger and removes the backdrop', () => {
@@ -301,6 +304,7 @@ describe('CalendarPage', () => {
 
 describe('CalendarPage async states and validation (BLG-BUG-004/005/008, BLG-FE-007)', () => {
   let component: CalendarPage;
+  let fixture: ComponentFixture<CalendarPage>;
   let http: HttpTestingController;
 
   const calendarA: CalendarResponse = { id: 'cal-a', name: 'Agenda A', ownerEmail: 'owner@example.com', memberRole: 'ADMIN', canCreateEvents: true,
@@ -352,7 +356,7 @@ describe('CalendarPage async states and validation (BLG-BUG-004/005/008, BLG-FE-
       providers: [provideRouter([]), provideHttpClient(), provideHttpClientTesting()],
     }).compileComponents();
 
-    const fixture = TestBed.createComponent(CalendarPage);
+    fixture = TestBed.createComponent(CalendarPage);
     component = fixture.componentInstance;
     http = TestBed.inject(HttpTestingController);
     TestBed.inject(AuthService).currentUser.set({
@@ -485,6 +489,175 @@ describe('CalendarPage async states and validation (BLG-BUG-004/005/008, BLG-FE-
     const request = http.expectOne(req => req.method === 'POST' && req.url === '/api/events');
     expect(request.request.body.title).toBe('Atendimento');
     expect(request.request.body.workDescription).toBe('Corte');
+  });
+
+  function grantCatalog() {
+    component.calendars.set([{ ...calendarA, permissions: [...calendarA.permissions!, 'CATALOG_VIEW'] }, calendarB]);
+  }
+
+  function catalogItem(overrides: Partial<CatalogItemResponse> = {}): CatalogItemResponse {
+    return {
+      id: 'service', calendarId: 'cal-a', type: 'SERVICE', name: 'Design de sobrancelha',
+      code: null, description: null, standardPrice: 75, promotionalPrice: 50,
+      promotionStartDate: '2026-08-24', promotionEndDate: '2026-08-24',
+      durationMinutes: 25, category: null, effectivePrice: 50, promotionApplied: true,
+      active: true, version: 0, ...overrides,
+    };
+  }
+
+  function startCatalogClient() {
+    grantCatalog();
+    component.openNewEventModal(new Date(2026, 7, 24, 10));
+    component.eventForm.controls.clientName.setValue('Ana');
+  }
+
+  function expectCatalogSearch(term: string, result: CatalogItemResponse[]) {
+    vi.advanceTimersByTime(220);
+    const request = http.expectOne(req => req.url === '/api/calendars/cal-a/catalog' && req.params.get('q') === term);
+    expect(request.request.params.get('appointmentDate')).toBe('2026-08-24');
+    expect(request.request.params.get('active')).toBe('true');
+    request.flush({ items: result, page: 0, size: 15, totalElements: result.length });
+  }
+
+  it('adds catalog suggestions through keyboard and pointer, edits quantities, removes items, and saves only selected ids', () => {
+    vi.useFakeTimers();
+    try {
+      startCatalogClient();
+      fixture.detectChanges();
+      const root: HTMLElement = fixture.nativeElement;
+      const input = root.querySelector<HTMLInputElement>('#event-catalog-search')!;
+      const service = catalogItem();
+      const product = catalogItem({ id: 'product', name: 'Creme', type: 'PRODUCT', durationMinutes: null, standardPrice: 20, effectivePrice: 20, promotionApplied: false });
+      input.value = 'sobrancelha';
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+      expectCatalogSearch('sobrancelha', [service]);
+      fixture.detectChanges();
+      expect(component.eventCatalog.lines()).toHaveLength(0);
+      input.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }));
+      fixture.detectChanges();
+      expect(input.getAttribute('aria-activedescendant')).toBe('event-catalog-option-service');
+      input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }));
+      expect(component.eventForm.controls.endTime.value).toBe('10:25');
+      component.searchEventCatalog('creme');
+      expectCatalogSearch('creme', [product]);
+      fixture.detectChanges();
+      root.querySelector<HTMLElement>('#event-catalog-option-product')!.click();
+      fixture.detectChanges();
+      const quantity = root.querySelector<HTMLInputElement>('[aria-label="Quantidade de Design de sobrancelha"]')!;
+      quantity.value = '2';
+      quantity.dispatchEvent(new Event('change', { bubbles: true }));
+      expect(component.eventCatalog.amount()).toBe(120);
+      expect(component.eventForm.controls.endTime.value).toBe('10:50');
+      root.querySelector<HTMLButtonElement>('[aria-label="Remover Creme"]')!.click();
+      expect(component.eventCatalog.amount()).toBe(100);
+      component.eventForm.controls.observations.setValue('Cliente prefere atendimento silencioso');
+      // Legacy recurrence state may exist after a change of event type. It must never be submitted on CLIENT.
+      component.recurrence.set({ frequency: 'WEEKLY', count: 2, zoneId: 'America/Sao_Paulo' });
+      component.submitEventForm();
+      const request = http.expectOne(req => req.method === 'POST' && req.url === '/api/events');
+      http.expectNone('/api/event-series');
+      expect(request.request.body).toMatchObject({
+        title: 'Ana - Design de sobrancelha',
+        catalogItems: [{ catalogItemId: 'service', quantity: 2, expectedUnitPrice: 50, expectedDiscount: 50, expectedDurationMinutes: 25 }],
+        expectedCatalogTotal: 100,
+        observations: 'Cliente prefere atendimento silencioso',
+      });
+      expect(request.request.body.amount).toBeUndefined();
+      expect(request.request.body.workDescription).toBeUndefined();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('does not bill typed text and cancels a catalog lookup when the selected calendar changes', () => {
+    vi.useFakeTimers();
+    try {
+      startCatalogClient();
+      component.searchEventCatalog('sobrancelha');
+      vi.advanceTimersByTime(220);
+      const pending = http.expectOne(req => req.url === '/api/calendars/cal-a/catalog');
+      component.submitEventForm();
+      expect(component.eventFormError()).toContain('Selecione');
+      expectNoSave();
+      component.eventForm.controls.calendarId.setValue('cal-b');
+      expect(pending.cancelled).toBe(true);
+      expect(component.eventCatalog.matches()).toEqual([]);
+      expect(component.eventCatalog.term()).toBe('');
+      component.searchEventCatalog('creme');
+      vi.advanceTimersByTime(220);
+      http.expectNone(req => req.url.endsWith('/catalog'));
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  const snapshot = { catalogItemId: 'service', name: 'Design contratado', quantity: 2, unitPrice: 50, discount: 50,
+    subtotal: 100, durationMinutes: 25 };
+
+  function openContracted(overrides: Partial<EventResponse> = {}) {
+    grantCatalog();
+    component.openEditEventModal(event('contract', {
+      createdByEmail: 'user@example.com', eventType: 'CLIENT', status: 'SCHEDULED', clientName: 'Ana',
+      amount: 100, paymentStatus: 'PENDING', receivedAmount: 0, catalogLinked: true, catalogItems: [snapshot],
+      observations: 'Observação original', ...overrides,
+    }));
+  }
+
+  it('preserves saved catalog price and quantities when editing date and observations without an explicit reprice', () => {
+    openContracted();
+    component.eventForm.controls.date.setValue('2026-08-25');
+    component.eventForm.controls.observations.setValue('Observação alterada');
+    http.expectNone('/api/events/catalog-quote');
+    expect(component.eventCatalog.amount()).toBe(100);
+    component.submitEventForm();
+    const request = http.expectOne('/api/events/contract');
+    expect(request.request.body.catalogItems).toBeUndefined();
+    expect(request.request.body.repriceCatalogItems).toBeUndefined();
+    expect(request.request.body.amount).toBeUndefined();
+    expect(request.request.body.observations).toBe('Observação alterada');
+    expect(request.request.body.startsAt).toContain('2026-08-25T');
+  });
+
+  it('requires a refreshed quote for explicit repricing and stale prices before resubmitting', () => {
+    openContracted();
+    component.eventForm.controls.date.setValue('2026-08-25');
+    component.eventCatalog.repriceAll();
+    const quote = http.expectOne('/api/events/catalog-quote');
+    expect(quote.request.body).toEqual({
+      calendarId: 'cal-a', appointmentDate: '2026-08-25', catalogItems: [{ catalogItemId: 'service', quantity: 2 }],
+    });
+    component.submitEventForm();
+    http.expectNone('/api/events/contract');
+    quote.flush({ amount: 150, catalogItems: [{ ...snapshot, unitPrice: 75, subtotal: 150, discount: 0 }] });
+    component.submitEventForm();
+    const outdated = http.expectOne('/api/events/contract');
+    expect(outdated.request.body.repriceCatalogItems).toBe(true);
+    expect(outdated.request.body.expectedCatalogTotal).toBe(150);
+    outdated.flush({}, { status: 409, statusText: 'Conflict' });
+    expect(component.eventFormError()).toContain('catálogo mudou');
+    component.submitEventForm();
+    http.expectNone('/api/events/contract');
+    component.eventCatalog.refresh();
+    http.expectOne('/api/events/catalog-quote').flush({ amount: 160, catalogItems: [{ ...snapshot, unitPrice: 80, subtotal: 160, discount: 0 }] });
+    component.submitEventForm();
+    expect(http.expectOne('/api/events/contract').request.body.expectedCatalogTotal).toBe(160);
+  });
+
+  it('locks paid snapshots and keeps redacted financial fields out of edit requests', () => {
+    openContracted({ paymentStatus: 'PAID', receivedAmount: 100 });
+    expect(component.canSearchCatalog()).toBe(false);
+    component.removeCatalogItem('service');
+    expect(component.eventCatalog.lines()).toHaveLength(1);
+    component.closeEventModal();
+    openContracted({ catalogItems: undefined, amount: undefined, paymentStatus: undefined, receivedAmount: undefined });
+    component.eventForm.controls.observations.setValue('Somente observação');
+    expect(component.canSearchCatalog()).toBe(false);
+    expect(component.showManualClientFields()).toBe(false);
+    component.submitEventForm();
+    const request = http.expectOne('/api/events/contract');
+    expect(request.request.body).toMatchObject({ observations: 'Somente observação' });
+    expect(request.request.body.catalogItems).toBeUndefined();
+    expect(request.request.body.amount).toBeUndefined();
   });
 
   it('keeps all authorized calendars selected and filters event types across them together', () => {

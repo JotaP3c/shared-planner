@@ -76,7 +76,7 @@
         }
       </section>
 
-      @if (canAccessFinance()) {
+      @if (canAccessFinance() || canAccessCatalog()) {
         <section class="nav-group" data-testid="finance-navigation">
           <button
             type="button"
@@ -94,7 +94,12 @@
 
           @if (isNavGroupOpen('finance') && !sidebarCollapsed()) {
             <div class="nav-subitems">
-              <a routerLink="/finance" routerLinkActive="active">Resumo de receitas</a>
+              @if (canAccessFinance()) {
+                <a routerLink="/finance" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">Resumo de receitas</a>
+              }
+              @if (canAccessCatalog()) {
+                <a routerLink="/finance/catalog" routerLinkActive="active" ariaCurrentWhenActive="page">Catálogo</a>
+              }
             </div>
           }
         </section>

@@ -1,0 +1,21 @@
+.catalog-page { display: grid; gap: var(--sp-space-5); }
+.catalog-filters, .catalog-form { display: grid; gap: var(--sp-space-4); }
+.catalog-filters > label { max-width: 32rem; }
+.catalog-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 11rem), 1fr));
+  align-items: end;
+  gap: var(--sp-space-3);
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.catalog-span { grid-column: 1 / -1; }
+legend { margin-block-end: var(--sp-space-2); font-weight: var(--sp-font-weight-semibold); }
+h2 { margin: 0; font-size: var(--sp-font-size-xl); }
+td:first-child { min-width: 12rem; overflow-wrap: anywhere; }
+.catalog-history-header { justify-content: space-between; }
+.catalog-history { list-style: none; padding: 0; margin: var(--sp-space-3) 0 0; }
+.catalog-history li { padding-block: var(--sp-space-3); border-top: 1px solid var(--sp-border); overflow-wrap: anywhere; }
+.catalog-history small { display: block; margin-top: var(--sp-space-1); color: var(--sp-content-secondary); }

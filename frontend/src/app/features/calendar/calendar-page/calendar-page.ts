@@ -13,6 +13,7 @@ import timeGridPlugin from '@fullcalendar/timegrid';
 import { Subscription, catchError, distinctUntilChanged, finalize, forkJoin, map, of } from 'rxjs';
 
 import { CalendarService } from '../../../core/api/calendar.service';
+import { CatalogService } from '../../../core/api/catalog.service';
 import { EventService } from '../../../core/api/event.service';
 import { EventSeriesService } from '../../../core/api/event-series.service';
 import { canRespondToApproval, canCalendarPermission } from '../../../core/auth/calendar-permissions';
@@ -29,6 +30,8 @@ import { DialogFocusDirective } from '../../../shared/a11y/dialog-focus.directiv
 import { AppointmentConfirmation } from '../appointment-confirmation/appointment-confirmation';
 import { LayoutPreferencesService } from '../../../core/layout/layout-preferences.service';
 import { AuthService } from '../../../core/auth/auth.service';
+import { CatalogItemResponse } from '../../../core/models/catalog.models';
+import { EventCatalogDraft } from './event-catalog-draft';
 import {
   CalendarResponse,
   CreateEventRequest,
@@ -81,6 +84,10 @@ export class CalendarPage implements OnInit, AfterViewInit {
 
   private readonly calendarService = inject(CalendarService);
   private readonly eventService = inject(EventService);
+  readonly eventCatalog = new EventCatalogDraft(inject(CatalogService), this.eventService, () => this.applyCatalogDuration());
+  readonly catalogMaxQuantity = EventCatalogDraft.maxQuantity;
+  readonly catalogDurationWarning = signal('');
+  private useCatalogDuration = false;
   private readonly financeService = inject(FinanceService);
   private readonly dataChanges = inject(DataChangeService);
   private financeSubscription: Subscription | null = null;
@@ -136,6 +143,7 @@ export class CalendarPage implements OnInit, AfterViewInit {
     clientPhone: [''],
     personName: ['', Validators.maxLength(120)],
     description: [''],
+    observations: ['', Validators.maxLength(500)],
     workDescription: [''],
     amount: [''],
     date: ['', Validators.required],
@@ -402,6 +410,20 @@ export class CalendarPage implements OnInit, AfterViewInit {
 
 
   constructor() {
+    this.eventForm.controls.calendarId.valueChanges.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(calendarId => {
+      if (!this.isEventModalOpen() || this.isEditMode()) return;
+      this.eventCatalog.reset(calendarId, this.eventForm.controls.date.value);
+      this.eventForm.patchValue({ workDescription: '', amount: '' }, { emitEvent: false });
+      this.useCatalogDuration = false;
+      this.catalogDurationWarning.set('');
+      this.eventFormError.set('');
+    });
+    this.eventForm.controls.date.valueChanges.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(date => {
+      if (this.isEventModalOpen()) this.eventCatalog.changeDate(date);
+    });
+    this.eventForm.controls.startTime.valueChanges.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(() => {
+      if (this.isEventModalOpen()) this.applyCatalogDuration();
+    });
     effect(() => {
       this.calendarOptions = {
         ...this.calendarOptions,
@@ -447,6 +469,7 @@ export class CalendarPage implements OnInit, AfterViewInit {
     });
 
     this.destroyRef.onDestroy(() => {
+      this.eventCatalog.dispose();
       this.financeSubscription?.unsubscribe();
       if (this.resizeTimerId) {
         clearTimeout(this.resizeTimerId);
@@ -851,14 +874,18 @@ export class CalendarPage implements OnInit, AfterViewInit {
       clientPhone: '',
       personName: '',
       description: '',
+      observations: '',
       workDescription: '',
       amount: '',
       date: this.toInputDate(startsAt),
       startTime: this.toInputTime(startsAt),
       endTime: this.toInputTime(endsAt),
       approvalRequestedFromEmail: '',
-    });
+    }, { emitEvent: false });
 
+    this.eventCatalog.reset(calendarId, this.eventForm.controls.date.value);
+    this.catalogDurationWarning.set('');
+    this.useCatalogDuration = false;
     this.isEventModalOpen.set(true);
     this.calendarComponent?.getApi().unselect();
   }
@@ -886,7 +913,8 @@ export class CalendarPage implements OnInit, AfterViewInit {
       clientPhone: formatBrazilianPhone(event.clientPhone ?? ''),
       personName: event.personName ?? '',
       description: event.description ?? '',
-      workDescription: event.eventType === 'CLIENT'
+      observations: event.observations ?? '',
+      workDescription: event.eventType === 'CLIENT' && !this.isCatalogLinked(event)
         ? [...new Set([event.workDescription, event.description].filter((text): text is string => !!text?.trim()))].join('\n\n')
         : event.workDescription ?? '',
       amount: event.amount == null ? '' : String(event.amount),
@@ -894,8 +922,11 @@ export class CalendarPage implements OnInit, AfterViewInit {
       startTime: this.toInputTime(startsAt),
       endTime: this.toInputTime(endsAt),
       approvalRequestedFromEmail: (event.approvalRequestedFromEmails ?? [event.approvalRequestedFromEmail]).filter(Boolean).join(', '),
-    });
+    }, { emitEvent: false });
 
+    this.eventCatalog.reset(event.calendarId, this.eventForm.controls.date.value, event);
+    this.catalogDurationWarning.set('');
+    this.useCatalogDuration = false;
     this.isEventModalOpen.set(true);
   }
 
@@ -905,14 +936,138 @@ export class CalendarPage implements OnInit, AfterViewInit {
     }
 
     this.isEventModalOpen.set(false);
+    this.eventCatalog.dispose();
     this.eventFormError.set('');
     this.isEditMode.set(false);
     this.eventBeingEdited.set(null);
   }
 
   onEventTypeChange(eventType: EventType): void {
+    if (this.eventTypeLocked(eventType)) return;
+    if (eventType !== this.formEventType()) {
+      this.recurrence.set(null);
+      this.eventCatalog.clearSearch();
+    }
     this.formEventType.set(eventType);
     this.eventForm.controls.eventType.setValue(eventType);
+  }
+
+  eventTypeLocked(type: EventType): boolean {
+    const event = this.eventBeingEdited();
+    return !!event && event.eventType === 'CLIENT' && this.isCatalogLinked(event) && type !== 'CLIENT'
+      && !this.canSearchCatalog();
+  }
+
+  isCatalogLinked(event: EventResponse | null): boolean {
+    return !!event && (event.catalogLinked === true || !!event.catalogItems?.length);
+  }
+
+  canSearchCatalog(): boolean {
+    const calendar = this.calendars().find(item => item.id === this.eventForm.controls.calendarId.value);
+    const event = this.eventBeingEdited();
+    return !!calendar && canCalendarPermission(calendar, 'CATALOG_VIEW') && canCalendarPermission(calendar, 'FINANCE_VIEW')
+      && (event ? this.canEditEvent(event) && (event.eventType !== 'CLIENT' || event.paymentStatus === 'PENDING')
+        : this.canCreateInCalendar(calendar.id));
+  }
+
+  editCalendarName(): string {
+    const calendarId = this.eventBeingEdited()?.calendarId;
+    return this.calendars().find(calendar => calendar.id === calendarId)?.name ?? 'Calendário deste evento';
+  }
+
+  legacyAmountLocked(): boolean {
+    const event = this.eventBeingEdited();
+    return event?.eventType === 'CLIENT' && !!event.paymentStatus && event.paymentStatus !== 'PENDING';
+  }
+
+  showManualClientFields(): boolean {
+    if (this.eventCatalog.lines().length || this.isCatalogLinked(this.eventBeingEdited())) return false;
+    return !this.canSearchCatalog() || this.eventCatalog.manual();
+  }
+
+  searchEventCatalog(term: string): void {
+    if (this.canSearchCatalog()) this.eventCatalog.search(term);
+  }
+
+  onCatalogInputKeydown(event: KeyboardEvent): void {
+    if (event.key === 'Escape' && this.eventCatalog.searchOpen()) {
+      event.stopPropagation();
+      event.preventDefault();
+      this.eventCatalog.searchOpen.set(false);
+      return;
+    }
+    const matches = this.eventCatalog.matches();
+    if (event.key === 'Enter' && this.eventCatalog.searchOpen()) {
+      event.preventDefault();
+      const selected = matches[this.eventCatalog.activeIndex()];
+      if (selected) this.selectCatalogItem(selected);
+      return;
+    }
+    if (!matches.length || !['ArrowDown', 'ArrowUp'].includes(event.key)) return;
+    event.preventDefault();
+    this.eventCatalog.searchOpen.set(true);
+    const index = this.eventCatalog.activeIndex();
+    const next = event.key === 'ArrowDown' ? (index + 1) % matches.length
+      : (index <= 0 ? matches.length - 1 : index - 1);
+    this.eventCatalog.activeIndex.set(next);
+    const option = (event.currentTarget as HTMLElement).ownerDocument.getElementById('event-catalog-option-' + matches[next].id);
+    option?.scrollIntoView?.({ block: 'nearest' });
+  }
+
+  selectCatalogItem(item: CatalogItemResponse): void {
+    if (this.canSearchCatalog() && this.eventCatalog.select(item)) {
+      this.useCatalogDuration = true;
+      this.applyCatalogDuration();
+      this.eventFormError.set('');
+    }
+  }
+
+  changeCatalogQuantity(id: string, input: HTMLInputElement): void {
+    if (!this.canSearchCatalog()) return;
+    this.eventCatalog.setQuantity(id, input.valueAsNumber);
+    const line = this.eventCatalog.lines().find(item => item.catalogItemId === id);
+    if (line) input.value = String(line.quantity);
+    this.useCatalogDuration = true;
+    this.applyCatalogDuration();
+  }
+
+  removeCatalogItem(id: string): void {
+    if (!this.canSearchCatalog()) return;
+    this.eventCatalog.remove(id);
+    this.useCatalogDuration = true;
+    this.applyCatalogDuration();
+  }
+
+  restoreContractedCatalog(): void {
+    this.eventCatalog.restoreOriginal();
+    this.overrideCatalogDuration();
+    const saved = this.eventBeingEdited();
+    if (saved && this.eventForm.controls.startTime.value === this.toInputTime(new Date(saved.startsAt))) {
+      this.eventForm.controls.endTime.setValue(this.toInputTime(new Date(saved.endsAt)));
+    }
+    this.eventFormError.set('');
+  }
+
+  overrideCatalogDuration(): void {
+    this.useCatalogDuration = false;
+    this.catalogDurationWarning.set('');
+  }
+
+  private applyCatalogDuration(): void {
+    const minutes = this.eventCatalog.duration();
+    const { startTime, date } = this.eventForm.getRawValue();
+    if (!this.useCatalogDuration || this.formEventType() !== 'CLIENT' || !minutes || !startTime || !date
+      || this.preservesOriginalInterval()) {
+      this.catalogDurationWarning.set('');
+      return;
+    }
+    const end = this.addMinutes(this.buildLocalDateTime(date, startTime), minutes);
+    if (this.toInputDate(end) !== date) {
+      this.catalogDurationWarning.set('A duração estimada ultrapassa o dia. Ajuste o início ou o término antes de salvar.');
+      return;
+    }
+    this.catalogDurationWarning.set('');
+    this.eventForm.controls.endTime.setValue(this.toInputTime(end));
   }
 
   submitEventForm(): void {
@@ -930,11 +1085,19 @@ export class CalendarPage implements OnInit, AfterViewInit {
     }
 
     const raw = this.eventForm.getRawValue();
-    const calendarId = this.cleanText(raw.calendarId);
+    const editedEvent = this.eventBeingEdited();
+    const calendarId = editedEvent?.calendarId ?? this.cleanText(raw.calendarId);
     const eventType = raw.eventType;
     const clientName = this.cleanText(raw.clientName);
-    // CLIENT não exibe "título" no formulário: usa o título existente ou o nome do cliente.
-    const title = this.cleanText(raw.title) || (eventType === 'CLIENT' ? clientName : '');
+    const lines = eventType === 'CLIENT' ? this.eventCatalog.lines() : [];
+    const previouslyLinked = eventType === 'CLIENT' && this.isCatalogLinked(editedEvent);
+    const usesCatalog = previouslyLinked || lines.length > 0;
+    const changesCatalog = eventType === 'CLIENT' && this.eventCatalog.changed();
+    const scope = this.seriesScope();
+    const generatedTitle = lines.length
+      ? `${clientName} - ${lines.map(line => line.name).join(', ')}`.slice(0, 180).replace(/[\uD800-\uDBFF]$/, '')
+      : clientName;
+    const title = this.cleanText(raw.title) || (eventType === 'CLIENT' ? generatedTitle : '');
     const personName = this.cleanText(raw.personName);
     const description = this.cleanText(raw.description);
     const workDescription = this.cleanText(raw.workDescription);
@@ -951,13 +1114,18 @@ export class CalendarPage implements OnInit, AfterViewInit {
       return;
     }
 
-    if (!this.canCreateInCalendar(calendarId)) {
-      this.eventFormError.set('Você não tem permissão para criar eventos neste calendário.');
+    if (editedEvent ? !this.canEditEvent(editedEvent) : !this.canCreateInCalendar(calendarId)) {
+      this.eventFormError.set(editedEvent ? 'Você não tem permissão para editar este evento.' : 'Você não tem permissão para criar eventos neste calendário.');
       return;
     }
 
     if (eventType === 'CLIENT' && !clientName) {
       this.eventFormError.set('Informe o nome do cliente.');
+      return;
+    }
+
+    if (this.eventTypeLocked(eventType)) {
+      this.eventFormError.set('Este atendimento tem itens contratados e não pode mudar de tipo.');
       return;
     }
 
@@ -967,8 +1135,25 @@ export class CalendarPage implements OnInit, AfterViewInit {
       return;
     }
 
-    // BR-CLIENT-001: CLIENT exige descrição do serviço, como o backend.
-    if (eventType === 'CLIENT' && !workDescription) {
+    if (changesCatalog && (!this.canSearchCatalog() || (this.editingSeries() && scope !== 'SINGLE'))) {
+      this.eventFormError.set('Altere itens e preços do catálogo em uma ocorrência por vez e com permissão de catálogo.');
+      return;
+    }
+    if (previouslyLinked && this.eventCatalog.hasOriginal() && !lines.length) {
+      this.eventFormError.set('Mantenha pelo menos um item neste atendimento do catálogo.');
+      return;
+    }
+    if (eventType === 'CLIENT' && !usesCatalog && this.canSearchCatalog() && !this.eventCatalog.manual()) {
+      this.eventFormError.set('Selecione um procedimento ou produto, ou escolha preencher o atendimento manualmente.');
+      return;
+    }
+    if (eventType === 'CLIENT' && (this.eventCatalog.quoteLoading() || this.eventCatalog.quoteError() || this.eventCatalog.exceedsLimit()
+      || this.catalogDurationWarning())) {
+      this.eventFormError.set(this.eventCatalog.quoteError() || this.catalogDurationWarning()
+        || (this.eventCatalog.exceedsLimit() ? 'O valor total excede o limite aceito.' : 'Aguarde a consulta dos preços.'));
+      return;
+    }
+    if (eventType === 'CLIENT' && !usesCatalog && !workDescription) {
       this.eventFormError.set('Informe a descrição do serviço do atendimento.');
       return;
     }
@@ -1005,9 +1190,10 @@ export class CalendarPage implements OnInit, AfterViewInit {
       return;
     }
 
-    const amount = eventType === 'CLIENT' ? this.parseAmount(raw.amount) : null;
+    const hiddenLegacyAmount = !!editedEvent && editedEvent.eventType === 'CLIENT' && editedEvent.amount == null;
+    const amount = eventType === 'CLIENT' && !usesCatalog ? this.parseAmount(raw.amount) : null;
 
-    if (eventType === 'CLIENT' && amount === null) {
+    if (eventType === 'CLIENT' && !usesCatalog && !hiddenLegacyAmount && amount === null) {
       this.eventFormError.set('Informe um valor valido para o evento de cliente.');
       return;
     }
@@ -1017,11 +1203,17 @@ export class CalendarPage implements OnInit, AfterViewInit {
       title,
       clientName: eventType === 'CLIENT' ? clientName : null,
       personName: eventType === 'PERSONAL' ? personName : null,
-      description: eventType === 'CLIENT' ? null : description || null,
-      workDescription: eventType === 'CLIENT' ? workDescription || null : null,
+      ...(!usesCatalog ? { description: eventType === 'CLIENT' ? null : description || null } : {}),
+      ...(!usesCatalog ? { workDescription: eventType === 'CLIENT' ? workDescription || null : null } : {}),
+      ...(usesCatalog ? { observations: this.cleanText(raw.observations) } : {}),
       clientPhone: eventType === 'CLIENT' ? clientPhone || null : null,
       allDay: preservedEvent?.allDay ?? false,
-      amount,
+      ...(!usesCatalog && !hiddenLegacyAmount ? { amount } : {}),
+      ...(changesCatalog ? {
+        catalogItems: this.eventCatalog.payload(),
+        expectedCatalogTotal: this.eventCatalog.amount(),
+        ...(this.eventCatalog.reprice() ? { repriceCatalogItems: true } : {}),
+      } : {}),
       startsAt: preservedEvent?.startsAt ?? this.toLocalDateTime(startsAt),
       endsAt: preservedEvent?.endsAt ?? this.toLocalDateTime(endsAt),
       approvalRequestedFromEmail:
@@ -1029,15 +1221,13 @@ export class CalendarPage implements OnInit, AfterViewInit {
       approvalRequestedFromEmails: eventType === 'SHARED' || sharedCalendar ? approvalEmails.length ? approvalEmails : undefined : undefined,
     };
 
-    const recurrence = this.recurrence();
+    const recurrence = eventType === 'CLIENT' ? null : this.recurrence();
     if (recurrence && ((!recurrence.until && !recurrence.count) || (recurrence.count !== undefined && (recurrence.count < 1 || recurrence.count > 366)))) {
       this.eventFormError.set('Defina uma data limite ou quantidade entre 1 e 366 para a repetição.'); return;
     }
 
     this.isSavingEvent.set(true);
-    const editedEvent = this.eventBeingEdited();
     const series = this.editingSeries();
-    const scope = this.seriesScope();
     const saveRequest = editedEvent
       ? series && scope !== 'SINGLE'
         ? this.seriesService.update(series.id, editedEvent.id, scope, request).pipe(map(result => result.events[0]))
@@ -1062,6 +1252,7 @@ export class CalendarPage implements OnInit, AfterViewInit {
           }
 
           this.isEventModalOpen.set(false);
+          this.eventCatalog.dispose();
           this.isEditMode.set(false);
           this.eventBeingEdited.set(null);
           this.loadEvents();
@@ -1069,6 +1260,11 @@ export class CalendarPage implements OnInit, AfterViewInit {
           this.dataChanges.notify();
         },
         error: (error) => {
+          if (changesCatalog && error?.status === 409) {
+            this.eventCatalog.markStale();
+            this.eventFormError.set(this.eventCatalog.quoteError());
+            return;
+          }
           this.eventFormError.set(
             this.extractErrorMessage(error, 'Não foi possível salvar o evento. Verifique os dados e tente novamente.'),
           );

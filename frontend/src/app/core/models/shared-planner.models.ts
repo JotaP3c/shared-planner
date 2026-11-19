@@ -34,7 +34,7 @@ export type PaymentMethod =
 
 export type RevenuePeriod = 'DAILY' | 'WEEKLY' | 'BIWEEKLY' | 'MONTHLY';
 
-export type AuditEntityType = 'USER' | 'CALENDAR' | 'CALENDAR_MEMBER' | 'EVENT' | 'ACCESS_PROFILE' | 'ACCESS_ASSIGNMENT';
+export type AuditEntityType = 'USER' | 'CALENDAR' | 'CALENDAR_MEMBER' | 'EVENT' | 'ACCESS_PROFILE' | 'ACCESS_ASSIGNMENT' | 'CATALOG_ITEM';
 
 export type AuditAction =
   | 'CREATED'
@@ -82,6 +82,9 @@ export interface CalendarMemberResponse {
 export interface UpdateCalendarMemberRequest { role: CalendarMemberRole; roles?: CalendarMemberRole[]; }
 
 export interface EventResponse {
+  catalogLinked?: boolean;
+  catalogItems?: EventCatalogItem[];
+  observations?: string | null;
   financialSimulation?: boolean;
   simulationReferenceDate?: string | null;
   externalSource?: 'GOOGLE_ICS' | null;
@@ -164,6 +167,9 @@ export interface EventSearchResponse {
 }
 
 export interface CreateEventRequest {
+  catalogItems?: EventCatalogSelection[];
+  observations?: string | null;
+  expectedCatalogTotal?: number;
   calendarId: string;
   eventType: EventType;
   title: string;
@@ -178,6 +184,29 @@ export interface CreateEventRequest {
   endsAt: string;
   approvalRequestedFromEmail?: string | null;
   approvalRequestedFromEmails?: string[];
+}
+
+export interface EventCatalogSelection {
+  catalogItemId: string;
+  quantity: number;
+  expectedUnitPrice?: number;
+  expectedDiscount?: number;
+  expectedDurationMinutes?: number;
+}
+
+export interface EventCatalogItem {
+  catalogItemId: string;
+  name: string;
+  quantity: number;
+  unitPrice: number;
+  discount: number;
+  subtotal: number;
+  durationMinutes: number | null;
+}
+
+export interface EventCatalogQuote {
+  catalogItems: EventCatalogItem[];
+  amount: number;
 }
 
 export interface EventApproval {
@@ -205,7 +234,7 @@ export interface EventSeriesResponse {
   conflictCount?: number | null;
 }
 
-export type UpdateEventRequest = Omit<CreateEventRequest, 'calendarId'>;
+export type UpdateEventRequest = Omit<CreateEventRequest, 'calendarId'> & { repriceCatalogItems?: boolean };
 
 export interface UpdatePaymentRequest {
   paymentStatus: PaymentStatus;

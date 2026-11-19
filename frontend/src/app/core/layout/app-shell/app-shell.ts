@@ -74,6 +74,9 @@ export class AppShell implements OnInit, OnDestroy {
   readonly canImportCalendar = computed(() => this.hasContextPermission('CALENDAR_IMPORT'));
   readonly financeCalendars = signal<CalendarResponse[]>([]);
   readonly financeAccessResolved = signal(false);
+  readonly canAccessCatalog = computed(() => this.financeAccessResolved()
+    && this.financeCalendars().some(calendar => canCalendarPermission(calendar, 'CATALOG_VIEW')
+      && canCalendarPermission(calendar, 'FINANCE_VIEW')));
   readonly canAccessFinance = computed(() => {
     if (!this.financeAccessResolved()) {
       return false;

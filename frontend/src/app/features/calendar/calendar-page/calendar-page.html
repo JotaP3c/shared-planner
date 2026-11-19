@@ -363,6 +363,7 @@
                 role="radio"
                 [class]="'type-option ' + typeClass(card.value)"
                 [class.active]="formEventType() === card.value"
+                [disabled]="eventTypeLocked(card.value)"
                 [attr.aria-checked]="formEventType() === card.value"
                 [tabIndex]="formEventType() === card.value ? 0 : -1"
                 (click)="onEventTypeChange(card.value)"
@@ -378,7 +379,11 @@
           </fieldset>
 
           <div class="form-fields">
-            @if (creatableCalendars().length > 1 || isEditMode()) {
+            @if (isEditMode()) {
+              <label class="sp-field">Calendário
+                <input spInput type="text" readonly [value]="editCalendarName()" />
+              </label>
+            } @else {
               <label class="sp-field">
                 Calendário
                 <select spSelect formControlName="calendarId" aria-required="true"
@@ -397,17 +402,118 @@
                   <input spInput type="text" formControlName="clientName" placeholder="Ex.: Ana Silva" aria-required="true"
                     [error]="eventForm.controls.clientName.touched && (eventForm.controls.clientName.invalid || !eventForm.controls.clientName.value.trim())" />
                 </label>
-                <label class="sp-field">
-                  <span>Valor (R$) <span class="req">*</span></span>
-                  <input spInput type="number" min="0" step="0.01" inputmode="decimal" formControlName="amount" placeholder="0,00" aria-required="true"
-                    [error]="eventForm.controls.amount.touched && (eventForm.controls.amount.invalid || eventForm.controls.amount.value == null || eventForm.controls.amount.value === '')" />
+                <label class="sp-field">Telefone do cliente
+                  <input spInput type="tel" formControlName="clientPhone" maxlength="20" inputmode="tel"
+                    placeholder="(XX) 9XXXX-XXXX" (input)="formatPhoneInput($any($event.target).value)" />
+                  <small class="field-hint">Opcional. DDD e número de celular brasileiro.</small>
                 </label>
               </div>
-              <label class="sp-field">Telefone do cliente
-                <input spInput type="tel" formControlName="clientPhone" maxlength="20" inputmode="tel"
-                  placeholder="(XX) 9XXXX-XXXX" (input)="formatPhoneInput($any($event.target).value)" />
-                <small class="field-hint">Opcional. DDD e número de celular brasileiro.</small>
-              </label>
+
+              @if (canSearchCatalog()) {
+                <div class="catalog-picker">
+                  <label class="sp-field" for="event-catalog-search">
+                    O que será feito?
+                    <input spInput id="event-catalog-search" type="text" autocomplete="off" maxlength="120"
+                      role="combobox" aria-autocomplete="list" aria-controls="event-catalog-results"
+                      [attr.aria-expanded]="eventCatalog.searchOpen()"
+                      [attr.aria-activedescendant]="eventCatalog.searchOpen() && eventCatalog.activeIndex() >= 0
+                        ? 'event-catalog-option-' + eventCatalog.matches()[eventCatalog.activeIndex()].id : null"
+                      [value]="eventCatalog.term()" placeholder="Busque um procedimento ou produto"
+                      (input)="searchEventCatalog($any($event.target).value)"
+                      (focus)="eventCatalog.searchOpen.set(!!eventCatalog.term().trim())"
+                      (blur)="eventCatalog.searchOpen.set(false)"
+                      (keydown)="onCatalogInputKeydown($event)" />
+                  </label>
+                  <div class="catalog-search-panel" [hidden]="!eventCatalog.searchOpen()">
+                    @if (eventCatalog.searchLoading()) {
+                      <p role="status">Buscando itens...</p>
+                    } @else if (eventCatalog.searchError()) {
+                      <p role="alert">{{ eventCatalog.searchError() }}</p>
+                    } @else if (!eventCatalog.matches().length) {
+                      <p role="status">Nenhum item ativo encontrado.</p>
+                    }
+                    <ul id="event-catalog-results" role="listbox" aria-label="Sugestões do catálogo">
+                      @for (item of eventCatalog.matches(); track item.id; let i = $index) {
+                        <li role="option" [id]="'event-catalog-option-' + item.id"
+                          [attr.aria-selected]="eventCatalog.activeIndex() === i"
+                          (pointerdown)="$event.preventDefault()" (click)="selectCatalogItem(item)">
+                          <strong>{{ item.name }}</strong>
+                          <span>
+                            {{ formatMoney(item.effectivePrice) }}
+                            @if (item.promotionApplied) { · Promoção }
+                            @if (item.durationMinutes) { · {{ formatDuration(item.durationMinutes) }} }
+                          </span>
+                        </li>
+                      }
+                    </ul>
+                  </div>
+                  @if (!eventCatalog.lines().length && !isCatalogLinked(eventBeingEdited()) && !eventCatalog.manual()) {
+                    <button spButton variant="ghost" size="sm" type="button" (click)="eventCatalog.manual.set(true)">
+                      Preencher sem item do catálogo
+                    </button>
+                  }
+                </div>
+              }
+
+              @if (eventCatalog.lines().length) {
+                <ul class="catalog-selection" aria-label="Itens do atendimento">
+                  @for (item of eventCatalog.lines(); track item.catalogItemId) {
+                    <li>
+                      <div>
+                        <strong>{{ item.name }}</strong>
+                        <small>{{ formatMoney(item.unitPrice) }} por unidade
+                          @if (item.discount > 0) { · {{ formatMoney(item.discount) }} de desconto }
+                          @if (item.durationMinutes) { · {{ formatDuration(item.durationMinutes) }} por unidade }
+                        </small>
+                      </div>
+                      @if (canSearchCatalog()) {
+                        <label class="sp-field">Qtd.
+                          <input spInput type="number" min="1" [max]="catalogMaxQuantity" step="1" [value]="item.quantity"
+                            [attr.aria-label]="'Quantidade de ' + item.name"
+                            (change)="changeCatalogQuantity(item.catalogItemId, $any($event.target))" />
+                        </label>
+                      } @else {
+                        <span>Qtd. {{ item.quantity }}</span>
+                      }
+                      <strong>{{ formatMoney(item.subtotal) }}</strong>
+                      @if (canSearchCatalog()) {
+                        <button spButton variant="ghost" size="sm" class="icon-button" type="button"
+                          [attr.aria-label]="'Remover ' + item.name" (click)="removeCatalogItem(item.catalogItemId)">
+                          <sp-icon name="x" [size]="16" />
+                        </button>
+                      }
+                    </li>
+                  }
+                </ul>
+              }
+              @if (eventCatalog.hasOriginal() && canSearchCatalog()) {
+                <div class="catalog-price-actions">
+                  <button spButton variant="secondary" size="sm" type="button" [disabled]="eventCatalog.quoteLoading() || !eventCatalog.lines().length"
+                    (click)="eventCatalog.repriceAll()">Atualizar preços pelo catálogo</button>
+                  @if (eventCatalog.changed()) {
+                    <button spButton variant="ghost" size="sm" type="button" (click)="restoreContractedCatalog()">Restaurar itens contratados</button>
+                  }
+                </div>
+                <p class="field-hint">
+                  {{ eventCatalog.reprice() ? 'Confira o novo total. A atualização será aplicada ao salvar.' : 'Os preços contratados são mantidos até você solicitar a atualização.' }}
+                </p>
+              }
+              @if (eventCatalog.quoteLoading()) {
+                <p role="status" class="field-hint">Consultando preços para a data informada...</p>
+              }
+              @if (eventCatalog.quoteError()) {
+                <div class="catalog-price-actions">
+                  <p role="alert">{{ eventCatalog.quoteError() }}</p>
+                  <button spButton variant="secondary" size="sm" type="button" (click)="eventCatalog.refresh()">Consultar preços novamente</button>
+                </div>
+              }
+              @if (showManualClientFields()) {
+                <label class="sp-field">
+                  <span>Descrição do serviço <span class="req">*</span></span>
+                  <textarea spInput rows="2" formControlName="workDescription" placeholder="Descreva o serviço..." aria-required="true"
+                    [error]="eventForm.controls.workDescription.touched && !eventForm.controls.workDescription.value.trim()"></textarea>
+                </label>
+              }
             } @else {
               <label class="sp-field">
                 <span>Título do evento <span class="req">*</span></span>
@@ -457,7 +563,8 @@
               </label>
               <label class="sp-field">
                 Duração
-                <select spSelect [value]="currentDurationMinutes() ?? ''" [disabled]="preservesOriginalInterval()" (change)="onDurationChange($any($event.target).value)">
+                <select spSelect [value]="currentDurationMinutes() ?? ''" [disabled]="preservesOriginalInterval()"
+                  (change)="overrideCatalogDuration(); onDurationChange($any($event.target).value)">
                   <option value="">Personalizada</option>
                   @for (minutes of availableDurations(); track minutes) {
                     <option [value]="minutes" [selected]="minutes === currentDurationMinutes()">{{ formatDuration(minutes) }}</option>
@@ -467,16 +574,37 @@
               <label class="sp-field">
                 <span>Término <span class="req">*</span></span>
                 <input spInput type="time" formControlName="endTime" [readOnly]="preservesOriginalInterval()" aria-required="true"
+                  (input)="overrideCatalogDuration()"
                   [error]="eventForm.controls.endTime.touched && eventForm.controls.endTime.invalid" />
               </label>
             </div>
+            @if (formEventType() === 'CLIENT' && catalogDurationWarning()) { <p class="field-hint" role="status">{{ catalogDurationWarning() }}</p> }
 
             @if (formEventType() === 'CLIENT') {
-              <label class="sp-field">
-                <span>Descrição do serviço <span class="req">*</span></span>
-                <textarea spInput rows="2" formControlName="workDescription" placeholder="Descreva o serviço..." aria-required="true"
-                  [error]="eventForm.controls.workDescription.touched && !eventForm.controls.workDescription.value.trim()"></textarea>
-              </label>
+              @if (eventCatalog.lines().length) {
+                <div class="catalog-total" role="status">
+                  <strong>Valor total</strong>
+                  <strong>{{ eventCatalog.quoteLoading() || eventCatalog.quoteError() ? '—' : formatMoney(eventCatalog.amount()) }}</strong>
+                </div>
+              } @else if (showManualClientFields() && (!eventBeingEdited() || eventBeingEdited()?.amount != null)) {
+                <label class="sp-field">
+                  <span>Valor (R$) <span class="req">*</span></span>
+                  <input spInput type="number" min="0" step="0.01" inputmode="decimal" formControlName="amount" placeholder="0,00" aria-required="true"
+                    [readOnly]="legacyAmountLocked()"
+                    [error]="eventForm.controls.amount.touched && (eventForm.controls.amount.invalid || eventForm.controls.amount.value == null || eventForm.controls.amount.value === '')" />
+                </label>
+              }
+              @if (eventCatalog.lines().length || isCatalogLinked(eventBeingEdited())) {
+                <label class="sp-field">Observações (opcional)
+                  <textarea spInput rows="2" maxlength="500" formControlName="observations"></textarea>
+                </label>
+              }
+              <details class="event-advanced">
+                <summary>Opções avançadas</summary>
+                <label class="sp-field">Título do evento
+                  <input spInput type="text" maxlength="180" formControlName="title" placeholder="Gerado a partir do cliente e dos itens" />
+                </label>
+              </details>
             }
 
             @if (formEventType() !== 'CLIENT') {
@@ -486,9 +614,9 @@
             </label>
             }
 
-            @if (!isEditMode()) {
+            @if (!isEditMode() && formEventType() !== 'CLIENT') {
               <app-recurrence-editor (changed)="recurrence.set($event)" />
-            } @else {
+            } @else if (isEditMode() && !isCatalogLinked(eventBeingEdited())) {
               <div class="series-controls">
                 <button spButton variant="secondary" class="secondary-button" type="button" (click)="loadEditingSeries()">Gerenciar série recorrente</button>
                 @if (seriesMessage()) { <p role="status">{{ seriesMessage() }}</p> }
@@ -627,7 +755,12 @@
                   <dd>{{ event.workDescription }}</dd>
                 </div>
               }
-              @if (event.description && event.description !== event.workDescription) {
+              @if (event.observations) {
+                <div class="detail-description detail-wide">
+                  <dt>Observações</dt>
+                  <dd>{{ event.observations }}</dd>
+                </div>
+              } @else if (!isCatalogLinked(event) && event.description && event.description !== event.workDescription) {
                 <div class="detail-description detail-wide">
                   <dt>Descrição</dt>
                   <dd>{{ event.description }}</dd>
@@ -661,6 +794,21 @@
                   {{ paymentStatusLabel(event.paymentStatus) }}
                 </span>
               </header>
+              @if (event.catalogItems?.length) {
+                <ul class="catalog-selection" aria-label="Itens contratados">
+                  @for (item of event.catalogItems; track item.catalogItemId) {
+                    <li>
+                      <div>
+                        <strong>{{ item.name }}</strong>
+                        <small>{{ item.quantity }} × {{ formatMoney(item.unitPrice) }}
+                          @if (item.discount > 0) { · {{ formatMoney(item.discount) }} de desconto }
+                        </small>
+                      </div>
+                      <strong>{{ formatMoney(item.subtotal) }}</strong>
+                    </li>
+                  }
+                </ul>
+              }
               <div class="money-row">
                 <div class="detail-amount">
                   <span>Valor total</span>

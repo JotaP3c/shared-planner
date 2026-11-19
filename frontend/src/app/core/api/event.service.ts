@@ -6,6 +6,8 @@ import {
   ClientRevenueSummaryResponse,
   CreateEventRequest,
   EventResponse,
+  EventCatalogSelection,
+  EventCatalogQuote,
   EventSearchResponse,
   EventApproval,
   RevenuePeriod,
@@ -20,6 +22,10 @@ export class EventService {
 
   create(request: CreateEventRequest) {
     return this.http.post<EventResponse>(this.apiUrl, request);
+  }
+
+  catalogQuote(calendarId: string, appointmentDate: string, catalogItems: EventCatalogSelection[]) {
+    return this.http.post<EventCatalogQuote>(`${this.apiUrl}/catalog-quote`, { calendarId, appointmentDate, catalogItems });
   }
 
   list(calendarId: string, start: string, end: string) {

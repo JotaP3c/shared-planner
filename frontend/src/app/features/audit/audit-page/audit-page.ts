@@ -35,6 +35,7 @@ const ENTITY_LABELS: Record<AuditEntityType, string> = {
   EVENT: 'Evento',
   ACCESS_PROFILE: 'Perfil de acesso',
   ACCESS_ASSIGNMENT: 'Associação de perfil',
+  CATALOG_ITEM: 'Item de catálogo',
 };
 
 /**

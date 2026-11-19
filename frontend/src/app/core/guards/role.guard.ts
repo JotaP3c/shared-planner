@@ -30,7 +30,8 @@ export function permissionGuard(permission: Permission, contextual = false): Can
         if (!contextual) return of(canGlobalPermission(user, permission) || denied(router));
         if (permission === 'AUDIT_VIEW' && canGlobalPermission(user, 'AUDIT_VIEW_ALL')) return of(true);
         return calendars.list().pipe(
-          map(items => items.some(calendar => canCalendarPermission(calendar, permission)) || denied(router)),
+          map(items => items.some(calendar => canCalendarPermission(calendar, permission)
+            && (permission !== 'CATALOG_VIEW' || canCalendarPermission(calendar, 'FINANCE_VIEW'))) || denied(router)),
           catchError(() => of(denied(router))),
         );
       }),

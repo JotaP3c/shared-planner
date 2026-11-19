@@ -3,3 +3,114 @@
 :host {
   display: block;
 }
+
+.catalog-picker {
+  display: grid;
+  gap: var(--sp-space-2);
+  min-width: 0;
+}
+
+.catalog-picker > button {
+  justify-self: start;
+}
+
+.catalog-search-panel,
+.catalog-selection {
+  background: var(--sp-surface-2);
+  border: 1px solid var(--sp-border);
+  border-radius: var(--sp-radius-control);
+}
+
+.catalog-search-panel p {
+  margin: var(--sp-space-3);
+}
+
+.catalog-search-panel ul,
+.catalog-selection {
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+.catalog-search-panel ul {
+  max-height: 14rem;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.catalog-search-panel li,
+.catalog-selection li {
+  padding: var(--sp-space-2) var(--sp-space-3);
+  border-block-end: 1px solid var(--sp-border);
+}
+
+.catalog-search-panel li:last-child,
+.catalog-selection li:last-child {
+  border-block-end: 0;
+}
+
+.catalog-search-panel li {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: var(--sp-space-2);
+  cursor: pointer;
+}
+
+.catalog-search-panel li:hover,
+.catalog-search-panel li[aria-selected='true'] {
+  background: var(--sp-primary-soft);
+  outline: 1px solid var(--sp-primary);
+  outline-offset: -1px;
+}
+
+.catalog-selection li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-space-2);
+}
+
+.catalog-selection li > div {
+  flex: 1 1 10rem;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.catalog-selection small {
+  display: block;
+  margin-block-start: var(--sp-space-1);
+  color: var(--sp-content-secondary);
+}
+
+.catalog-selection label {
+  width: 5rem;
+}
+
+.catalog-price-actions,
+.catalog-total {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--sp-space-2);
+}
+
+.catalog-price-actions p {
+  margin: 0;
+}
+
+.catalog-total {
+  justify-content: space-between;
+  padding: var(--sp-space-3);
+  background: var(--sp-surface-2);
+  border: 1px solid var(--sp-border);
+  border-radius: var(--sp-radius-control);
+}
+
+.event-advanced summary {
+  cursor: pointer;
+}
+
+.event-advanced label {
+  margin-block-start: var(--sp-space-2);
+}

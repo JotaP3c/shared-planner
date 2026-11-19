@@ -52,10 +52,14 @@ public record EventResponse(
         List<EventApprovalResponse> approvals,
         String externalSource,
         @JsonInclude(JsonInclude.Include.NON_NULL) Boolean financialSimulation,
-        @JsonInclude(JsonInclude.Include.NON_NULL) LocalDate simulationReferenceDate
+        @JsonInclude(JsonInclude.Include.NON_NULL) LocalDate simulationReferenceDate,
+        boolean catalogLinked,
+        @JsonInclude(JsonInclude.Include.NON_NULL) String observations,
+        @JsonInclude(JsonInclude.Include.NON_NULL) List<EventCatalogItem> catalogItems
 ) {
     static EventResponse from(Event event, boolean includeFinancialData) {
         boolean client = event.getEventType() == EventType.CLIENT;
+        boolean catalogLinked = client && event.hasCatalogItems();
 
         return new EventResponse(
                 event.getId(),
@@ -69,7 +73,7 @@ public record EventResponse(
                 event.getClientName(),
                 event.getPersonName(),
                 client ? event.clientDescription() : event.getDescription(),
-                client ? event.clientDescription() : event.getWorkDescription(),
+                client && !catalogLinked ? event.clientDescription() : event.getWorkDescription(),
                 includeFinancialData ? event.getAmount() : null,
                 includeFinancialData ? event.getPaymentStatus() : null,
                 includeFinancialData ? event.getPaymentMethod() : null,
@@ -91,7 +95,10 @@ public record EventResponse(
                 event.getCurrentApprovals().stream().map(EventApprovalResponse::from).toList(),
                 event.getExternalSource(),
                 includeFinancialData ? event.isFinancialSimulation() : null,
-                includeFinancialData ? event.getSimulationReferenceDate() : null
+                includeFinancialData ? event.getSimulationReferenceDate() : null,
+                catalogLinked,
+                catalogLinked ? event.getDescription() : null,
+                includeFinancialData && catalogLinked ? event.getCatalogItems() : null
         );
     }
 }

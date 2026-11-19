@@ -6,4 +6,5 @@ import java.util.UUID;
 public interface SeriesOccurrenceRepository extends JpaRepository<SeriesOccurrence, UUID> {
     List<SeriesOccurrence> findBySeriesIdOrderByOriginalStartsAtAsc(UUID seriesId);
     Optional<SeriesOccurrence> findByEventId(UUID eventId);
+    boolean existsByEventId(UUID eventId);
 }

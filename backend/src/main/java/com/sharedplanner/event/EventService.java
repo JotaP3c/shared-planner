@@ -10,6 +10,7 @@ import com.sharedplanner.calendar.CalendarType;
 import com.sharedplanner.config.AuthorizationService;
 import com.sharedplanner.config.AuthorizationService.EventFinancialAccess;
 import com.sharedplanner.access.Permission;
+import com.sharedplanner.recurrence.SeriesOccurrenceRepository;
 import com.sharedplanner.user.User;
 import com.sharedplanner.user.UserRepository;
 import com.sharedplanner.user.UserRole;
@@ -32,6 +33,7 @@ import java.util.UUID;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.Locale;
+import java.util.stream.Collectors;
 
 @Service
 public class EventService {
@@ -43,6 +45,8 @@ public class EventService {
     private final AuthorizationService authorizationService;
     private final AuditService auditService;
     private final AppointmentConfirmationHistoryRepository confirmationHistoryRepository;
+    private final EventCatalogPricing catalogPricing;
+    private final SeriesOccurrenceRepository occurrences;
 
     public EventService(
             EventRepository eventRepository,
@@ -51,7 +55,9 @@ public class EventService {
             UserRepository userRepository,
             AuthorizationService authorizationService,
             AuditService auditService,
-            AppointmentConfirmationHistoryRepository confirmationHistoryRepository
+            AppointmentConfirmationHistoryRepository confirmationHistoryRepository,
+            EventCatalogPricing catalogPricing,
+            SeriesOccurrenceRepository occurrences
     ) {
         this.eventRepository = eventRepository;
         this.calendarRepository = calendarRepository;
@@ -60,27 +66,28 @@ public class EventService {
         this.authorizationService = authorizationService;
         this.auditService = auditService;
         this.confirmationHistoryRepository = confirmationHistoryRepository;
+        this.catalogPricing = catalogPricing;
+        this.occurrences = occurrences;
     }
 
     @Transactional
     public EventResponse create(CreateEventRequest request, Authentication authentication) {
         validatePeriod(request.startsAt(), request.endsAt());
-        String description = unifiedClientDescription(request.eventType(), request.workDescription(), request.description());
         String phone = normalizedClientPhone(request.eventType(), request.clientPhone());
         validateAllDay(request.allDay(), request.startsAt(), request.endsAt());
-        validateEventFields(
-                request.eventType(),
-                request.clientName(),
-                request.personName(),
-                description,
-                request.amount()
-        );
 
         User currentUser = currentUser(authentication);
         SharedCalendar calendar = calendarRepository.findById(request.calendarId())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Calendar not found"));
 
         authorizationService.ensureCanCreateEvent(calendar.getId(), authentication);
+        validateCatalogFields(request.eventType(), request.catalogItems(), request.expectedCatalogTotal(), false);
+        CommercialTerms terms = request.catalogItems() == null
+                ? legacyTerms(request.eventType(), request.title(), request.description(), request.workDescription(), request.amount())
+                : linkedTerms(request.title(), request.clientName(), request.observations(), catalogPricing.price(
+                        calendar.getId(), request.startsAt().toLocalDate(), request.catalogItems(), List.of(),
+                        request.expectedCatalogTotal(), authentication));
+        validateEventFields(request.eventType(), request.clientName(), request.personName(), terms.workDescription(), terms.amount());
 
         boolean multipleApproval = calendar.getCalendarType() == CalendarType.SHARED || request.approvalRequestedFromEmails() != null;
         List<User> approvers = multipleApproval ? approvalUsers(calendar, currentUser, request.eventType(),
@@ -100,12 +107,12 @@ public class EventService {
         event.fill(
                 request.eventType(),
                 status,
-                request.title(),
+                terms.title(),
                 request.clientName(),
                 request.personName(),
-                request.eventType() == EventType.CLIENT ? description : request.description(),
-                request.eventType() == EventType.CLIENT ? description : request.workDescription(),
-                request.amount(),
+                terms.description(),
+                terms.workDescription(),
+                terms.amount(),
                 request.startsAt(),
                 request.endsAt(),
                 approvalRequestedFrom,
@@ -113,6 +120,7 @@ public class EventService {
         );
 
         event.setClientPhone(phone);
+        if (!terms.items().isEmpty()) event.replaceCatalogItems(terms.items());
         event.setAllDay(Boolean.TRUE.equals(request.allDay()));
         if (!approvers.isEmpty()) event.beginApprovalRound(approvers);
 
@@ -245,20 +253,18 @@ public class EventService {
     @Transactional
     public EventResponse update(UUID eventId, UpdateEventRequest request, Authentication authentication) {
         validatePeriod(request.startsAt(), request.endsAt());
-        String description = unifiedClientDescription(request.eventType(), request.workDescription(), request.description());
         String phone = normalizedClientPhone(request.eventType(), request.clientPhone());
-        validateEventFields(
-                request.eventType(),
-                request.clientName(),
-                request.personName(),
-                description,
-                request.amount()
-        );
 
         Event event = mutableEvent(eventId);
         authorizationService.ensureCanEditEvent(event, authentication);
         ensureNotCancelled(event);
-        validatePaymentIntegrityForUpdate(event, request);
+        if (request.eventType() == EventType.CLIENT && event.getEventType() != EventType.CLIENT
+                && occurrences.existsByEventId(eventId)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Não é permitido converter uma ocorrência recorrente em atendimento de cliente.");
+        }
+        CommercialTerms terms = termsForUpdate(event, request, authentication);
+        validateEventFields(request.eventType(), request.clientName(), request.personName(), terms.workDescription(), terms.amount());
+        validatePaymentIntegrityForUpdate(event, request.eventType(), terms.amount());
 
         User currentUser = currentUser(authentication);
         String oldValue = eventSnapshot(event);
@@ -282,12 +288,12 @@ public class EventService {
         event.fill(
                 request.eventType(),
                 status,
-                request.title(),
+                terms.title(),
                 request.clientName(),
                 request.personName(),
-                request.eventType() == EventType.CLIENT ? description : request.description(),
-                request.eventType() == EventType.CLIENT ? description : request.workDescription(),
-                request.amount(),
+                terms.description(),
+                terms.workDescription(),
+                terms.amount(),
                 request.startsAt(),
                 request.endsAt(),
                 approvalRequestedFrom,
@@ -295,6 +301,9 @@ public class EventService {
         );
 
         event.setClientPhone(phone);
+        if ((event.getEventType() == EventType.CLIENT || event.hasCatalogItems()) && !event.getCatalogItems().equals(terms.items())) {
+            event.replaceCatalogItems(terms.items());
+        }
         if (request.allDay() != null) event.setAllDay(request.allDay());
         if (!approvers.isEmpty()) event.beginApprovalRound(approvers);
         else if (multipleApproval) event.finishApprovalRound();
@@ -733,6 +742,94 @@ public class EventService {
                 ? service : service + "\n\n" + description;
     }
 
+    private CommercialTerms termsForUpdate(Event event, UpdateEventRequest request, Authentication actor) {
+        boolean reprice = Boolean.TRUE.equals(request.repriceCatalogItems());
+        validateCatalogFields(request.eventType(), request.catalogItems(), request.expectedCatalogTotal(), reprice);
+        if (request.eventType() != EventType.CLIENT) {
+            if (event.hasCatalogItems()) catalogPricing.ensureCanView(event.getCalendar().getId(), actor);
+            return legacyTerms(request.eventType(), request.title(), request.description(),
+                    request.workDescription(), request.amount());
+        }
+
+        List<EventCatalogItem> existing = event.getCatalogItems();
+        boolean existingClient = event.getEventType() == EventType.CLIENT;
+        boolean paymentProtected = existingClient && event.getPaymentStatus() != PaymentStatus.PENDING;
+        if (request.catalogItems() == null && existing.isEmpty() && !reprice) {
+            if (request.expectedCatalogTotal() != null) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Selecione os itens para confirmar o total do catálogo.");
+            }
+            BigDecimal amount = existingClient && request.amount() == null ? event.getAmount() : request.amount();
+            if (existingClient && request.description() == null && request.workDescription() == null) {
+                return legacyTerms(EventType.CLIENT, request.title(), event.getDescription(), event.getWorkDescription(), amount);
+            }
+            return legacyTerms(EventType.CLIENT, request.title(), request.description(), request.workDescription(), amount);
+        }
+
+        String observations = request.observations() == null && !existing.isEmpty()
+                ? event.getDescription() : request.observations();
+        if (paymentProtected && (reprice || (request.catalogItems() != null && !sameSelection(existing, request.catalogItems())))) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Itens de um atendimento com pagamento registrado não podem ser alterados.");
+        }
+
+        if (request.catalogItems() == null && !reprice) {
+            if (request.expectedCatalogTotal() != null) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Selecione os itens para confirmar o total do catálogo.");
+            }
+            return linkedTerms(request.title(), request.clientName(), observations, new EventCatalogQuote(existing, event.getAmount()));
+        }
+
+        List<CatalogItemSelection> selections = request.catalogItems() == null
+                ? existing.stream().map(item -> new CatalogItemSelection(item.catalogItemId(), item.quantity(), null, null, null)).toList()
+                : request.catalogItems();
+        EventCatalogQuote quote = catalogPricing.price(event.getCalendar().getId(), request.startsAt().toLocalDate(),
+                selections, reprice ? List.of() : existing, request.expectedCatalogTotal(), actor);
+        return linkedTerms(request.title(), request.clientName(), observations, quote);
+    }
+
+    private static boolean sameSelection(List<EventCatalogItem> existing, List<CatalogItemSelection> offered) {
+        if (existing.size() != offered.size()) return false;
+        for (int i = 0; i < existing.size(); i++) {
+            EventCatalogItem item = existing.get(i);
+            CatalogItemSelection selection = offered.get(i);
+            if (selection == null || !item.catalogItemId().equals(selection.catalogItemId())
+                    || !Integer.valueOf(item.quantity()).equals(selection.quantity())) return false;
+        }
+        return true;
+    }
+
+    private void validateCatalogFields(EventType type, List<CatalogItemSelection> selections, BigDecimal expectedTotal, boolean reprice) {
+        if (type != EventType.CLIENT && (selections != null || expectedTotal != null || reprice)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "O catálogo só pode ser associado a atendimentos de cliente.");
+        }
+    }
+
+    private CommercialTerms legacyTerms(EventType type, String title, String description, String work, BigDecimal amount) {
+        requireText(title, "Event title is required");
+        if (type == EventType.CLIENT) {
+            String unified = unifiedClientDescription(type, work, description);
+            return new CommercialTerms(title, unified, unified, amount, List.of());
+        }
+        return new CommercialTerms(title, description, work, amount, List.of());
+    }
+
+    private CommercialTerms linkedTerms(String title, String clientName, String notes, EventCatalogQuote quote) {
+        String services = quote.catalogItems().stream()
+                .map(item -> item.quantity() == 1 ? item.name() : item.quantity() + "× " + item.name())
+                .collect(Collectors.joining(", "));
+        if (title == null || title.isBlank()) {
+            requireText(clientName, "Client events require clientName");
+            String generated = clientName.trim() + " — " + services;
+            int end = generated.offsetByCodePoints(0, Math.min(180, generated.codePointCount(0, generated.length())));
+            title = generated.substring(0, end);
+        }
+        return new CommercialTerms(title.trim(), notes == null || notes.isBlank() ? null : notes.trim(),
+                services, quote.amount(), quote.catalogItems());
+    }
+
+    private record CommercialTerms(String title, String description, String workDescription,
+                                   BigDecimal amount, List<EventCatalogItem> items) {
+    }
+
     private String normalizedClientPhone(EventType type, String phone) {
         if (type != EventType.CLIENT || phone == null || phone.isBlank()) return null;
         if (!phone.matches("[+0-9() \\-]+")) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid Brazilian mobile phone");
@@ -806,13 +903,13 @@ public class EventService {
         }
     }
 
-    private void validatePaymentIntegrityForUpdate(Event event, UpdateEventRequest request) {
+    private void validatePaymentIntegrityForUpdate(Event event, EventType requestedType, BigDecimal requestedAmount) {
         if (event.getEventType() != EventType.CLIENT
                 || event.getPaymentStatus() == PaymentStatus.PENDING) {
             return;
         }
 
-        if (request.eventType() != EventType.CLIENT) {
+        if (requestedType != EventType.CLIENT) {
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST,
                     "Client events with payment history cannot change type"
@@ -820,8 +917,8 @@ public class EventService {
         }
 
         if (event.getAmount() == null
-                || request.amount() == null
-                || event.getAmount().compareTo(request.amount()) != 0) {
+                || requestedAmount == null
+                || event.getAmount().compareTo(requestedAmount) != 0) {
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST,
                     "Client events with payment history cannot change amount"
@@ -948,6 +1045,7 @@ public class EventService {
                 + "; clientName=" + event.getClientName()
                 + "; personName=" + event.getPersonName()
                 + "; amount=" + event.getAmount()
+                + "; catalogLinked=" + event.hasCatalogItems()
                 + "; startsAt=" + event.getStartsAt()
                 + "; endsAt=" + event.getEndsAt()
                 + "; paymentStatus=" + event.getPaymentStatus()

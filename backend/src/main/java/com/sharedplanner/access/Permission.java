@@ -15,6 +15,8 @@ public enum Permission {
     FINANCE_MANAGE_OWN("Financeiro", "Registrar pagamentos dos próprios eventos", false),
     FINANCE_EXPORT("Financeiro", "Exportar relatórios Excel", false),
     FINANCE_MEMBER_CALENDARS("Financeiro", "Consultar financeiro dos calendários dos quais participa", true),
+    CATALOG_VIEW("Financeiro", "Consultar catálogo comercial e preços", false),
+    CATALOG_MANAGE("Financeiro", "Gerenciar catálogo comercial e preços", false),
     MEMBERS_VIEW("Administração", "Visualizar membros", false),
     MEMBERS_MANAGE("Administração", "Gerenciar acessos do calendário", false),
     USERS_VIEW("Administração", "Consultar usuários globais", true),

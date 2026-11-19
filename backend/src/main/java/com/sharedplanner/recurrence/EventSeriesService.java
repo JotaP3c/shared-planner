@@ -34,6 +34,7 @@ public class EventSeriesService {
     public SeriesResponse create(CreateSeriesRequest request, Authentication authentication) {
         CreateEventRequest template=request.event();
         authorization.ensureCanCreateEvent(template.calendarId(), authentication);
+        if (template.eventType() == EventType.CLIENT) throw bad("Novos atendimentos de cliente não podem ser recorrentes.");
         if (!template.endsAt().isAfter(template.startsAt())) throw bad("O término deve ser posterior ao início.");
         Duration duration=Duration.between(template.startsAt(), template.endsAt());
         List<LocalDateTime> starts=engine.expand(template.startsAt(), request.recurrence());

@@ -16,9 +16,17 @@ import java.util.UUID;
 public class EventController {
 
     private final EventService eventService;
+    private final EventCatalogPricing catalogPricing;
 
-    public EventController(EventService eventService) {
+    public EventController(EventService eventService, EventCatalogPricing catalogPricing) {
         this.eventService = eventService;
+        this.catalogPricing = catalogPricing;
+    }
+
+    @PostMapping("/catalog-quote")
+    public EventCatalogQuote catalogQuote(@RequestBody @Valid EventCatalogQuote.Request request,
+                                         Authentication authentication) {
+        return catalogPricing.quote(request, authentication);
     }
 
     @PostMapping

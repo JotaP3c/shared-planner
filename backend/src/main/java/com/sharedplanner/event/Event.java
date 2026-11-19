@@ -66,6 +66,12 @@ public class Event {
     @BatchSize(size = 50)
     private List<EventApproval> approvals = new ArrayList<>();
 
+    @ElementCollection
+    @CollectionTable(name = "event_catalog_items", joinColumns = @JoinColumn(name = "event_id"))
+    @OrderColumn(name = "position")
+    @BatchSize(size = 50)
+    private List<EventCatalogItem> catalogItems = new ArrayList<>();
+
     @Column(name = "person_name", length = 120)
     private String personName;
 
@@ -184,6 +190,12 @@ public class Event {
     }
     public String getPersonName() { return personName; }
     public String getDescription() { return description; }
+    boolean hasCatalogItems() { return !catalogItems.isEmpty(); }
+    public List<EventCatalogItem> getCatalogItems() { return List.copyOf(catalogItems); }
+    void replaceCatalogItems(List<EventCatalogItem> items) {
+        catalogItems.clear();
+        catalogItems.addAll(items);
+    }
     public String getWorkDescription() { return workDescription; }
     public BigDecimal getAmount() { return amount; }
     public boolean isFinancialSimulation() { return financialSimulation; }

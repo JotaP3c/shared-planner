@@ -37,7 +37,9 @@ public class PermissionResolver {
         if(!contextual.contains(Permission.CALENDAR_VIEW))return Set.of();
         if(!contextual.contains(Permission.FINANCE_VIEW)) {
             contextual.remove(Permission.FINANCE_EXPORT);contextual.remove(Permission.FINANCE_MANAGE);
+            contextual.remove(Permission.CATALOG_VIEW);contextual.remove(Permission.CATALOG_MANAGE);
         }
+        if(!contextual.contains(Permission.CATALOG_VIEW))contextual.remove(Permission.CATALOG_MANAGE);
         if(!contextual.contains(Permission.FINANCE_VIEW_OWN))contextual.remove(Permission.FINANCE_MANAGE_OWN);
         return Set.copyOf(contextual);
     }

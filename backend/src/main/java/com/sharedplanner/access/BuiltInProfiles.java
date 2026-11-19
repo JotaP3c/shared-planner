@@ -14,7 +14,7 @@ public final class BuiltInProfiles {
         EnumSet<Permission> editor=EnumSet.copyOf(viewer);
         editor.addAll(set(Permission.EVENT_CREATE,Permission.EVENT_EDIT,Permission.EVENT_CANCEL,Permission.FINANCE_VIEW_OWN,Permission.FINANCE_MANAGE_OWN,Permission.CALENDAR_IMPORT));
         EnumSet<Permission> calendarFinance=EnumSet.copyOf(viewer);
-        calendarFinance.addAll(set(Permission.FINANCE_VIEW,Permission.FINANCE_EXPORT));
+        calendarFinance.addAll(set(Permission.FINANCE_VIEW,Permission.FINANCE_EXPORT,Permission.CATALOG_VIEW));
         EnumSet<Permission> admin=EnumSet.noneOf(Permission.class);
         for(Permission permission:Permission.values())if(!permission.globalOnly())admin.add(permission);
         return List.of(

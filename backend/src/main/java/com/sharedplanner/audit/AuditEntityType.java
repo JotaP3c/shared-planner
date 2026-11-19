@@ -6,5 +6,6 @@ public enum AuditEntityType {
     CALENDAR_MEMBER,
     EVENT,
     ACCESS_PROFILE,
-    ACCESS_ASSIGNMENT
+    ACCESS_ASSIGNMENT,
+    CATALOG_ITEM
 }

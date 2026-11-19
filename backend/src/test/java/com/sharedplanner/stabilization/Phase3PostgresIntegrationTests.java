@@ -160,12 +160,33 @@ class Phase3PostgresIntegrationTests {
         var summary = request("GET", financePath("summary"), ownerToken, null);
         assertThat(money(summary, "$.expectedAmount")).isEqualByComparingTo("296.95");
         assertThat(money(summary, "$.receivedAmount")).isEqualByComparingTo("40.00");
+        assertThat(request("GET", financePath("export"), outsiderToken, null).statusCode()).isIn(403, 404);
         var export = request("GET", financePath("export"), ownerToken, null);
         assertThat(export.statusCode()).isEqualTo(200);
         try (var workbook = new XSSFWorkbook(new ByteArrayInputStream(export.body()))) {
             var totals = workbook.getSheet("Dashboard").getRow(6);
-            assertThat(BigDecimal.valueOf(totals.getCell(0).getNumericCellValue())).isEqualByComparingTo("296.95");
-            assertThat(totals.getCell(1).getNumericCellValue()).isEqualTo(40);
+            assertThat(BigDecimal.valueOf(totals.getCell(0).getNumericCellValue())).isEqualByComparingTo(money(summary, "$.expectedAmount"));
+            assertThat(BigDecimal.valueOf(totals.getCell(1).getNumericCellValue())).isEqualByComparingTo(money(summary, "$.receivedAmount"));
+            assertThat(BigDecimal.valueOf(totals.getCell(2).getNumericCellValue())).isEqualByComparingTo(money(summary, "$.pendingAmount"));
+            assertThat(workbook.getSheet("Appointments").getLastRowNum()).isEqualTo(2);
+            var itemSheet = workbook.getSheet("Item Details");
+            assertThat(itemSheet).isNotNull();
+            assertThat(itemSheet.getLastRowNum()).isEqualTo(2);
+            var procedureRow = itemSheet.getRow(1);
+            var productRow = itemSheet.getRow(2);
+            assertThat(procedureRow.getCell(3).getStringCellValue()).isEqualTo(id);
+            assertThat(productRow.getCell(3).getStringCellValue()).isEqualTo(id);
+            assertThat(procedureRow.getCell(4).getStringCellValue()).isEqualTo(serviceId);
+            assertThat(productRow.getCell(4).getStringCellValue()).isEqualTo(productId);
+            assertThat(procedureRow.getCell(6).getNumericCellValue()).isEqualTo(2);
+            assertThat(productRow.getCell(6).getNumericCellValue()).isEqualTo(3);
+            assertThat(procedureRow.getCell(7).getNumericCellValue()).isEqualTo(79.95);
+            assertThat(productRow.getCell(7).getNumericCellValue()).isEqualTo(12.35);
+            assertThat(procedureRow.getCell(7).getCellStyle().getDataFormatString()).contains("R$");
+            assertThat(procedureRow.getCell(8).getNumericCellValue()).isEqualTo(40.60);
+            assertThat(BigDecimal.valueOf(procedureRow.getCell(9).getNumericCellValue())
+                    .add(BigDecimal.valueOf(productRow.getCell(9).getNumericCellValue()))).isEqualByComparingTo("196.95");
+            assertThat(workbook.getSheet("Dashboard").getDrawingPatriarch().getCharts()).hasSize(3);
         }
     }
 

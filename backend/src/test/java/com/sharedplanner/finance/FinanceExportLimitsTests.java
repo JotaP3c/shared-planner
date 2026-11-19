@@ -76,6 +76,16 @@ class FinanceExportLimitsTests {
     }
 
     @Test
+    void boundsCatalogRowsBeforeMaterializingAppointments() {
+        var budget = mock(FinanceExportEventRepository.ExportBudget.class);
+        when(events.budget(anyList(), any(), any())).thenReturn(budget);
+        when(events.countExportItems(anyList(), any(), any())).thenReturn(20_001L);
+        assertStatus(() -> exports.export(List.of(calendar), start, end, auth), HttpStatus.PAYLOAD_TOO_LARGE);
+        verify(events, never()).findExportEvents(anyList(), any(), any(), any());
+        verifyNoInteractions(calendars, finance);
+    }
+
+    @Test
     void boundedFetchNeverSilentlyTruncatesAnInconsistentOversizedResult() {
         var budget = mock(FinanceExportEventRepository.ExportBudget.class);
         when(budget.getAppointmentCount()).thenReturn(10000L);

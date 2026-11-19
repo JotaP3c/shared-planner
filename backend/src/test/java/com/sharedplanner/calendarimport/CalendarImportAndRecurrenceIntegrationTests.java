@@ -198,7 +198,7 @@ class CalendarImportAndRecurrenceIntegrationTests {
     @Test void futureEditsAndIndividualCancellationPreserveEachPaidSnapshotAndIdentity() {
         Fixture fixture=fixture(); var start=LocalDateTime.of(2026,10,5,10,0);
         var template=new CreateEventRequest(fixture.calendar().getId(),EventType.CLIENT,"Synthetic client","Fixture client",null,null,"Fixture service",new BigDecimal("100.00"),start,start.plusHours(1),null);
-        var created=series.create(new EventSeriesService.CreateSeriesRequest(template,new RecurrenceRule(RecurrenceRule.Frequency.WEEKLY,1,null,null,3,"America/Sao_Paulo")),fixture.auth());
+        var created=seedHistoricalClientSeries(template, 3, 7, fixture.auth());
         var first=created.events().get(0); var second=created.events().get(1);
         events.updatePayment(first.id(),new UpdatePaymentRequest(PaymentStatus.PAID,PaymentMethod.PIX,new BigDecimal("100.00"),null),fixture.auth());
         var edited=new UpdateEventRequest(EventType.CLIENT,"Synthetic revised","Fixture client",null,null,"Fixture service",new BigDecimal("100.00"),second.startsAt().plusHours(2),second.endsAt().plusHours(2),null);
@@ -220,7 +220,7 @@ class CalendarImportAndRecurrenceIntegrationTests {
         Fixture fixture=new TransactionTemplate(transactionManager).execute(status->fixture());
         var start=LocalDateTime.of(2026,11,2,9,0);
         var template=new CreateEventRequest(fixture.calendar().getId(),EventType.CLIENT,"Synthetic original","Fixture client",null,null,"Service",new BigDecimal("50.00"),start,start.plusHours(1),null);
-        var created=series.create(new EventSeriesService.CreateSeriesRequest(template,new RecurrenceRule(RecurrenceRule.Frequency.DAILY,1,null,null,2,"America/Sao_Paulo")),fixture.auth());
+        var created=seedHistoricalClientSeries(template, 2, 1, fixture.auth());
         events.updatePayment(created.events().get(1).id(),new UpdatePaymentRequest(PaymentStatus.PAID,PaymentMethod.PIX,new BigDecimal("50.00"),null),fixture.auth());
         var edited=new UpdateEventRequest(EventType.CLIENT,"Changed","Fixture client",null,null,"Service",new BigDecimal("20.00"),start,start.plusHours(1),null);
         assertThatThrownBy(()->series.update(created.id(),EventSeriesService.Scope.ALL,null,edited,fixture.auth())).isInstanceOf(ResponseStatusException.class);
@@ -228,5 +228,19 @@ class CalendarImportAndRecurrenceIntegrationTests {
         assertThat(restored.events()).allMatch(e->e.title().equals("Synthetic original"));
         assertThat(restored.events()).allSatisfy(e->assertThat(e.amount()).isEqualByComparingTo("50.00"));
         assertThat(restored.events().get(1).receivedAmount()).isEqualByComparingTo("50.00");
+    }
+
+    private EventSeriesService.SeriesResponse seedHistoricalClientSeries(CreateEventRequest template, int count,
+                                                                          int daysBetween, Authentication actor) {
+        var legacy = series.importSeries(template.calendarId(), daysBetween == 1 ? "DAILY" : "WEEKLY",
+                "America/Sao_Paulo", UUID.randomUUID().toString(), null);
+        for (int i = 0; i < count; i++) {
+            long offset = (long) daysBetween * i;
+            var occurrence = events.create(template.withPeriod(template.startsAt().plusDays(offset),
+                    template.endsAt().plusDays(offset)), actor);
+            series.linkImported(legacy, occurrence.id(), occurrence.startsAt());
+        }
+        var occurrences = events.list(template.calendarId(), template.startsAt(), template.endsAt().plusDays((long) daysBetween * count), actor);
+        return series.byEvent(occurrences.get(0).id(), actor);
     }
 }

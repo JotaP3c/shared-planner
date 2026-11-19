@@ -100,6 +100,78 @@ class Phase3PostgresIntegrationTests {
     String financePath(String endpoint) {
         return "/api/finance/"+endpoint+"?"+(endpoint.equals("export")?"calendarIds=":"calendarId=")+calendar+"&startDate=2030-11-01&endDate=2030-11-30";
     }
+
+    @Test @Order(1) void catalogSnapshotsAndLegacyRevenueReachFinanceAndExcelOnlyOnce() throws Exception {
+        String catalogPath = "/api/calendars/" + calendar + "/catalog";
+        String service = """
+                {"name":"Synthetic procedure","type":"SERVICE","standardPrice":100.25,"promotionalPrice":79.95,
+                 "promotionStartDate":"2030-11-17","promotionEndDate":"2030-11-18","durationMinutes":30,"active":true}
+                """;
+        var createdService = request("POST", catalogPath, ownerToken, service);
+        assertThat(createdService.statusCode()).isEqualTo(201);
+        String serviceId = read(createdService, "$.id");
+        int version = ((Number) read(createdService, "$.version")).intValue();
+        var product = request("POST", catalogPath, ownerToken,
+                "{\"name\":\"Synthetic product\",\"type\":\"PRODUCT\",\"standardPrice\":12.35,\"active\":true}");
+        assertThat(product.statusCode()).isEqualTo(201);
+        String productId = read(product, "$.id");
+        String items = """
+                [{"catalogItemId":"%s","quantity":2},{"catalogItemId":"%s","quantity":3}]
+                """.formatted(serviceId, productId).strip();
+        String quotePrefix = "{\"calendarId\":\"" + calendar + "\",\"catalogItems\":" + items + ",\"appointmentDate\":\"";
+        var quote = request("POST", "/api/events/catalog-quote", ownerToken, quotePrefix + "2030-11-17\"}");
+        assertThat(quote.statusCode()).isEqualTo(200);
+        assertThat(money(quote, "$.amount")).isEqualByComparingTo("196.95");
+        assertThat(money(quote, "$.catalogItems[0].discount")).isGreaterThan(BigDecimal.ZERO);
+        var outsidePromotion = request("POST", "/api/events/catalog-quote", ownerToken, quotePrefix + "2030-11-19\"}");
+        assertThat(outsidePromotion.statusCode()).isEqualTo(200);
+        assertThat(money(outsidePromotion, "$.amount")).isEqualByComparingTo("237.55");
+        assertThat(request("GET", catalogPath, outsiderToken, null).statusCode()).isIn(403,404);
+        assertThat(request("POST", "/api/events/catalog-quote", outsiderToken, quotePrefix + "2030-11-17\"}").statusCode()).isIn(403,404);
+
+        createClient(); // A legacy/manual appointment must still contribute its historical R$100.
+        String body = """
+                {"calendarId":"%s","eventType":"CLIENT","clientName":"Synthetic catalog client",
+                 "startsAt":"2030-11-17T14:00:00","endsAt":"2030-11-17T15:00:00",
+                 "catalogItems":%s,"expectedCatalogTotal":196.95,"observations":"Optional note"}
+                """.formatted(calendar, items);
+        var created = request("POST", "/api/events", ownerToken, body);
+        assertThat(created.statusCode()).isEqualTo(201);
+        String id = read(created, "$.id");
+        assertThat(money(created, "$.amount")).isEqualByComparingTo("196.95");
+        assertThat(money(created, "$.catalogItems[0].subtotal")).isEqualByComparingTo("159.90");
+        assertThat((String) read(created, "$.observations")).isEqualTo("Optional note");
+
+        String changed = service.replace("100.25", "120.00").replace("79.95", "90.00").replace("}", ",\"version\":" + version + "}");
+        assertThat(request("PUT", catalogPath + "/" + serviceId, ownerToken, changed).statusCode()).isEqualTo(200);
+        assertThat(request("POST", "/api/events", ownerToken, body).statusCode()).isEqualTo(409);
+        var persisted = request("GET", "/api/events/" + id, ownerToken, null);
+        assertThat(money(persisted, "$.amount")).isEqualByComparingTo("196.95");
+        assertThat(money(persisted, "$.catalogItems[0].unitPrice")).isEqualByComparingTo("79.95");
+        var history = request("GET", catalogPath + "/" + serviceId + "/price-history", ownerToken, null);
+        assertThat(history.statusCode()).isEqualTo(200);
+        assertThat(money(history, "$[0].standardPrice")).isEqualByComparingTo("120.00");
+        assertThat(money(history, "$[1].standardPrice")).isEqualByComparingTo("100.25");
+
+        assertThat(request("POST", "/api/events/" + id + "/confirm", ownerToken, null).statusCode()).isEqualTo(200);
+        assertThat(request("PUT", "/api/events/" + id + "/payment", ownerToken, payment("PARTIALLY_PAID", 40)).statusCode()).isEqualTo(200);
+        String reprice = body.replace("196.95", "217.05").replace("\"catalogItems\":", "\"repriceCatalogItems\":true,\"catalogItems\":");
+        assertThat(request("PUT", "/api/events/" + id, ownerToken, reprice).statusCode()).isEqualTo(400);
+        var summary = request("GET", financePath("summary"), ownerToken, null);
+        assertThat(money(summary, "$.expectedAmount")).isEqualByComparingTo("296.95");
+        assertThat(money(summary, "$.receivedAmount")).isEqualByComparingTo("40.00");
+        var export = request("GET", financePath("export"), ownerToken, null);
+        assertThat(export.statusCode()).isEqualTo(200);
+        try (var workbook = new XSSFWorkbook(new ByteArrayInputStream(export.body()))) {
+            var totals = workbook.getSheet("Dashboard").getRow(6);
+            assertThat(BigDecimal.valueOf(totals.getCell(0).getNumericCellValue())).isEqualByComparingTo("296.95");
+            assertThat(totals.getCell(1).getNumericCellValue()).isEqualTo(40);
+        }
+    }
+
+    private BigDecimal money(HttpResponse<byte[]> response, String jsonPath) {
+        return new BigDecimal(((Number) read(response, jsonPath)).toString());
+    }
     @Test @Order(1) void realLoginClientConfirmationPaymentFinanceAndNativeExcelJourney() throws Exception {
         String id=createClient();
         assertThat(request("POST","/api/events/"+id+"/confirm",ownerToken,null).statusCode()).isEqualTo(200);

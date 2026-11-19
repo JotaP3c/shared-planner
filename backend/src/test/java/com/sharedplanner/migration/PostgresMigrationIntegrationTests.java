@@ -74,9 +74,9 @@ class PostgresMigrationIntegrationTests {
             assertThat(scalar(connection, "SELECT count(*) FROM flyway_schema_history WHERE version IN ('8','9','10','11','12') AND success=true"))
                     .isEqualTo("5");
             assertThat(scalar(connection, "SELECT count(*) FROM flyway_schema_history WHERE success=true AND version IS NOT NULL"))
-                    .isEqualTo("13");
+                    .isEqualTo("14");
             assertThat(scalar(connection, "SELECT max(version::integer) FROM flyway_schema_history WHERE success=true"))
-                    .isEqualTo("13");
+                    .isEqualTo("14");
             assertThat(scalar(connection, "SELECT count(*) FROM events WHERE financial_simulation=false AND simulation_reference_date IS NULL"))
                     .isEqualTo("2");
             assertThat(scalar(connection, "SELECT count(*) FROM development_event_corrections")).isEqualTo("0");

@@ -1,3 +1,27 @@
 :host {
   display: block;
 }
+
+.pending-card {
+  border-inline-start-color: var(--sp-pending);
+  box-shadow: var(--sp-shadow-sm);
+}
+
+.pending-date {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: var(--sp-space-2);
+  color: var(--sp-content-secondary);
+  font-size: var(--sp-font-size-sm);
+  font-variant-numeric: tabular-nums;
+}
+
+.pending-calendar-action {
+  margin-inline-end: auto;
+}
+
+@media (max-width: 540px) {
+  .pending-card footer > button { flex: 1 1 auto; }
+  .pending-card footer > .pending-calendar-action { flex-basis: 100%; }
+}

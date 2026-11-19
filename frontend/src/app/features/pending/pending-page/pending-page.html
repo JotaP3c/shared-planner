@@ -27,7 +27,7 @@
   <article class="page-panel">
     <header class="page-panel-head">
       <div>
-        <strong>{{ pendingCount() }} item(ns)</strong>
+        <strong>{{ pendingCount() }} {{ pendingCount() === 1 ? 'evento aguardando resposta' : 'eventos aguardando resposta' }}</strong>
         <span>Somente o usuário solicitado pode aprovar ou reprovar.</span>
       </div>
     </header>
@@ -46,7 +46,10 @@
                 <h2>{{ eventTitle(event) }}</h2>
               </div>
 
-              <strong>{{ formatDateTime(event.startsAt) }}</strong>
+              <time class="pending-date" [attr.datetime]="event.startsAt">
+                <sp-icon name="calendar" [size]="16" />
+                {{ formatDateTime(event.startsAt) }}
+              </time>
             </div>
 
             <dl>
@@ -69,7 +72,7 @@
             </dl>
 
             <footer>
-              <button spButton variant="ghost" class="ghost-button" type="button" (click)="openInCalendar(event)">
+              <button spButton variant="ghost" class="ghost-button pending-calendar-action" type="button" (click)="openInCalendar(event)">
                 Abrir no calendário
               </button>
 
@@ -80,6 +83,7 @@
                   [disabled]="isActionInProgress(event.id)"
                   (click)="approve(event)"
                 >
+                  <sp-icon name="check" [size]="16" />
                   Aprovar
                 </button>
 
@@ -89,6 +93,7 @@
                   [disabled]="isActionInProgress(event.id)"
                   (click)="reject(event)"
                 >
+                  <sp-icon name="x" [size]="16" />
                   Reprovar
                 </button>
               }

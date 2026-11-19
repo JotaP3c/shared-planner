@@ -162,6 +162,8 @@ export class CalendarPage implements OnInit, AfterViewInit {
   readonly calendars = signal<CalendarResponse[]>([]);
   readonly selectedCalendarIds = signal<string[]>([]);
   readonly events = signal<EventResponse[]>([]);
+  readonly mobileFiltersOpen = signal(false);
+  readonly agendaDate = signal(this.toInputDate(new Date()));
   readonly pendingApprovals = signal<EventResponse[]>([]);
   readonly currentUser = this.authService.currentUser;
 
@@ -273,6 +275,22 @@ export class CalendarPage implements OnInit, AfterViewInit {
     const selectedTypes = this.selectedEventTypes();
 
     return this.events().filter(event => selectedTypes.includes(event.eventType));
+  });
+
+  readonly agendaEvents = computed(() => {
+    const start = this.buildLocalDateTime(this.agendaDate(), '00:00');
+    const end = new Date(start);
+    end.setDate(end.getDate() + 1);
+    return this.filteredEvents()
+      .filter(event => new Date(event.startsAt) < end && new Date(event.endsAt) > start
+        && !this.isImportedHolidayDuplicate(event))
+      .sort((left, right) => left.startsAt.localeCompare(right.startsAt));
+  });
+
+  readonly agendaHolidays = computed(() => {
+    const date = this.agendaDate();
+    return this.holidayEvents().filter(holiday => typeof holiday.start === 'string' && typeof holiday.end === 'string'
+      && holiday.start <= date && date < holiday.end);
   });
 
   readonly pendingEvents = computed(() => this.pendingApprovals());
@@ -387,6 +405,7 @@ export class CalendarPage implements OnInit, AfterViewInit {
     nowIndicator: true,
     editable: false,
     selectable: true,
+    selectMinDistance: 5,
     selectMirror: true,
     expandRows: false,
     dayHeaderFormat: { weekday: 'short', day: '2-digit', month: '2-digit' },
@@ -399,8 +418,15 @@ export class CalendarPage implements OnInit, AfterViewInit {
     },
     slotLabelFormat: { hour: '2-digit', minute: '2-digit', hour12: false },
     datesSet: (arg) => this.onDatesSet(arg),
-    dateClick: (arg) => this.openNewEventModal(arg.date),
-    select: (arg) => this.openNewEventModal(arg.start, arg.end),
+    dateClick: (arg) => {
+      this.agendaDate.set(this.toInputDate(arg.date));
+      if (arg.view.type === 'dayGridMonth' && this.mobileAgendaVisible()) return;
+      this.openNewEventModal(arg.date);
+    },
+    select: (arg) => {
+      this.agendaDate.set(this.toInputDate(arg.start));
+      this.openNewEventModal(arg.start, arg.end);
+    },
     eventClick: (arg) => { if (!arg.event.extendedProps['systemHoliday']) this.openEventDetails(arg.event.extendedProps as EventResponse); },
     eventContent: (arg) => arg.event.extendedProps['systemHoliday']
       ? { html: `<span class="sp-event-title">${this.escapeHtml(arg.event.title)}</span>` }
@@ -772,7 +798,7 @@ export class CalendarPage implements OnInit, AfterViewInit {
   resetPeriodFilter(event?: MouseEvent): void {
     event?.stopPropagation();
     this.closeFilterMenu();
-    this.calendarComponent?.getApi().today();
+    this.goToToday();
   }
 
   clearFilters(): void {
@@ -780,7 +806,7 @@ export class CalendarPage implements OnInit, AfterViewInit {
     this.selectedCalendarIds.set(this.calendars().map(calendar => calendar.id));
     this.selectAllEventTypes();
     this.closeFilterMenu();
-    this.calendarComponent?.getApi().today();
+    this.goToToday();
     this.loadEvents();
   }
 
@@ -802,7 +828,28 @@ export class CalendarPage implements OnInit, AfterViewInit {
   }
 
   goToToday(): void {
+    this.agendaDate.set(this.toInputDate(new Date()));
     this.calendarComponent?.getApi().today();
+  }
+
+  selectAgendaDate(date: string): void {
+    if (!date) return;
+    this.agendaDate.set(date);
+    this.calendarComponent?.getApi().gotoDate(date);
+  }
+
+  createAgendaEvent(): void {
+    const time = this.toInputTime(new Date());
+    this.openNewEventModal(this.buildLocalDateTime(this.agendaDate(), time));
+  }
+
+  displayCivilDate(date: string): string {
+    return date.split('-').reverse().join('/');
+  }
+
+  private mobileAgendaVisible(): boolean {
+    return typeof matchMedia === 'function'
+      && matchMedia('(max-width: 640px), (max-width: 900px) and (max-height: 500px) and (pointer: coarse)').matches;
   }
 
   markAllAsRead(): void {
@@ -1022,13 +1069,20 @@ export class CalendarPage implements OnInit, AfterViewInit {
     }
   }
 
-  changeCatalogQuantity(id: string, input: HTMLInputElement): void {
+  changeCatalogQuantity(id: string, input: HTMLInputElement, commit: boolean): void {
     if (!this.canSearchCatalog()) return;
-    this.eventCatalog.setQuantity(id, input.valueAsNumber);
     const line = this.eventCatalog.lines().find(item => item.catalogItemId === id);
-    if (line) input.value = String(line.quantity);
-    this.useCatalogDuration = true;
-    this.applyCatalogDuration();
+    if (!line) return;
+    const quantity = input.valueAsNumber;
+    if (!Number.isInteger(quantity) || quantity < 1 || quantity > this.catalogMaxQuantity) {
+      if (commit) input.value = String(line.quantity);
+      return;
+    }
+    if (quantity !== line.quantity) {
+      this.eventCatalog.setQuantity(id, quantity);
+      this.useCatalogDuration = true;
+      this.applyCatalogDuration();
+    }
   }
 
   removeCatalogItem(id: string): void {
@@ -2147,6 +2201,10 @@ export class CalendarPage implements OnInit, AfterViewInit {
     this.periodTitle.set(title.charAt(0).toUpperCase() + title.slice(1));
     this.visibleStart.set(arg.start);
     this.visibleEnd.set(arg.end);
+    const selectedDay = this.buildLocalDateTime(this.agendaDate(), '00:00');
+    if (selectedDay < arg.view.currentStart || selectedDay >= arg.view.currentEnd) {
+      this.agendaDate.set(this.toInputDate(this.calendarComponent?.getApi().getDate() ?? arg.view.currentStart));
+    }
     this.loadEvents();
   }
 

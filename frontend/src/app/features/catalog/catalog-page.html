@@ -16,14 +16,22 @@
     <sp-loading-state label="Carregando calendários…" />
   } @else if (calendars().length) {
     <div class="page-panel catalog-filters">
-      <label class="sp-field">Calendário
+      <div class="catalog-filter-heading">
+        <strong>Filtros do catálogo</strong>
+        <button spButton variant="ghost" type="button" aria-controls="catalog-filter-controls"
+          [attr.aria-expanded]="!filtersCollapsed()" (click)="filtersCollapsed.set(!filtersCollapsed())">
+          {{ filtersCollapsed() ? 'Expandir filtros' : 'Recolher filtros' }}
+        </button>
+      </div>
+      <label class="sp-field catalog-calendar">Calendário
         <select spSelect [disabled]="saving()" (change)="selectCalendar($any($event.target).value)">
           @for (calendar of calendars(); track calendar.id) {
             <option [value]="calendar.id" [selected]="calendar.id === calendarId()">{{ calendar.name }}</option>
           }
         </select>
       </label>
-      <form [formGroup]="filters" (ngSubmit)="load()" class="catalog-grid" aria-label="Filtrar itens do catálogo">
+      <form id="catalog-filter-controls" [hidden]="filtersCollapsed()" [formGroup]="filters"
+        (ngSubmit)="load()" class="catalog-grid" aria-label="Filtrar itens do catálogo">
         <label class="sp-field">Busca
           <input spInput type="search" formControlName="q" maxlength="160" placeholder="Nome, código ou descrição" />
         </label>
@@ -72,22 +80,22 @@
       <sp-loading-state label="Carregando catálogo…" />
     } @else if (items().length) {
       <div class="page-table-wrap" tabindex="0" role="region" aria-label="Itens do catálogo">
-        <table spTable class="page-table">
-          <thead><tr><th scope="col">Item</th><th scope="col">Categoria</th><th scope="col">Preço</th><th scope="col">Duração</th><th scope="col">Situação</th><th scope="col">Ações</th></tr></thead>
-          <tbody>
+        <table spTable class="page-table catalog-table" role="table">
+          <thead role="rowgroup"><tr role="row"><th scope="col">Item</th><th scope="col">Categoria</th><th scope="col">Preço</th><th scope="col">Duração</th><th scope="col">Situação</th><th scope="col">Ações</th></tr></thead>
+          <tbody role="rowgroup">
             @for (item of items(); track item.id) {
-              <tr>
-                <td><strong>{{ item.name }}</strong><small>{{ item.type === 'SERVICE' ? 'Serviço' : 'Produto' }}{{ item.code ? ' · ' + item.code : '' }}</small>@if (item.description) { <small>{{ item.description }}</small> }</td>
-                <td>{{ item.category || '—' }}</td>
-                <td><strong>{{ currency(item.standardPrice) }}</strong>
+              <tr role="row">
+                <td role="cell"><strong>{{ item.name }}</strong><small>{{ item.type === 'SERVICE' ? 'Serviço' : 'Produto' }}{{ item.code ? ' · ' + item.code : '' }}</small>@if (item.description) { <small>{{ item.description }}</small> }</td>
+                <td role="cell"><span class="mobile-cell-label" aria-hidden="true">Categoria</span>{{ item.category || '—' }}</td>
+                <td role="cell"><span class="mobile-cell-label" aria-hidden="true">Preço</span><strong>{{ currency(item.standardPrice) }}</strong>
                   @if (item.promotionalPrice !== null) {
                     <small>{{ currency(item.promotionalPrice) }} · {{ displayDate(item.promotionStartDate) }} a {{ displayDate(item.promotionEndDate) }}</small>
                     @if (item.promotionApplied) { <small>Promoção vigente hoje</small> }
                   }
                 </td>
-                <td>{{ item.durationMinutes ? item.durationMinutes + ' min' : '—' }}</td>
-                <td><sp-badge [variant]="item.active ? 'success' : 'neutral'">{{ item.active ? 'Ativo' : 'Inativo' }}</sp-badge></td>
-                <td><div class="row-actions">
+                <td role="cell"><span class="mobile-cell-label" aria-hidden="true">Duração</span>{{ item.durationMinutes ? item.durationMinutes + ' min' : '—' }}</td>
+                <td role="cell"><span class="mobile-cell-label" aria-hidden="true">Situação</span><sp-badge [variant]="item.active ? 'success' : 'neutral'">{{ item.active ? 'Ativo' : 'Inativo' }}</sp-badge></td>
+                <td role="cell"><div class="row-actions">
                   <button spButton size="sm" variant="ghost" type="button" (click)="openHistory(item)" [attr.aria-label]="'Histórico de preços de ' + item.name">Histórico</button>
                   @if (canManage()) {
                     <button spButton size="sm" variant="secondary" type="button" (click)="openForm(item)" [disabled]="saving()" [attr.aria-label]="'Editar ' + item.name">Editar</button>

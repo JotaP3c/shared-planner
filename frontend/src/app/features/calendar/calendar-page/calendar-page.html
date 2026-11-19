@@ -47,8 +47,13 @@
       </header>
 
 
-      <div class="calendar-toolbar">
-        <div class="toolbar-filters">
+      <button spButton variant="secondary" class="mobile-filter-toggle" type="button"
+        aria-controls="calendar-toolbar-filters" [attr.aria-expanded]="mobileFiltersOpen()"
+        (click)="mobileFiltersOpen.set(!mobileFiltersOpen())">
+        {{ mobileFiltersOpen() ? 'Recolher filtros' : 'Filtros · ' + eventsChip() }}
+      </button>
+      <div class="calendar-toolbar" [class.mobile-filters-open]="mobileFiltersOpen()">
+        <div class="toolbar-filters" id="calendar-toolbar-filters">
           <span class="toolbar-label">Exibir:</span>
 
           <div class="type-filters" role="group" aria-label="Filtrar por tipo de evento">
@@ -144,6 +149,36 @@
         }
         <full-calendar #calendar [options]="calendarOptions"></full-calendar>
       </div>
+
+      <section class="mobile-day-agenda" aria-label="Eventos por dia" [attr.aria-busy]="isLoading()">
+        <div class="agenda-controls">
+          <label class="sp-field">Agenda do dia
+            <input spInput type="date" [value]="agendaDate()" (change)="selectAgendaDate($any($event.target).value)" />
+          </label>
+          @if (canCreateEvents()) {
+            <button spButton variant="secondary" type="button" (click)="createAgendaEvent()">
+              <sp-icon name="plus" [size]="16" /> Agendar neste dia
+            </button>
+          }
+        </div>
+        @for (holiday of agendaHolidays(); track holiday.id) {
+          <div class="agenda-holiday"><strong>{{ holiday.title }}</strong><span>Feriado · Dia inteiro</span></div>
+        }
+        @if (isLoading()) {
+          <p role="status">Carregando agenda do dia…</p>
+        } @else {
+          @for (event of agendaEvents(); track event.id) {
+            <button spButton variant="secondary" class="agenda-event" type="button" (click)="openEventDetails(event)">
+              <strong>{{ displayTitle(event) }}</strong>
+              <span>{{ formatTimeRange(event) }} · {{ calendarName(event.calendarId) }}</span>
+              @if (event.status !== 'SCHEDULED') { <small>{{ eventStatusLabel(event.status) }}</small> }
+            </button>
+          }
+          @if (!agendaEvents().length && !agendaHolidays().length && !eventsLoadError()) {
+            <p>Nenhum evento neste dia com os filtros selecionados.</p>
+          }
+        }
+      </section>
 
       <footer class="event-legend" aria-label="Legenda dos tipos de evento">
         <span class="legend-item"><span class="dot client"></span>Cliente</span>
@@ -470,7 +505,8 @@
                         <label class="sp-field">Qtd.
                           <input spInput type="number" min="1" [max]="catalogMaxQuantity" step="1" [value]="item.quantity"
                             [attr.aria-label]="'Quantidade de ' + item.name"
-                            (change)="changeCatalogQuantity(item.catalogItemId, $any($event.target))" />
+                            (input)="changeCatalogQuantity(item.catalogItemId, $any($event.target), false)"
+                            (change)="changeCatalogQuantity(item.catalogItemId, $any($event.target), true)" />
                         </label>
                       } @else {
                         <span>Qtd. {{ item.quantity }}</span>
@@ -595,6 +631,13 @@
                 </label>
               }
               @if (eventCatalog.lines().length || isCatalogLinked(eventBeingEdited())) {
+                <div class="appointment-preview" aria-label="Resumo do agendamento">
+                  <strong>{{ eventForm.controls.clientName.value || 'Cliente' }}</strong>
+                  <span>{{ calendarName(eventForm.controls.calendarId.value) }}</span>
+                  <span>{{ displayCivilDate(eventForm.controls.date.value) }} · {{ eventForm.controls.startTime.value }} – {{ eventForm.controls.endTime.value }}
+                    @if (currentDurationMinutes(); as duration) { · {{ duration }} min }
+                  </span>
+                </div>
                 <label class="sp-field">Observações (opcional)
                   <textarea spInput rows="2" maxlength="500" formControlName="observations"></textarea>
                 </label>

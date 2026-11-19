@@ -2,4 +2,10 @@
 .users-search { min-width: min(240px, 100%); max-width: 100%; }
 .row-actions { display: inline-flex; flex-wrap: wrap; gap: var(--sp-space-2); .icon-button { width: 36px; height: 36px; } .icon-button.danger:hover:not(:disabled) { border-color: var(--sp-danger); color: var(--sp-feedback-danger-text); } .icon-button:disabled { opacity: var(--sp-disabled-opacity); cursor: not-allowed; } }
 .checkbox-field span { display: flex; align-items: center; gap: var(--sp-space-2); }
-@media (max-width: 720px) { .users-search { width: 100%; } .row-actions .icon-button { width: 40px; height: 40px; } }
+.page-table td > span, .page-panel-head strong { overflow-wrap: anywhere; }
+
+@media (max-width: 720px) {
+  .users-search { width: 100%; }
+  .row-actions .icon-button { width: var(--sp-control-height-md); height: var(--sp-control-height-md); }
+  .page-header .page-actions > button { flex: 1 1 auto; }
+}

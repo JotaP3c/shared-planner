@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, input, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, ElementRef, afterNextRender, computed, inject, input, signal } from '@angular/core';
 
 export interface LineChartPoint {
   date: string;
@@ -7,7 +7,7 @@ export interface LineChartPoint {
   secondary: number;
 }
 
-const WIDTH = 960;
+const DEFAULT_WIDTH = 960;
 const HEIGHT = 290;
 const LEFT = 88;
 const RIGHT = 20;
@@ -23,7 +23,7 @@ const BASELINE = HEIGHT - BOTTOM;
     @if (hasValues()) {
       <figure class="sp-line-chart" (mouseleave)="activeIndex.set(null)">
         <div class="sp-line-plot">
-          <svg [attr.viewBox]="'0 0 ' + width + ' ' + height" role="img" [attr.aria-label]="label()">
+          <svg [attr.viewBox]="'0 0 ' + width() + ' ' + height" role="group" [attr.aria-label]="label()">
             <defs>
               <linearGradient id="finance-revenue-area" x1="0" [attr.y1]="top" x2="0" [attr.y2]="baseline" gradientUnits="userSpaceOnUse">
                 <stop offset="0%" class="sp-line-gradient-start" />
@@ -31,7 +31,7 @@ const BASELINE = HEIGHT - BOTTOM;
               </linearGradient>
             </defs>
             @for (tick of yTicks(); track tick.value) {
-              <line class="sp-line-grid" [attr.x1]="left" [attr.x2]="width - right" [attr.y1]="tick.y" [attr.y2]="tick.y" />
+              <line class="sp-line-grid" [attr.x1]="left" [attr.x2]="width() - right" [attr.y1]="tick.y" [attr.y2]="tick.y" />
               <text class="sp-line-axis" [attr.x]="left - 12" [attr.y]="tick.y + 4" text-anchor="end">{{ axisCurrency(tick.value) }}</text>
             }
             <path class="sp-line-area" [attr.d]="areaPath()" />
@@ -45,7 +45,8 @@ const BASELINE = HEIGHT - BOTTOM;
                 <text class="sp-line-axis" [attr.x]="point.x" [attr.y]="baseline + 27" text-anchor="middle">{{ point.label }}</text>
               }
               <g class="sp-line-point" tabindex="0" role="img" [attr.aria-label]="pointDescription(point)"
-                (mouseenter)="activeIndex.set($index)" (focus)="activeIndex.set($index)" (blur)="activeIndex.set(null)">
+                (mouseenter)="activeIndex.set($index)" (click)="activeIndex.set($index)"
+                (focus)="activeIndex.set($index)" (blur)="activeIndex.set(null)">
                 <title>{{ pointDescription(point) }}</title>
                 <rect [attr.x]="point.hitStart" [attr.y]="top" [attr.width]="point.hitWidth" [attr.height]="baseline - top" fill="transparent" />
                 <circle class="primary" [attr.cx]="point.x" [attr.cy]="point.primaryY" [attr.r]="activeIndex() === $index || plottedPoints().length === 1 ? 4 : 0" />
@@ -64,7 +65,7 @@ const BASELINE = HEIGHT - BOTTOM;
         <figcaption class="sp-chart-legend inline">
           <span><i class="sp-swatch tone-expected" aria-hidden="true"></i>{{ primaryLabel() }}</span>
           <span><i class="sp-swatch tone-received" aria-hidden="true"></i>{{ secondaryLabel() }}</span>
-          <small>Passe o cursor ou use Tab para consultar os valores.</small>
+          <small>Toque em um ponto ou use Tab para consultar os valores.</small>
         </figcaption>
         <table class="sr-only">
           <caption>{{ label() }}</caption>
@@ -89,12 +90,26 @@ export class LineChart {
   readonly emptyMessage = input('Sem valores no período.');
   readonly format = input<(value: number) => string>(value => String(value));
   readonly activeIndex = signal<number | null>(null);
-  protected readonly width = WIDTH;
+  protected readonly width = signal(DEFAULT_WIDTH);
   protected readonly height = HEIGHT;
   protected readonly left = LEFT;
   protected readonly right = RIGHT;
   protected readonly top = TOP;
   protected readonly baseline = BASELINE;
+
+  constructor() {
+    const host = inject<ElementRef<HTMLElement>>(ElementRef).nativeElement;
+    const destroyRef = inject(DestroyRef);
+    afterNextRender(() => {
+      if (typeof ResizeObserver === 'undefined') return;
+      const observer = new ResizeObserver(([entry]) => {
+        const measured = Math.floor(entry.contentRect.width);
+        if (measured > 0) this.width.set(measured);
+      });
+      observer.observe(host);
+      destroyRef.onDestroy(() => observer.disconnect());
+    });
+  }
 
   readonly maxValue = computed(() => this.points().reduce((max, point) => Math.max(max, point.primary || 0, point.secondary || 0), 0));
   readonly hasValues = computed(() => this.maxValue() > 0);
@@ -114,17 +129,24 @@ export class LineChart {
     const timestamps = points.map(point => Date.parse(`${point.date}T00:00:00Z`));
     const first = timestamps[0];
     const range = timestamps[timestamps.length - 1] - first;
+    const width = this.width();
+    const plotWidth = Math.max(1, width - LEFT - RIGHT);
     const x = (index: number) => range > 0
-      ? LEFT + (timestamps[index] - first) / range * (WIDTH - LEFT - RIGHT)
-      : LEFT + (WIDTH - LEFT - RIGHT) / 2;
+      ? LEFT + (timestamps[index] - first) / range * plotWidth
+      : LEFT + plotWidth / 2;
     const y = (value: number) => BASELINE - Math.max(0, value || 0) / this.scaleMax() * (BASELINE - TOP);
-    const labelEvery = Math.max(1, Math.ceil((points.length - 1) / 6));
+    const lastIndex = points.length - 1;
+    const labelSpacing = 54;
+    let lastLabelX = Number.NEGATIVE_INFINITY;
     return points.map((point, index) => {
+      const position = x(index);
       const hitStart = index === 0 ? LEFT : (x(index - 1) + x(index)) / 2;
-      const hitEnd = index === points.length - 1 ? WIDTH - RIGHT : (x(index) + x(index + 1)) / 2;
-      return { ...point, x: x(index), primaryY: y(point.primary), secondaryY: y(point.secondary),
+      const hitEnd = index === lastIndex ? width - RIGHT : (position + x(index + 1)) / 2;
+      const showLabel = index === lastIndex || position - lastLabelX >= labelSpacing && x(lastIndex) - position >= labelSpacing;
+      if (showLabel) lastLabelX = position;
+      return { ...point, x: position, primaryY: y(point.primary), secondaryY: y(point.secondary),
         hitStart, hitWidth: hitEnd - hitStart,
-        showLabel: index % labelEvery === 0 || index === points.length - 1,
+        showLabel,
         dateLabel: new Date(timestamps[index]).toLocaleDateString('pt-BR', { dateStyle: 'medium', timeZone: 'UTC' }),
       };
     });
@@ -137,7 +159,11 @@ export class LineChart {
     return `${this.primaryPath()} L ${points[points.length - 1].x} ${BASELINE} L ${points[0].x} ${BASELINE} Z`;
   });
   readonly activePoint = computed(() => this.plottedPoints()[this.activeIndex() ?? -1] ?? null);
-  readonly tooltipLeft = computed(() => Math.max(3, Math.min(70, (this.activePoint()?.x ?? 0) / WIDTH * 100 - 10)));
+  readonly tooltipLeft = computed(() => {
+    const width = this.width();
+    const anchor = (this.activePoint()?.x ?? 0) - 52;
+    return Math.max(8, Math.min(width - 236, anchor)) / width * 100;
+  });
 
   axisCurrency(value: number): string {
     return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', notation: value >= 10000 ? 'compact' : 'standard', maximumFractionDigits: value >= 10000 ? 1 : 0 }).format(value);

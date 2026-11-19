@@ -28,6 +28,7 @@
 .finance-page .kpi-card {
   display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: 'label icon' 'value value' 'caption caption'; gap: var(--sp-space-2) var(--sp-space-3);
   padding: var(--sp-space-5); border: var(--sp-border-width) solid var(--sp-border); border-radius: var(--sp-radius-lg); background: var(--sp-surface); box-shadow: var(--sp-shadow-sm);
+  border-inline-start: 3px solid var(--tone);
   .kpi-icon { display: grid; grid-area: icon; place-items: center; width: var(--sp-space-8); height: var(--sp-space-8); border-radius: var(--sp-radius-sm); background: color-mix(in srgb, var(--tone) 12%, transparent); color: var(--tone); }
   .kpi-label { grid-area: label; align-self: center; color: var(--sp-content-secondary); font-size: var(--sp-font-size-xs); font-weight: var(--sp-font-weight-medium); }
   strong { grid-area: value; margin: 0; font-size: clamp(1.125rem, 1.8vw, 1.75rem); font-weight: var(--sp-font-weight-semibold); letter-spacing: var(--sp-letter-spacing-tight); line-height: var(--sp-line-height-tight); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
@@ -49,8 +50,8 @@
 .finance-page .chart-header { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: var(--sp-space-2) var(--sp-space-3); h3 { margin: 0; font-size: var(--sp-font-size-sm); font-weight: var(--sp-font-weight-semibold); } small { color: var(--sp-content-secondary); font-size: var(--sp-font-size-xs); } }
 .finance-page .sp-line-chart { margin: 0; min-width: 0; }
 .finance-page sp-line-chart, .finance-page sp-donut-chart { display: block; min-width: 0; }
-.finance-page .sp-line-plot { position: relative; overflow-x: auto; padding-top: var(--sp-space-1); }
-.finance-page .sp-line-plot svg { display: block; width: 100%; min-width: 640px; height: auto; }
+.finance-page .sp-line-plot { position: relative; padding-top: var(--sp-space-1); }
+.finance-page .sp-line-plot svg { display: block; width: 100%; height: auto; }
 .finance-page .sp-line-grid { stroke: var(--sp-border); stroke-width: 1; stroke-dasharray: 3 5; }
 .finance-page .sp-line-axis { fill: var(--sp-content-secondary); font-size: 12px; font-weight: var(--sp-font-weight-normal); }
 .finance-page .sp-line-gradient-start { stop-color: var(--sp-primary); stop-opacity: .12; }
@@ -63,7 +64,7 @@
 .finance-page .sp-line-point circle.primary { fill: var(--sp-primary); }
 .finance-page .sp-line-point circle.secondary { fill: var(--sp-client); }
 .finance-page .sp-line-cursor { stroke: var(--sp-content-secondary); stroke-dasharray: 4 5; stroke-opacity: .5; }
-.finance-page .sp-line-tooltip { position: absolute; top: var(--sp-space-3); display: grid; gap: var(--sp-space-2); min-width: 215px; max-width: 100%; padding: var(--sp-space-3); border: var(--sp-border-width) solid var(--sp-border-strong); border-radius: var(--sp-radius); background: var(--sp-surface); box-shadow: var(--sp-shadow); color: var(--sp-text); pointer-events: none; font-size: var(--sp-font-size-xs); }
+.finance-page .sp-line-tooltip { position: absolute; top: var(--sp-space-3); display: grid; gap: var(--sp-space-2); width: min(225px, calc(100% - 16px)); padding: var(--sp-space-3); border: var(--sp-border-width) solid var(--sp-border-strong); border-radius: var(--sp-radius); background: var(--sp-surface); box-shadow: var(--sp-shadow); color: var(--sp-text); pointer-events: none; font-size: var(--sp-font-size-xs); }
 .finance-page .sp-line-tooltip > span { display: flex; align-items: center; gap: var(--sp-space-2); color: var(--sp-content-secondary); }
 .finance-page .sp-line-tooltip b { margin-left: auto; color: var(--sp-text); font-weight: var(--sp-font-weight-semibold); font-variant-numeric: tabular-nums; }
 .finance-page .sp-line-chart figcaption { margin-top: var(--sp-space-3); }
@@ -81,7 +82,6 @@
   .finance-page .filter-heading-actions small { display: none; }
   .finance-page .finance-actions { width: 100%; }
   .finance-page .finance-actions > button { flex: 1 1 auto; }
-  .finance-page .sp-line-tooltip { left: var(--sp-space-3) !important; }
   .finance-page .sp-line-chart figcaption > small { width: 100%; margin-left: 0; }
   .finance-page .count-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .finance-page .confirmation-amounts { grid-template-columns: minmax(0, 1fr); gap: var(--sp-space-3); }

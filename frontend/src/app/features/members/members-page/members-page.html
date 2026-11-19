@@ -111,25 +111,27 @@
               </td>
               <td data-label="Papel">
                 @if (canManage() && !isOwner(member)) {
-                  @if (member.userId) {
-                    <button spButton variant="secondary" class="secondary-button" type="button" (click)="manageAccess(member)" [disabled]="accessSaving()">Gerenciar acessos</button>
-                  }
-                  <select spSelect
-                    [attr.aria-label]="'Papel de ' + member.userFullName"
-                    [value]="member.role"
-                    [disabled]="isMemberBusy(member.id)"
-                    (change)="updateRole(member, $any($event.target).value)"
-                  >
-                    @for (role of roles; track role) {
-                      <option [value]="role" [selected]="role === member.role">{{ roleLabel(role) }}</option>
+                  <div class="member-role-controls">
+                    @if (member.userId) {
+                      <button spButton variant="secondary" class="secondary-button" type="button" (click)="manageAccess(member)" [disabled]="accessSaving()">Gerenciar acessos</button>
                     }
-                  </select>
-                  <div class="additional-roles">
-                    @for (role of ['EDITOR', 'FINANCE']; track role) {
-                      <label><input spCheckbox type="checkbox" [checked]="effectiveRoles(member).includes($any(role))"
-                        [disabled]="isMemberBusy(member.id) || member.role === role"
-                        (change)="setAdditionalRole(member, $any(role), $any($event.target).checked)" />{{ roleLabel($any(role)) }}</label>
-                    }
+                    <select spSelect
+                      [attr.aria-label]="'Papel de ' + member.userFullName"
+                      [value]="member.role"
+                      [disabled]="isMemberBusy(member.id)"
+                      (change)="updateRole(member, $any($event.target).value)"
+                    >
+                      @for (role of roles; track role) {
+                        <option [value]="role" [selected]="role === member.role">{{ roleLabel(role) }}</option>
+                      }
+                    </select>
+                    <div class="additional-roles">
+                      @for (role of ['EDITOR', 'FINANCE']; track role) {
+                        <label><input spCheckbox type="checkbox" [checked]="effectiveRoles(member).includes($any(role))"
+                          [disabled]="isMemberBusy(member.id) || member.role === role"
+                          (change)="setAdditionalRole(member, $any(role), $any($event.target).checked)" />{{ roleLabel($any(role)) }}</label>
+                      }
+                    </div>
                   </div>
                 } @else {
                   <span class="role-pill">

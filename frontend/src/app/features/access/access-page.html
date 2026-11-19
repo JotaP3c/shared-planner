@@ -8,14 +8,14 @@
   @if (loading()) { <sp-loading-state label="Carregando perfis..." /> }
   @if (allowed() && !loading()) {
     <div class="profile-layout">
-      <section class="access-card" aria-label="Perfis existentes"><h2>Perfis</h2>
+      <section class="page-panel" aria-label="Perfis existentes"><h2>Perfis</h2>
         <button spButton variant="secondary" class="secondary-button" type="button" (click)="newProfile()">Novo perfil</button>
         <ul class="profile-list">@for (profile of profiles(); track profile.id) { <li>
           <button type="button" [class.selected]="editingId() === profile.id" [attr.aria-pressed]="editingId() === profile.id" (click)="edit(profile)">
             <strong>{{ profile.name }}</strong><small>{{ profile.scope === 'GLOBAL' ? 'Sistema' : 'Calendário' }} · {{ profile.active ? 'Ativo' : 'Inativo' }}</small>
           </button></li> }</ul>
       </section>
-      <section class="access-card" aria-label="Editar permissões"><h2>{{ editingId() ? 'Permissões do perfil' : 'Criar perfil' }}</h2>
+      <section class="page-panel" aria-label="Editar permissões"><h2>{{ editingId() ? 'Permissões do perfil' : 'Criar perfil' }}</h2>
         @if (protectedProfile()) { <p class="page-hint">Perfil essencial protegido. Sua administração global não pode ser removida.</p> }
         <form (submit)="$event.preventDefault(); saveProfile()">
           <div class="access-fields"><label class="sp-field">Nome<input spInput maxlength="120" required [value]="name()" (input)="name.set($any($event.target).value)" [disabled]="protectedProfile() || saving()" /></label>
@@ -33,7 +33,7 @@
         </form>
       </section>
     </div>
-    <section class="access-card" aria-labelledby="assignment-title"><h2 id="assignment-title">Associar usuários e consultar acessos</h2>
+    <section class="page-panel" aria-labelledby="assignment-title"><h2 id="assignment-title">Associar usuários e consultar acessos</h2>
       <p class="page-hint">Perfis selecionados substituem os padrões nesse escopo. Sem perfis, os acessos são negados. A administração do próprio calendário permanece protegida.</p>
       <div class="access-fields"><label class="sp-field">Usuário<select spSelect [value]="selectedUserId()" (change)="selectUser($any($event.target).value)" [disabled]="savingAssignment()"><option value="">Selecione</option>
         @for (user of users(); track user.id) { <option [value]="user.id">{{ user.fullName }} · {{ user.email }}</option> }</select></label>

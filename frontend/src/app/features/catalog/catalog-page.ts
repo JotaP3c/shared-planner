@@ -1,5 +1,5 @@
 import { DatePipe } from '@angular/common';
-import { Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';
+import { Component, DestroyRef, OnInit, afterNextRender, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Subscription, finalize } from 'rxjs';
@@ -43,6 +43,7 @@ export class CatalogPage implements OnInit {
   readonly formError = signal('');
   readonly success = signal('');
   readonly formOpen = signal(false);
+  readonly filtersCollapsed = signal(false);
   readonly editing = signal<CatalogItemResponse | null>(null);
   readonly historyItem = signal<CatalogItemResponse | null>(null);
   readonly loadingHistory = signal(false);
@@ -70,6 +71,14 @@ export class CatalogPage implements OnInit {
     promotionEndDate: this.fb.nonNullable.control(''),
     durationMinutes: this.fb.control<number | null>(null, [Validators.min(1), Validators.max(1440), Validators.pattern(/^\d+$/)]),
   });
+
+  constructor() {
+    afterNextRender(() => {
+      if (typeof matchMedia === 'function' && matchMedia('(max-width: 640px)').matches) {
+        this.filtersCollapsed.set(true);
+      }
+    });
+  }
 
   ngOnInit(): void {
     this.refreshCalendars();

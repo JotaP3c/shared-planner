@@ -8,10 +8,11 @@ import { AuthService } from '../../../core/auth/auth.service';
 import { canRespondToApproval } from '../../../core/auth/calendar-permissions';
 import { EventResponse } from '../../../core/models/shared-planner.models';
 import { DataChangeService } from '../../../core/state/data-change.service';
+import { Icon } from '../../../shared/ui/icon/icon';
 
 @Component({
   selector: 'app-pending-page',
-  imports: [SpButtonDirective, SpLoadingState, SpEmptyState],
+  imports: [SpButtonDirective, SpLoadingState, SpEmptyState, Icon],
   templateUrl: './pending-page.html',
   styleUrl: './pending-page.scss',
 })

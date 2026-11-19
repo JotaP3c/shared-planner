@@ -1,6 +1,6 @@
 :host { display: block; }
 .profile-layout { display: grid; grid-template-columns: minmax(220px, .72fr) minmax(0, 2fr); gap: var(--sp-space-5); }
-.access-card { min-width: 0; padding: var(--sp-space-5); border: var(--sp-border-width) solid var(--sp-border); border-radius: var(--sp-radius-lg); background: var(--sp-surface); color: var(--sp-text); box-shadow: var(--sp-shadow-sm); }
+.page-panel { overflow-wrap: anywhere; }
 h2 { font-size: var(--sp-font-size-lg); font-weight: var(--sp-font-weight-semibold); letter-spacing: var(--sp-letter-spacing-tight); margin: 0 0 var(--sp-space-4); }
 h3 { font-size: var(--sp-font-size-sm); margin-top: var(--sp-space-6); }
 .profile-list { list-style: none; margin: var(--sp-space-4) 0 0; padding: 0; display: grid; gap: var(--sp-space-2); }
@@ -20,7 +20,16 @@ legend { font-weight: var(--sp-font-weight-semibold); padding-inline: var(--sp-s
 .check-field { display: flex; gap: var(--sp-space-2); align-items: center; padding-bottom: var(--sp-space-2); font-size: var(--sp-font-size-sm); }
 .assignment-options { display: flex; flex-wrap: wrap; gap: var(--sp-space-4); border: var(--sp-border-width) solid var(--sp-border); border-radius: var(--sp-radius); padding: var(--sp-space-4); margin: var(--sp-space-5) 0; }
 .assignment-options label { display: flex; align-items: center; gap: var(--sp-space-2); font-size: var(--sp-font-size-sm); }
+.permission-grid, .assignment-options { min-inline-size: 0; }
+.permission-grid input, .assignment-options input { flex-shrink: 0; }
+.assignment-options label { min-width: 0; }
+.access-fields .sp-field > select { min-width: 0; }
+.permission-grid + .page-hint { margin-block-end: var(--sp-space-4); }
 .effective-list { display: flex; flex-wrap: wrap; gap: var(--sp-space-2); list-style: none; padding: 0; }
 .effective-list li { padding: var(--sp-space-2) var(--sp-space-3); border-radius: var(--sp-radius-sm); background: var(--sp-surface-2); color: var(--sp-content-secondary); font-size: var(--sp-font-size-xs); }
 @media (max-width: 960px) { .profile-layout { grid-template-columns: minmax(0, 1fr); } }
-@media (max-width: 600px) { .permission-grid { grid-template-columns: minmax(0, 1fr); } .access-card { padding: var(--sp-space-4); } }
+@media (max-width: 600px) {
+  .permission-grid { grid-template-columns: minmax(0, 1fr); }
+  .assignment-options label { width: 100%; }
+  .page-actions > button { flex: 1 1 auto; }
+}

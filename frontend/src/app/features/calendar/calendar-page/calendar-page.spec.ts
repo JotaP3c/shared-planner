@@ -786,6 +786,35 @@ describe('CalendarPage async states and validation (BLG-BUG-004/005/008, BLG-FE-
     expect(component.events()).toHaveLength(2);
   });
 
+  it('shows only overlaps with the selected civil day and deduplicates read-only holidays', () => {
+    component.agendaDate.set('2026-12-25');
+    component.holidayEvents.set([{ id: 'christmas', title: 'Natal', start: '2026-12-25', end: '2026-12-26' }]);
+    component.events.set([
+      event('previous-day', { allDay: true, startsAt: '2026-12-24T00:00:00', endsAt: '2026-12-25T00:00:00' }),
+      event('overnight', { startsAt: '2026-12-24T22:00:00', endsAt: '2026-12-25T02:00:00' }),
+      event('imported-holiday', { externalSource: 'GOOGLE_ICS', allDay: true, title: 'Natal', startsAt: '2026-12-25T00:00:00', endsAt: '2026-12-26T00:00:00' }),
+      event('future-day', { startsAt: '2026-12-26T00:00:00', endsAt: '2026-12-26T01:00:00' }),
+    ]);
+
+    expect(component.agendaEvents().map(item => item.id)).toEqual(['overnight']);
+    expect(component.agendaHolidays().map(item => item.id)).toEqual(['christmas']);
+    component.selectedEventTypes.set(['CLIENT']);
+    expect(component.agendaEvents()).toEqual([]);
+    expect(component.agendaHolidays()).toHaveLength(1);
+    component.agendaDate.set('2026-12-26');
+    expect(component.agendaHolidays()).toEqual([]);
+  });
+
+  it('navigates the calendar to a day selected in the agenda and creates at that date', () => {
+    const calendar = component.calendarComponent;
+    expect(calendar).toBeDefined();
+    const gotoDate = vi.spyOn(calendar!.getApi(), 'gotoDate').mockImplementation(() => {});
+    component.selectAgendaDate('2026-12-25');
+    expect(gotoDate).toHaveBeenCalledWith('2026-12-25');
+    component.createAgendaEvent();
+    expect(component.eventForm.controls.date.value).toBe('2026-12-25');
+  });
+
   it('fails closed for unresolved or revoked calendar operations and keeps payment management independent', () => {
     const own = event('own', { eventType: 'CLIENT', createdByEmail: 'user@example.com', amount: 100, paymentStatus: 'PENDING', receivedAmount: 0 });
     component.calendars.set([{ ...calendarA, permissions: ['CALENDAR_VIEW', 'EVENT_EDIT', 'FINANCE_VIEW'] }]);
